@@ -80,6 +80,7 @@ INSTALLED_APPS = [
     "activation.apps.ActivationConfig",
     "practice.apps.PracticeConfig",
     "resources.apps.ResourcesConfig",
+    "feedback.apps.FeedbackConfig",
 ]
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",

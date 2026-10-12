@@ -71,6 +71,9 @@ class BusinessRoleTests(TestCase):
             "权益撤销": ("entitlements.revoke_entitlementsource", ("activation.generate_activationbatch", "entitlements.change_product")),
             "支付核查": ("payments.reschedule_paymenttask", ("payments.change_order", "entitlements.grant_entitlementsource")),
             "资料群管理": ("resources.change_groupresourceconfiguration", ("resources.delete_groupresourceconfiguration",)),
+            "应用文编辑": ("writing.change_writingcontent", ("writing.publish_writingcontent", "writing.delete_writingcontent")),
+            "应用文发布": ("writing.publish_writingcontent", ("writing.change_writingcontent", "writing.delete_writingcontent")),
+            "意见反馈处理": ("feedback.process_feedback", ("feedback.delete_feedback",)),
         }
         for index, (name, (allowed, forbidden)) in enumerate(matrix.items()):
             with self.subTest(role=name):

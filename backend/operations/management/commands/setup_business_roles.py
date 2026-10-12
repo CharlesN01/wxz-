@@ -25,7 +25,10 @@ VIEW_PERMISSIONS = frozenset().union(
       ("practiceround", "rounditem", "resumeposition")),
     *(permissions("payments", model, "view_" + model) for model in
       ("order", "paymenttask", "paymentevent")),
+    *(permissions("writing", model, "view_" + model) for model in
+      ("writingcategory", "writinggenre", "writingcontent", "writingrevision")),
     permissions("resources", "groupresourceconfiguration", "view_groupresourceconfiguration"),
+    permissions("feedback", "feedback", "view_feedback"),
 )
 
 ROLES = {
@@ -44,6 +47,19 @@ ROLES = {
                     | permissions("entitlements", "openingreservation", "view_openingreservation"),
     "资料群管理": permissions("resources", "groupresourceconfiguration", "view_groupresourceconfiguration",
                             "change_groupresourceconfiguration"),
+    "应用文编辑": (
+        permissions("writing", "writingcategory", "view_writingcategory", "add_writingcategory", "change_writingcategory")
+        | permissions("writing", "writinggenre", "view_writinggenre", "add_writinggenre", "change_writinggenre")
+        | permissions("writing", "writingcontent", "view_writingcontent", "add_writingcontent", "change_writingcontent")
+        | permissions("writing", "writingrevision", "view_writingrevision")
+    ),
+    "应用文发布": (
+        permissions("writing", "writingcategory", "view_writingcategory")
+        | permissions("writing", "writinggenre", "view_writinggenre")
+        | permissions("writing", "writingcontent", "view_writingcontent", "publish_writingcontent")
+        | permissions("writing", "writingrevision", "view_writingrevision")
+    ),
+    "意见反馈处理": permissions("feedback", "feedback", "view_feedback", "process_feedback"),
 }
 
 

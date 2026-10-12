@@ -85,6 +85,7 @@ EXAMPLES = {
         "wechatId": "study-example", "claimCode": "EXAMPLE-CODE", "description": "资料领取说明",
         "announcement": "群公告示例", "updatedAt": "2026-10-12T00:00:00+08:00",
     },
+    "FeedbackSubmission": {"id": 1, "type": "question", "status": "pending", "createdAt": "2026-10-12T00:00:00+08:00"},
 }
 
 
@@ -154,6 +155,12 @@ def schemas():
             "enabled": BOOL, "groupQrCode": nullable(STRING), "wechatId": STRING, "claimCode": STRING,
             "description": STRING, "announcement": STRING, "updatedAt": nullable(DATE_TIME),
         }, required=["enabled"]),
+        "FeedbackSubmission": obj({
+            "id": POSITIVE,
+            "type": {"type": "string", "enum": ["feature", "question", "payment", "account", "other"]},
+            "status": {"type": "string", "enum": ["pending", "processing", "resolved", "closed"]},
+            "createdAt": DATE_TIME,
+        }),
     }
     for name, item in (("CategoryPage", "Category"), ("ArticlePage", "Article"), ("ProductPage", "Product"),
                        ("Favorites", "FavoriteItem"), ("OrderPage", "Order")):
@@ -175,6 +182,7 @@ BINDINGS = {
     ("student-question-detail", "get"): ("QuestionDetail", 200, None, "content.student_api.EmptyQuery", False),
     ("student-writing-list", "get"): ("WritingPage", 200, None, "writing.serializers.WritingQuery", False),
     ("student-writing-detail", "get"): ("WritingDetail", 200, None, "content.student_api.EmptyQuery", False),
+    ("student-feedback-create", "post"): ("FeedbackSubmission", 201, "feedback.serializers.FeedbackInput", None, True),
     ("student-products", "get"): ("ProductPage", 200, None, None, False),
     ("student-entitlements", "get"): ("Entitlement", 200, None, None, False),
     ("student-activation-redeem", "post"): ("Redemption", 200, "activation.api.RedeemInput", None, True),
