@@ -36,6 +36,16 @@ function createClassicalPage() {
   return { page, store: require(storePath), service: require(servicePath), routes };
 }
 
+test('目录专项入口透传当前背诵模式', () => {
+  const { page, routes } = createClassicalPage();
+  page.data.mode = 'reciting';
+  page.selectedArticle = { id: 'quanxue', title: '劝学' };
+  page.data.selectedArticle = page.selectedArticle;
+  page.data.modalVisible = true;
+  page.onChooseType({ currentTarget: { dataset: { type: 'translation' } } });
+  assert.deepEqual(routes, ['/pages/practice/index?articleId=quanxue&type=translation&mode=reciting']);
+});
+
 test('目录续学在字词翻译全掌握后回到可练习篇目，跳过只有常识题的师说', () => {
   const { page, store, service, routes } = createClassicalPage();
   service.getQuestions({ articleId: 'quanxue' }).forEach((question) => store.toggleMastered(question.id));

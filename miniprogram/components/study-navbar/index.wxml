@@ -1,7 +1,11 @@
 <view class="navbar theme-{{theme}}" style="padding-top: {{statusHeight}}px;">
   <view class="bar" style="height: {{barHeight}}px;">
     <view wx:if="{{back}}" class="back-hit" role="button" aria-label="返回" bindtap="goBack"><view class="chevron"></view></view>
-    <view wx:if="{{theme === 'paper'}}" class="home-brand" style="padding-right: {{rightSpace}}px;">
+    <view wx:if="{{theme === 'paper' && subtitle}}" class="home-brand home-brand-with-subtitle" style="padding-right: {{rightSpace}}px;">
+      <view class="home-brand-copy"><text class="brand-title">{{title}}</text><text class="brand-subtitle">{{subtitle}}</text></view>
+      <view wx:if="{{more}}" class="more-button" role="button" aria-label="更多">•••</view>
+    </view>
+    <view wx:elif="{{theme === 'paper'}}" class="home-brand" style="padding-right: {{rightSpace}}px;">
       <text class="brand-title">{{title}}</text>
       <text wx:if="{{region}}" class="region">{{region}}</text>
     </view>

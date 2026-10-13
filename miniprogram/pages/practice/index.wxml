@@ -1,8 +1,12 @@
 <view class="practice-page">
   <study-navbar title="{{title}}" theme="green" back="{{true}}" />
   <view class="practice-body">
+    <view wx:if="{{personalError}}" class="practice-notice">{{personalError}}</view>
+    <view wx:if="{{dataSource === 'local' && !loading}}" class="practice-notice offline-notice">当前为离线演示数据，登录并连接服务后将同步学习进度</view>
+    <view wx:if="{{loading}}" class="practice-state"><view class="state-spinner"></view><text>正在加载专项题目...</text></view>
+    <view wx:elif="{{hasError}}" class="practice-state practice-error"><text class="state-title">专项题目暂不可用</text><text>{{errorMessage}}</text><view class="state-retry" bindtap="onRetry" role="button">重新加载</view></view>
     <view class="practice-modes"><mode-switch mode="{{mode}}" theme="green" bindchange="onModeChange" /></view>
-    <view wx:if="{{total}}" class="practice-content">
+    <view wx:if="{{!loading && !hasError && total}}" class="practice-content">
       <view class="practice-progress">
         <view class="mastery-count"><text>已掌握</text><text class="mastery-value">{{completed}}</text><text>/ {{total}} 题</text></view>
         <view class="progress-track"><view class="progress-fill" style="width: {{progressPercent}}%;" /></view>
@@ -13,9 +17,9 @@
         </view>
       </view>
     </view>
-    <empty-state wx:else title="暂无演示内容" description="该篇目或专项暂无演示内容，题库后续补充" action-text="返回目录" bindaction="onEmptyAction" />
+    <empty-state wx:elif="{{!loading && !hasError}}" title="暂无专项题目" description="该篇目或专项暂无已发布内容" action-text="返回目录" bindaction="onEmptyAction" />
   </view>
-  <view wx:if="{{total}}" class="practice-footer">
+  <view wx:if="{{!loading && !hasError && total}}" class="practice-footer">
     <view class="group-count"><text>第 </text><text class="current-group">{{groupIndex + 1}}</text><text> 组 / 共 {{groupCount}} 组</text></view>
     <view role="button" class="next-button" bindtap="onNextGroup" hover-class="next-button-pressed"><text>{{nextLabel}}</text><text class="button-arrow">→</text></view>
   </view>

@@ -1,6 +1,10 @@
 <view class="classical-page">
   <study-navbar title="文言文考点" theme="green" back="{{true}}" />
   <view class="classical-body">
+    <view wx:if="{{loading}}" class="remote-state remote-loading"><view class="state-spinner"></view><text>正在同步文言目录...</text></view>
+    <view wx:elif="{{hasError}}" class="remote-state remote-error"><text class="state-title">文言目录暂不可用</text><text class="state-message">{{errorMessage}}</text><view class="state-retry" bindtap="onRetry" role="button">重新加载</view></view>
+    <view wx:if="{{dataSource === 'local' && !loading}}" class="remote-note">当前为本地演示数据，登录并联网后同步学习进度。</view>
+    <view wx:if="{{personalError && dataSource === 'local'}}" class="remote-note">{{personalError}}</view>
     <view class="summary-card">
       <view class="summary-copy">
         <text class="summary-region">山东专升本 · 文言研习</text>

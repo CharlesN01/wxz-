@@ -5,7 +5,10 @@
     "pages/classical/index",
     "pages/practice/index",
     "pages/random/index",
-    "pages/favorites/index"
+    "pages/favorites/index",
+    "pages/application/index",
+    "pages/mine/index",
+    "pages/resources/index"
   ],
   "window": {
     "navigationStyle": "custom",

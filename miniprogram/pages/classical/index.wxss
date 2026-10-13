@@ -1,6 +1,14 @@
 page { background: #F7F8F5; }
 .classical-page { min-height: 100vh; color: #242A27; background: #F7F8F5; }
 .classical-body { padding: 24rpx 24rpx calc(160rpx + env(safe-area-inset-bottom)); }
+.remote-state { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 180rpx; margin-bottom: 20rpx; padding: 24rpx; border: 1rpx solid #E6E8E2; border-radius: 24rpx; background: #FFFFFF; color: #5C6460; font-size: 25rpx; line-height: 1.5; text-align: center; }
+.remote-error { border-color: #ECD7C2; background: #FFF9F0; }
+.state-title { color: #8A5B28; font-size: 29rpx; font-weight: 600; }
+.state-message { margin-top: 8rpx; color: #747C76; }
+.state-retry { margin-top: 18rpx; min-width: 176rpx; padding: 14rpx 24rpx; border-radius: 16rpx; color: #FFFFFF; background: #1B4D3E; }
+.state-spinner { width: 40rpx; height: 40rpx; margin-bottom: 14rpx; border: 5rpx solid #DDE9DF; border-top-color: #1B4D3E; border-radius: 50%; animation: classical-spin 1s linear infinite; }
+.remote-note { margin: 0 8rpx 16rpx; padding: 16rpx 20rpx; border-radius: 14rpx; color: #8A5B28; background: #FFF7E9; font-size: 23rpx; line-height: 1.5; }
+@keyframes classical-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 .summary-card { display: flex; align-items: center; justify-content: space-between; gap: 18rpx; min-height: 204rpx; padding: 28rpx; border: 1rpx solid #E6E8E2; border-radius: 28rpx; background: #FFFFFF; box-shadow: 0 6rpx 24rpx rgba(27, 77, 62, .035); }
 .summary-copy { flex: 1; min-width: 0; }
 .summary-region { display: inline-block; padding: 6rpx 14rpx; border-radius: 10rpx; background: #FAF3E0; color: #9D692B; font-size: 22rpx; line-height: 1.4; }

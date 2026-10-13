@@ -2,6 +2,8 @@ Component({
   properties: {
     title: String,
     region: { type: String, value: '' },
+    subtitle: { type: String, value: '' },
+    more: { type: Boolean, value: false },
     theme: { type: String, value: 'green' },
     back: { type: Boolean, value: true }
   },
@@ -32,7 +34,7 @@ Component({
       const paper = this.data.theme === 'paper';
       wx.setNavigationBarColor({
         frontColor: paper ? '#000000' : '#ffffff',
-        backgroundColor: paper ? '#F7F8F5' : '#1B4D3E'
+        backgroundColor: paper ? '#F5FAFE' : '#12345B'
       });
     },
     goBack() {

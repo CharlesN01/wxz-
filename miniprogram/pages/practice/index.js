@@ -1,112 +1,129 @@
 const dataService = require('../../services/data-service');
 const studyStore = require('../../utils/study-store');
 const navigation = require('../../utils/navigation');
+const api = require('../../services/api');
 
 const GROUP_SIZE = 5;
+function settle(promise) { return Promise.resolve(promise).then((value) => ({ ok: true, value }), (error) => ({ ok: false, error })); }
+function hasToken() { try { return Boolean(api.auth && api.auth.getToken && api.auth.getToken()); } catch (_) { return false; } }
+function errorText(error) {
+  if (error && error.code === 'ENTITLEMENT_REQUIRED') return '当前专项需要开通学习权益';
+  if (error && (error.status === 401 || error.code === 'INVALID_TOKEN')) return '登录状态已失效，请重新登录';
+  if (error && error.status === 403) return '当前账号暂无访问权限';
+  if (error && error.code === 'NETWORK_ERROR') return '网络暂不可用，当前显示本地演示题目';
+  return error && error.message ? String(error.message) : '题目加载失败';
+}
+function normalizeState(value) { return { favorite: Boolean(value && value.favorite), mastered: Boolean(value && value.mastered), version: Number(value && value.version) >= 0 ? Number(value.version) : 0 }; }
 
 Page({
-  data: {
-    title: '重点字词专项',
-    typeLabel: '重点字词',
-    isWord: true,
-    mode: 'writing',
-    questions: [],
-    total: 0,
-    completed: 0,
-    progressPercent: 0,
-    groupIndex: 0,
-    groupCount: 0,
-    nextLabel: '下一组'
-  },
-
+  data: { loading: true, hasError: false, errorMessage: '', dataSource: 'local', personalError: '', title: '重点字词专项', typeLabel: '重点字词', isWord: true, mode: 'writing', questions: [], total: 0, completed: 0, progressPercent: 0, groupIndex: 0, groupCount: 0, nextLabel: '下一组' },
   onLoad(options) {
+    options = options || {};
     this.articleId = options.articleId || '';
     this.questionType = options.type === 'translation' ? 'translation' : 'word';
-    this.allQuestions = dataService.getQuestions({ source: 'classical', articleId: this.articleId || undefined, type: this.questionType });
-    const article = dataService.getArticles().find((item) => item.id === this.articleId);
-    let groupIndex = 0;
-    if (options.resume === '1') {
-      const resume = studyStore.getResume();
-      const savedOptions = resume && resume.options || {};
-      if (resume && /pages\/practice\/index$/.test(resume.path || '') && (savedOptions.articleId || '') === this.articleId && savedOptions.type === this.questionType) {
-        const savedIds = Array.isArray(resume.groupIds) ? Array.from(new Set(resume.groupIds)) : [];
-        const questionsById = new Map(this.allQuestions.map((question) => [question.id, question]));
-        const orderedQuestions = savedIds.map((id) => questionsById.get(id)).filter(Boolean);
-        const restoredIds = new Set(orderedQuestions.map((question) => question.id));
-        this.allQuestions = orderedQuestions.concat(this.allQuestions.filter((question) => !restoredIds.has(question.id)));
-        groupIndex = Number.isInteger(resume.groupIndex) ? resume.groupIndex : 0;
+    this.allQuestions = [];
+    this._stateMap = {};
+    this._resumeVersion = 0;
+    this._remoteLoaded = false;
+    const initialMode = options.mode === 'reciting' ? 'reciting' : options.mode === 'writing' ? 'writing' : studyStore.getMode();
+    studyStore.setMode(initialMode);
+    this.setData({ title: this.questionType === 'word' ? '重点字词专项' : '重点翻译专项', typeLabel: this.questionType === 'word' ? '重点字词' : '重点翻译', isWord: this.questionType === 'word', mode: initialMode });
+    this.loadRemote(options && options.resume === '1');
+  },
+  onShow() { if (this._remoteLoaded) this.refreshQuestions(); },
+  async loadRemote(restore) {
+    this.setData({ loading: true, hasError: false, errorMessage: '' });
+    const response = await settle(api.content.questions({ source: 'classical', articleId: this.articleId || undefined, type: this.questionType, page: 1 }));
+    if (!response.ok) {
+      this.allQuestions = dataService.getQuestions({ source: 'classical', articleId: this.articleId || undefined, type: this.questionType });
+      this._remoteLoaded = true;
+      if (response.error && response.error.code !== 'NETWORK_ERROR') this.setData({ loading: false, hasError: true, errorMessage: errorText(response.error), total: 0, questions: [] });
+      else this.setData({ loading: false, dataSource: 'local', personalError: errorText(response.error) });
+      if (!this.data.hasError) this.refreshQuestions();
+      return;
+    }
+    const payload = response.value || {};
+    this.allQuestions = Array.isArray(payload.results) ? payload.results.slice() : [];
+    let next = payload.next || null;
+    const seen = new Set();
+    while (next && !seen.has(String(next))) {
+      seen.add(String(next));
+      const pageResult = await settle(api.pagination.follow(next, { auth: 'optional', basePath: '/api/student/v1/questions/' }));
+      if (!pageResult.ok) {
+        this.setData({ loading: false, hasError: true, errorMessage: errorText(pageResult.error), total: 0, questions: [] });
+        return;
+      }
+      const page = pageResult.value || {};
+      if (Array.isArray(page.results)) this.allQuestions.push(...page.results);
+      next = page.next || null;
+    }
+    this._remoteLoaded = true;
+    if (!this.allQuestions.length) { this.setData({ loading: false, dataSource: 'remote', total: 0, questions: [] }); return; }
+    await this.loadStates(this.allQuestions);
+    if (!this.articleId && this.allQuestions[0].articleId) this.articleId = this.allQuestions[0].articleId;
+    if (restore) await this.restoreResume();
+    this.setData({ loading: false, dataSource: 'remote', personalError: '' });
+    this.refreshQuestions();
+  },
+  async loadStates(rows) {
+    if (!hasToken()) return;
+    const results = await Promise.all(rows.map((item) => settle(api.learning.questionState(item.id))));
+    results.forEach((item, index) => { if (item.ok) this._stateMap[rows[index].id] = normalizeState(item.value); });
+  },
+  async restoreResume() {
+    let saved = null;
+    if (hasToken()) {
+      const result = await settle(api.learning.resume());
+      const remote = result.ok && result.value && result.value.valid ? result.value.resume : null;
+      if (remote && remote.source === 'classical' && remote.articleId === this.articleId && remote.type === this.questionType) {
+        saved = remote;
+        if (result.value && Number(result.value.version) >= 0) this._resumeVersion = Number(result.value.version);
       }
     }
-    const groupCount = Math.ceil(this.allQuestions.length / GROUP_SIZE);
-    this.setData({
-      title: article
-        ? article.title + ' · ' + (this.questionType === 'word' ? '重点字词' : '重点翻译')
-        : this.questionType === 'word' ? '重点字词专项' : '重点翻译专项',
-      typeLabel: this.questionType === 'word' ? '重点字词' : '重点翻译',
-      isWord: this.questionType === 'word',
-      groupIndex: groupCount ? Math.min(Math.max(groupIndex, 0), groupCount - 1) : 0,
-      groupCount
-    });
+    if (!saved) {
+      const local = studyStore.getResume(); const options = local && local.options || {};
+      if (local && /pages\/practice\/index$/.test(local.path || '') && options.articleId === this.articleId && options.type === this.questionType) saved = { groupIndex: Number(local.groupIndex) + 1 };
+    }
+    if (saved) {
+      const rawIndex = Number(saved.groupIndex);
+      if (Number.isInteger(rawIndex) && rawIndex >= 1) this.setData({ groupIndex: rawIndex - 1 });
+    }
   },
-
-  onShow() {
-    this.refreshQuestions();
-    if (this.allQuestions && this.allQuestions.length) this.savePosition();
-  },
-
   refreshQuestions() {
-    const decorated = dataService.decorateQuestions(this.allQuestions || []);
-    const start = this.data.groupIndex * GROUP_SIZE;
-    const total = decorated.length;
-    const completed = decorated.filter((question) => question.mastered).length;
-    const groupCount = Math.ceil(total / GROUP_SIZE);
-    this.setData({
-      mode: studyStore.getMode(),
-      questions: decorated.slice(start, start + GROUP_SIZE),
-      total,
-      completed,
-      progressPercent: total ? Math.round(completed / total * 100) : 0,
-      groupCount,
-      nextLabel: this.data.groupIndex >= groupCount - 1 ? '再练一轮' : '下一组'
-    });
+    const decorated = (this.allQuestions || []).map((question) => Object.assign({}, question, this._stateMap[question.id] || normalizeState(null)));
+    const total = decorated.length; const groupCount = Math.ceil(total / GROUP_SIZE); const groupIndex = groupCount ? Math.min(Math.max(this.data.groupIndex, 0), groupCount - 1) : 0; const completed = decorated.filter((question) => question.mastered).length;
+    this.setData({ questions: decorated.slice(groupIndex * GROUP_SIZE, groupIndex * GROUP_SIZE + GROUP_SIZE), total, completed, progressPercent: total ? Math.round(completed / total * 100) : 0, groupIndex, groupCount, nextLabel: groupIndex >= groupCount - 1 ? '再练一轮' : '下一组' });
+    if (total) this.savePosition();
   },
-
   savePosition() {
-    studyStore.saveResume({
-      path: '/pages/practice/index',
-      options: { articleId: this.articleId, type: this.questionType },
-      groupIds: (this.allQuestions || []).map((question) => question.id),
-      groupIndex: this.data.groupIndex
+    studyStore.saveResume({ path: '/pages/practice/index', options: { articleId: this.articleId, type: this.questionType }, groupIds: (this.allQuestions || []).map((question) => question.id), groupIndex: this.data.groupIndex });
+    if (!hasToken() || !this.allQuestions.length) return;
+    const first = this.allQuestions[this.data.groupIndex * GROUP_SIZE] || this.allQuestions[0]; if (!first) return;
+    const body = { source: 'classical', articleId: this.articleId || null, type: this.questionType, mode: this.data.mode, questionId: first.id, roundId: null, groupIndex: this.data.groupIndex + 1, baseVersion: this._resumeVersion };
+    settle(api.learning.saveResume(body)).then((result) => {
+      if (result.ok && Number(result.value && result.value.version) >= 0) this._resumeVersion = Number(result.value.version);
+      else if (!result.ok && result.error && result.error.code === 'VERSION_CONFLICT') {
+        const current = result.error.current || result.error.fields && result.error.fields.current;
+        if (current && Number(current.version) >= 0) {
+          this._resumeVersion = Number(current.version);
+          settle(api.learning.saveResume(Object.assign({}, body, { baseVersion: this._resumeVersion }))).then((retry) => { if (retry.ok && Number(retry.value && retry.value.version) >= 0) this._resumeVersion = Number(retry.value.version); });
+        }
+      }
     });
   },
-
-  onModeChange(event) {
-    const mode = event.detail.mode;
-    if (mode !== 'writing' && mode !== 'reciting') return;
-    studyStore.setMode(mode);
-    this.setData({ mode });
+  onRetry() { this.loadRemote(false); },
+  onModeChange(event) { const mode = event.detail.mode; if (mode !== 'writing' && mode !== 'reciting') return; studyStore.setMode(mode); this.setData({ mode }); this.refreshQuestions(); },
+  async updateState(id, field) {
+    if (!id) return; if (!hasToken()) { this.setData({ personalError: '请先登录后同步收藏和掌握状态' }); return; }
+    const currentResult = await settle(api.learning.questionState(id)); if (!currentResult.ok) { this.setData({ personalError: errorText(currentResult.error) }); return; }
+    const current = normalizeState(currentResult.value); const next = !current[field]; const result = await settle(api.learning.setQuestionState(id, { [field]: next, baseVersion: current.version }));
+    if (result.ok) { this._stateMap[id] = normalizeState(result.value); this.refreshQuestions(); return; }
+    const server = result.error && (result.error.current || result.error.fields && result.error.fields.current);
+    if (result.error && result.error.code === 'VERSION_CONFLICT' && server) { const retry = await settle(api.learning.setQuestionState(id, { [field]: next, baseVersion: normalizeState(server).version })); if (retry.ok) { this._stateMap[id] = normalizeState(retry.value); this.refreshQuestions(); return; } }
+    this.setData({ personalError: errorText(result.error) });
   },
-
-  onFavorite(event) {
-    studyStore.toggleFavorite(event.detail.id);
-    this.refreshQuestions();
-  },
-
-  onMaster(event) {
-    studyStore.toggleMastered(event.detail.id);
-    this.refreshQuestions();
-  },
-
-  onNextGroup() {
-    if (!this.data.total) return;
-    this.setData({ groupIndex: this.data.groupIndex >= this.data.groupCount - 1 ? 0 : this.data.groupIndex + 1 });
-    this.refreshQuestions();
-    this.savePosition();
-    wx.pageScrollTo({ scrollTop: 0, duration: 180 });
-  },
-
-  onEmptyAction() {
-    if (getCurrentPages().length > 1) wx.navigateBack({ delta: 1 });
-    else navigation.openPage('/pages/classical/index');
-  }
+  onFavorite(event) { return this.updateState(event.detail.id, 'favorite'); },
+  onMaster(event) { return this.updateState(event.detail.id, 'mastered'); },
+  onNextGroup() { if (!this.data.total) return; this.setData({ groupIndex: this.data.groupIndex >= this.data.groupCount - 1 ? 0 : this.data.groupIndex + 1 }); this.refreshQuestions(); if (wx.pageScrollTo) wx.pageScrollTo({ scrollTop: 0, duration: 180 }); },
+  onEmptyAction() { if (getCurrentPages().length > 1) wx.navigateBack({ delta: 1 }); else navigation.openPage('/pages/classical/index'); }
 });

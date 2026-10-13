@@ -1,26 +1,42 @@
 <view class="literature-page">
-  <study-navbar title="文学常识" back="{{true}}" />
+  <study-navbar title="文学常识" theme="blue" back="{{true}}" />
   <view class="literature-body">
-    <scroll-view class="category-scroll" scroll-x="{{true}}" scroll-left="{{categoryScrollLeft}}" scroll-with-animation="{{true}}" enhanced="{{true}}" show-scrollbar="{{false}}">
+    <view class="overview-card">
+      <view class="overview-icon">书</view>
+      <view class="overview-copy"><text class="overview-title">文学常识</text><text class="overview-description">按时期分类学习，建立知识框架</text></view>
+      <view class="overview-count"><text>{{totalQuestions}}</text><text>本页题目</text></view>
+    </view>
+
+    <scroll-view wx:if="{{categories.length}}" class="category-scroll" scroll-x="{{true}}" scroll-left="{{categoryScrollLeft}}" scroll-with-animation="{{true}}" enhanced="{{true}}" show-scrollbar="{{false}}">
       <view class="category-row">
         <view wx:for="{{categories}}" wx:key="id" class="category-pill {{categoryId === item.id ? 'category-selected' : ''}}" role="button" data-id="{{item.id}}" bindtap="changeCategory" hover-class="category-pressed">{{item.name}}</view>
       </view>
     </scroll-view>
 
-    <view class="mode-area"><mode-switch mode="{{mode}}" bind:change="changeMode" /></view>
+    <view wx:if="{{personalError}}" class="notice-card"><text class="notice-mark">i</text><text>{{personalError}}</text></view>
+    <view class="toolbar">
+      <view class="toolbar-title"><text>{{categoryName}}练习</text><text class="toolbar-page">{{pageCount ? page + ' / ' + pageCount : '暂无题目'}}</text></view>
+      <mode-switch mode="{{mode}}" theme="blue" bind:change="changeMode" />
+    </view>
 
-    <view wx:if="{{questions.length}}" class="questions-area">
+    <view wx:if="{{loading}}" class="page-loading"><view class="loading-spinner"></view><text>正在加载题目...</text></view>
+    <view wx:elif="{{hasError}}" class="page-error">
+      <view class="error-icon">!</view><text class="error-title">题目加载失败</text><text class="error-copy">{{errorMessage}}</text><view class="retry-button" role="button" bindtap="retry">重新加载</view>
+    </view>
+    <view wx:elif="{{questions.length}}" class="question-list">
       <view wx:for="{{questions}}" wx:key="id" class="question-host">
-        <question-card question="{{item}}" mode="{{mode}}" number="{{groupIndex * pageSize + index + 1}}" variant="olive" show-tag="{{false}}" bind:favorite="toggleFavorite" bind:master="toggleMastered" />
+        <question-card question="{{item}}" mode="{{mode}}" number="{{(page - 1) * pageSize + index + 1}}" variant="blue" show-tag="{{false}}" bindfavorite="toggleFavorite" bindmaster="toggleMaster" />
+        <view wx:if="{{mode === 'writing'}}" class="answer-control" data-id="{{item.id}}" bindtap="toggleAnswer" role="button">{{item.answerVisible ? '收起答案' : '查看答案'}}</view>
+        <view wx:if="{{mode === 'writing' && item.answerVisible}}" class="answer-box"><text class="answer-label">答案：</text><text>{{item.answerText}}</text></view>
       </view>
+      <view wx:if="{{restrictedCount}}" class="access-note">还有 {{restrictedCount}} 道题目需要开通权益后继续学习</view>
     </view>
-    <view wx:else class="literature-empty">
-      <empty-state title="暂无演示题目" description="该分类暂无演示内容，题库后续补充" action-text="查看先秦文学" bind:action="showFirstCategory" />
-    </view>
+    <view wx:elif="{{!loading}}" class="literature-empty"><empty-state title="暂无文学常识题目" description="该分类暂无已发布内容，先看看其他时期吧" action-text="查看第一个分类" bind:action="showFirstCategory" /></view>
   </view>
 
-  <view wx:if="{{questions.length}}" class="literature-actions">
-    <text class="page-indicator">第 <text class="current-page">{{groupIndex + 1}}</text> 页 / 共 {{groupTotal}} 页</text>
-    <view class="next-button" role="button" bindtap="nextGroup" hover-class="next-pressed"><text>{{isLastGroup ? '再看一遍' : '下一页'}}</text><text class="button-arrow">→</text></view>
+  <view wx:if="{{!loading && pageCount}}" class="literature-actions">
+    <view class="page-button {{canPrevious ? '' : 'page-disabled'}}" data-delta="-1" bindtap="goPage" role="button">‹</view>
+    <text class="page-indicator">第 <text class="current-page">{{page}}</text> / {{pageCount}} 页</text>
+    <view class="page-button {{canNext ? '' : 'page-disabled'}}" data-delta="1" bindtap="goPage" role="button">›</view>
   </view>
 </view>

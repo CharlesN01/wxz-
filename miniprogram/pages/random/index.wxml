@@ -1,13 +1,17 @@
 <view class="random-page">
   <study-navbar title="{{source === 'classical' ? '文言随机测' : '文常随机练'}}" theme="emerald" back="{{true}}" />
   <view class="random-content">
+    <view wx:if="{{personalError}}" class="random-notice">{{personalError}}</view>
+    <view wx:if="{{dataSource === 'local' && !loading}}" class="random-notice offline-notice">当前为离线演示数据，登录并连接服务后将同步随机轮次</view>
+    <view wx:if="{{loading}}" class="random-state"><view class="state-spinner"></view><text>正在创建固定练习轮次...</text></view>
+    <view wx:elif="{{hasError}}" class="random-state random-error"><text class="state-title">随机练习暂不可用</text><text>{{errorMessage}}</text><view class="state-retry" bindtap="onRetry" role="button">重新加载</view></view>
     <view class="random-summary">
       <view class="summary-icon" aria-hidden="true"><study-icon name="dice" size="42" color="#C47A2B" /></view>
       <view class="summary-copy">
         <text class="summary-title">{{sourceName}} · 随机巩固</text>
         <text class="summary-description">{{subtitle}}</text>
       </view>
-      <view class="summary-count"><text class="summary-value">5</text><text class="summary-unit">每组最多题数</text></view>
+      <view class="summary-count"><text class="summary-value">{{groupPageSize}}</text><text class="summary-unit">本组题数上限</text></view>
     </view>
     <view class="random-mode">
       <mode-switch mode="{{mode}}" theme="emerald" bindchange="onModeChange" />
@@ -16,14 +20,14 @@
       <text>本轮共 {{roundQuestionCount}} 题 · 本组 {{questions.length}} 题</text>
       <text class="round-hint">温故而知新</text>
     </view>
-    <view class="random-questions" wx:if="{{questions.length}}">
+    <view class="random-questions" wx:if="{{!loading && !hasError && questions.length}}">
       <view class="random-question" wx:for="{{questions}}" wx:key="id">
         <question-card question="{{item}}" mode="{{mode}}" number="{{index + 1}}" variant="random" show-tag="{{true}}" bindfavorite="onFavorite" bindmaster="onMaster" />
       </view>
     </view>
-    <empty-state wx:else title="暂无随机练习题" description="该模块暂无演示内容，题库后续补充。" action-text="去学习" bindaction="onGoStudy" />
+    <empty-state wx:elif="{{!loading && !hasError}}" title="暂无随机练习题" description="该模块暂无已发布内容。" action-text="去学习" bindaction="onGoStudy" />
   </view>
-  <view class="random-footer" wx:if="{{questions.length}}">
+  <view class="random-footer" wx:if="{{!loading && !hasError && questions.length}}">
     <view class="group-counter">第 <text class="counter-current">{{groupNumber}}</text> 组 / 共 {{groupCount}} 组</view>
     <view class="next-group" role="button" aria-label="{{nextLabel}}" hover-class="next-group-pressed" bindtap="onNextGroup"><text>{{nextLabel}}</text><text class="button-arrow" aria-hidden="true">→</text></view>
   </view>

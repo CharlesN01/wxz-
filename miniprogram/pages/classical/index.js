@@ -1,9 +1,35 @@
 const dataService = require('../../services/data-service');
 const studyStore = require('../../utils/study-store');
 const navigation = require('../../utils/navigation');
+const api = require('../../services/api');
+
+function canRequest() {
+  return typeof wx !== 'undefined' && typeof wx.request === 'function';
+}
+
+function hasToken() {
+  try { return Boolean(api.auth && api.auth.getToken && api.auth.getToken()); } catch (_) { return false; }
+}
+
+function describeError(error) {
+  if (error && error.code === 'ENTITLEMENT_REQUIRED') return '该目录需要登录并开通学习权益';
+  if (error && (error.code === 'INVALID_TOKEN' || error.status === 401)) return '登录状态已失效，请重新登录';
+  if (error && error.status === 403) return '当前账号暂无访问权限';
+  if (error && error.code === 'NETWORK_ERROR') return '网络暂不可用，当前显示本地演示内容';
+  return error && error.message ? String(error.message) : '文言目录加载失败';
+}
+
+function settle(promise) {
+  return Promise.resolve(promise).then((value) => ({ ok: true, value }), (error) => ({ ok: false, error }));
+}
 
 Page({
   data: {
+    loading: true,
+    hasError: false,
+    errorMessage: '',
+    dataSource: 'local',
+    personalError: '',
     filterStatus: 'all',
     filters: [
       { value: 'all', label: '全部' },
@@ -20,8 +46,14 @@ Page({
     selectedArticle: null
   },
 
+  onLoad() {
+    this._remoteLoaded = false;
+    this.setData({ mode: studyStore.getMode() });
+    if (canRequest()) this.loadRemote();
+  },
+
   onShow() {
-    this.refreshProgress();
+    if (!canRequest() || this._remoteLoaded) this.refreshProgress();
   },
 
   onReady() {
@@ -30,10 +62,10 @@ Page({
   },
 
   refreshProgress() {
-    this.articles = dataService.getArticleProgress();
+    if (this.data.dataSource !== 'remote' || !Array.isArray(this.articles)) this.articles = dataService.getArticleProgress();
     const stats = studyStore.getStats();
-    const articleTotal = stats.articleTotal || this.articles.length;
-    const learnedCount = Number(stats.articleLearnedCount) || 0;
+    const articleTotal = this.data.dataSource === 'remote' ? (Number(this.data.articleTotal) || this.articles.length) : (stats.articleTotal || this.articles.length);
+    const learnedCount = this.data.dataSource === 'remote' ? Number(this.data.learnedCount || 0) : Number(stats.articleLearnedCount) || 0;
     this.setData({
       articleTotal,
       learnedCount,
@@ -41,6 +73,72 @@ Page({
     });
     this.applyFilter();
     if (this.canvasReady) wx.nextTick(() => this.drawProgress());
+  },
+
+  async loadRemote() {
+    this.setData({ loading: true, hasError: false, errorMessage: '' });
+    const result = await settle(api.content.articles({ page: 1 }));
+    if (!result.ok) {
+      const message = describeError(result.error);
+      if (result.error && result.error.code === 'NETWORK_ERROR') {
+        this._remoteLoaded = true;
+        this.setData({ loading: false, dataSource: 'local', personalError: message });
+        this.refreshProgress();
+      } else {
+        this.setData({ loading: false, hasError: true, errorMessage: message, visibleArticles: [], visibleCount: 0 });
+      }
+      return;
+    }
+    const payload = result.value || {};
+    const rows = Array.isArray(payload.results) ? payload.results.slice() : [];
+    let next = payload.next || null;
+    const seen = new Set();
+    while (next && !seen.has(String(next))) {
+      seen.add(String(next));
+      const pageResult = await settle(api.pagination.follow(next, { auth: 'optional', basePath: '/api/student/v1/articles/' }));
+      if (!pageResult.ok) {
+        this.setData({ loading: false, hasError: true, errorMessage: describeError(pageResult.error), visibleArticles: [], visibleCount: 0 });
+        return;
+      }
+      const page = pageResult.value || {};
+      if (Array.isArray(page.results)) rows.push(...page.results);
+      next = page.next || null;
+    }
+    if (!rows.length) {
+      this._remoteLoaded = true;
+      this.articles = [];
+      this.setData({ loading: false, dataSource: 'remote', articleTotal: 0, learnedCount: 0, completionPercent: 0, visibleArticles: [], visibleCount: 0 });
+      return;
+    }
+    const statsResult = hasToken() ? await settle(api.learning.statistics()) : { ok: false, error: null };
+    const stats = statsResult.ok ? (statsResult.value || {}) : {};
+    const learnedCount = Number(stats.completedArticles) >= 0 ? Number(stats.completedArticles) : 0;
+    const total = Number(payload.count) >= 0 ? Number(payload.count) : rows.length;
+    this.articles = rows.map((item, index) => ({
+      id: item.id,
+      title: item.title,
+      index: Number(item.sortOrder) || index + 1,
+      total: Number(item.publishedCount) || Number(item.freeCount) || 0,
+      completed: 0,
+      status: 'unlearned',
+      statusLabel: '未学',
+      placeholder: false
+    }));
+    this._remoteLoaded = true;
+    this.setData({
+      loading: false,
+      dataSource: 'remote',
+      articleTotal: total,
+      learnedCount,
+      completionPercent: total ? Math.round(learnedCount / total * 100) : 0,
+      personalError: statsResult.ok ? '' : describeError(statsResult.error)
+    });
+    this.applyFilter();
+    if (this.canvasReady) wx.nextTick(() => this.drawProgress());
+  },
+
+  onRetry() {
+    if (canRequest()) this.loadRemote();
   },
 
   applyFilter() {
@@ -102,11 +200,11 @@ Page({
     const article = this.data.selectedArticle;
     if (!article) return;
     this.setData({ modalVisible: false });
-    navigation.openPage('/pages/practice/index', { articleId: article.id, type: event.currentTarget.dataset.type });
+    navigation.openPage('/pages/practice/index', { articleId: article.id, type: event.currentTarget.dataset.type, mode: this.data.mode || undefined });
   },
 
   onSpecialty(event) {
-    navigation.openPage('/pages/practice/index', { type: event.currentTarget.dataset.type });
+    navigation.openPage('/pages/practice/index', { type: event.currentTarget.dataset.type, mode: this.data.mode || undefined });
   },
 
   onContinue() {
@@ -125,6 +223,6 @@ Page({
     }
     const articleQuestions = questions.filter((question) => question.articleId === article.id);
     const nextQuestion = articleQuestions.find((question) => !question.mastered) || articleQuestions[0];
-    navigation.openPage('/pages/practice/index', { articleId: article.id, type: nextQuestion.type });
+    navigation.openPage('/pages/practice/index', { articleId: article.id, type: nextQuestion.type, mode: this.data.mode || undefined });
   }
 });

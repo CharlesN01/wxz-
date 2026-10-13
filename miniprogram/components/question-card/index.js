@@ -8,7 +8,7 @@ Component({
     variant: { type: String, value: 'green' },
     showTag: { type: Boolean, value: false }
   },
-  data: { segments: [], isTranslation: false, translationStem: '', translationAnswer: '' },
+  data: { segments: [], isTranslation: false, translationStem: '', translationAnswer: '', answerVisible: false, answerText: '' },
   observers: {
     'question, mode'(question, mode) {
       const item = question || {};
@@ -26,12 +26,15 @@ Component({
         }),
         isTranslation,
         translationStem,
-        translationAnswer: isTranslation && mode === 'reciting' ? answers.filter(Boolean).join('；') : ''
+        translationAnswer: isTranslation && mode === 'reciting' ? answers.filter(Boolean).join('；') : '',
+        answerVisible: Boolean(item.answerVisible),
+        answerText: answers.filter(Boolean).join('；')
       });
     }
   },
   methods: {
     favorite() { this.triggerEvent('favorite', { id: this.data.question.id }); },
-    master() { this.triggerEvent('master', { id: this.data.question.id }); }
+    master() { this.triggerEvent('master', { id: this.data.question.id }); },
+    toggleAnswer() { this.setData({ answerVisible: !this.data.answerVisible }); }
   }
 });

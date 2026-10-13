@@ -1,6 +1,14 @@
 page { background: #F7F8F5; }
 .practice-page { min-height: 100vh; color: #242A27; background: #F7F8F5; }
 .practice-body { padding: 24rpx 24rpx calc(160rpx + env(safe-area-inset-bottom)); }
+.practice-notice { margin-bottom: 18rpx; padding: 16rpx 20rpx; border-radius: 14rpx; color: #8A5B28; background: #FFF7E9; font-size: 23rpx; line-height: 1.5; }
+.offline-notice { color: #7B5A22; background: #FFF4D8; }
+.practice-state { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 180rpx; margin-bottom: 20rpx; padding: 24rpx; border: 1rpx solid #E6E8E2; border-radius: 24rpx; color: #5C6460; background: #FFFFFF; font-size: 25rpx; line-height: 1.5; text-align: center; }
+.practice-error { border-color: #ECD7C2; background: #FFF9F0; }
+.state-title { color: #8A5B28; font-size: 29rpx; font-weight: 600; }
+.state-retry { margin-top: 18rpx; min-width: 176rpx; padding: 14rpx 24rpx; border-radius: 16rpx; color: #FFFFFF; background: #1B4D3E; }
+.state-spinner { width: 40rpx; height: 40rpx; margin-bottom: 14rpx; border: 5rpx solid #DDE9DF; border-top-color: #1B4D3E; border-radius: 50%; animation: practice-spin 1s linear infinite; }
+@keyframes practice-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 .practice-modes { margin-bottom: 28rpx; }
 .practice-progress { display: flex; align-items: center; gap: 18rpx; margin: 0 8rpx 28rpx; }
 .mastery-count { display: flex; align-items: baseline; gap: 10rpx; flex-shrink: 0; color: #747C76; font-size: 24rpx; line-height: 1.5; white-space: nowrap; }
@@ -15,3 +23,4 @@ page { background: #F7F8F5; }
 .next-button { display: flex; align-items: center; justify-content: center; gap: 18rpx; flex-shrink: 0; box-sizing: border-box; min-width: 236rpx; height: 80rpx; margin: 0; padding: 0 28rpx; border: 1rpx solid #1B4D3E; border-radius: 22rpx; background: linear-gradient(120deg, #1B4D3E, #13382D); color: #FFFFFF; box-shadow: 0 6rpx 14rpx rgba(27, 77, 62, .13); font-size: 30rpx; font-weight: 600; line-height: 1.3; }
 .button-arrow { font-size: 36rpx; line-height: 1; font-weight: 400; }
 .next-button-pressed { background: #13382D; opacity: .9; }
+@media (max-width: 750rpx) { .practice-footer { gap: 12rpx; padding-left: 20rpx; padding-right: 20rpx; } .next-button { min-width: 0; flex: 0 1 236rpx; } }

@@ -1,0 +1,14 @@
+<view class="resources-page">
+  <study-navbar title="备考资料领取" theme="paper" back="{{true}}" />
+  <view class="resources-body">
+    <view class="hero"><text class="eyebrow">文常记 · 山东专升本语文</text><text class="hero-title">备考资料已经为你准备好了</text><text class="hero-copy">添加微信好友，发送领取口令，获取学习资料与备考提醒。</text></view>
+    <view wx:if="{{loading}}" class="state">正在加载资料配置...</view>
+    <view wx:elif="{{error}}" class="state error" bindtap="retry">{{error}}，点击重试</view>
+    <block wx:elif="{{resource && resource.enabled}}">
+      <view class="benefits"><view class="benefit"><text class="benefit-icon">文</text><text>文学常识重点梳理</text><text class="benefit-note">考点速记</text></view><view class="benefit"><text class="benefit-icon">言</text><text>文言文复习资料</text><text class="benefit-note">字词 · 翻译</text></view><view class="benefit"><text class="benefit-icon">备</text><text>专升本语文备考提醒</text><text class="benefit-note">持续更新</text></view></view>
+      <view class="qr-section"><text class="qr-title">扫码添加微信，领取资料</text><text class="qr-copy">{{resource.description || '添加后回复领取口令，即可获取资料'}}</text><image wx:if="{{resource.groupQrCode}}" class="qr" src="{{resource.groupQrCode}}" mode="aspectFit" bindtap="previewQr" /><view wx:else class="qr-placeholder" bindtap="previewQr">二维码暂未配置</view><text wx:if="{{resource.wechatId}}" class="wechat">微信号：{{resource.wechatId}}</text><text wx:if="{{resource.announcement}}" class="announcement">{{resource.announcement}}</text></view>
+      <view class="bottom"><button bindtap="copyCode">{{copied ? '领取口令已复制' : '复制领取口令'}}</button><text>复制后添加微信并发送口令</text></view>
+    </block>
+    <view wx:else class="disabled"><empty-state title="资料群暂未开放" description="管理员尚未发布资料领取配置，请稍后再试。" action-text="重新加载" bindaction="retry" /></view>
+  </view>
+</view>

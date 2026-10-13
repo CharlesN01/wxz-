@@ -1,0 +1,14 @@
+<view class="application-page">
+  <study-navbar title="应用文" theme="paper" back="{{true}}" />
+  <view class="application-body">
+    <view class="hero"><text class="eyebrow">山东专升本语文</text><text class="hero-title">应用文写作</text><text class="hero-copy">先记格式，再练表达。把常考文种拆开学，写作更稳。</text></view>
+    <view class="section-title">学习内容</view>
+    <view class="kind-grid"><view wx:for="{{kinds}}" wx:key="id" class="kind-card" data-kind="{{item.id}}" bindtap="chooseKind"><view class="kind-icon">{{item.icon}}</view><text class="kind-title">{{item.label}}</text><text class="kind-description">{{item.description}}</text></view></view>
+    <view wx:if="{{loading}}" class="state">正在加载应用文内容...</view>
+    <view wx:elif="{{error}}" class="state error" bindtap="retry">{{error}}，点击重试</view>
+    <view wx:elif="{{selectedKind && !selected}}" class="state">该模块暂无已发布内容</view>
+    <view wx:elif="{{selected}}" class="detail-card"><view class="detail-head"><text class="detail-tag">{{selected.genreName || selected.categoryName || '应用文'}}</text><text class="detail-close" bindtap="closeDetail">×</text></view><text class="detail-title">{{selected.title}}</text><text class="detail-body">{{selected.body || selected.referenceAnswer || '该内容暂未提供正文。'}}</text><text wx:if="{{selected.referenceAnswer}}" class="detail-answer">参考答案：{{selected.referenceAnswer}}</text></view>
+    <view wx:elif="{{!items.length}}" class="state">暂无已发布应用文内容</view>
+    <view wx:else class="content-list"><view wx:for="{{items}}" wx:key="id" class="content-item" data-id="{{item.id}}" bindtap="openItem"><view><text class="content-title">{{item.title}}</text><text class="content-meta">{{item.genreName || item.categoryName || '应用文'}}</text></view><text class="arrow">›</text></view></view>
+  </view>
+</view>
