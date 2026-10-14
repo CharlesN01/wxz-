@@ -1,7 +1,8 @@
 const api = require('../../services/api');
 const navigation = require('../../utils/navigation');
+const safeTop = require('../../utils/safe-top');
 
-const DEFAULT_PAGE_SIZE = 20;
+const UI_PAGE_SIZE = 6;
 const SOURCE = 'literature';
 
 function settle(promise) {
@@ -30,6 +31,22 @@ function describeError(error, fallback) {
   return error && error.message ? String(error.message) : fallback;
 }
 
+function displayCategoryName(category) {
+  const item = category || {};
+  const known = {
+    'pre-qin': '先秦',
+    'qin-han': '秦汉',
+    'wei-jin': '六朝',
+    'six-dynasties': '六朝',
+    tang: '唐代',
+    song: '宋代',
+    'yuan-ming-qing': '元明清',
+    modern: '现当代',
+    foreign: '外国文学'
+  };
+  return known[item.id] || String(item.name || '文学常识').replace(/文学$/, '');
+}
+
 function buildParts(question, mode) {
   const stem = String((question && question.stem) || '');
   const answers = Array.isArray(question && question.answers) ? question.answers : [];
@@ -38,18 +55,26 @@ function buildParts(question, mode) {
     if (!match) return { key: index, text: part, isBlank: false, isFilled: false };
     const answer = answers[Number(match[1])] || '';
     if (mode === 'reciting' && answer) {
-      return { key: index, text: '（' + answer + '）', isBlank: false, isFilled: true };
+      return { key: index, text: answer, isBlank: false, isFilled: true };
     }
     return { key: index, text: '____', isBlank: true, isFilled: false };
   });
 }
 
 function normalizeState(value) {
+  const version = Number(value && value.version);
   return {
     favorite: Boolean(value && value.favorite),
     mastered: Boolean(value && value.mastered),
-    version: Number(value && value.version) >= 0 ? Number(value.version) : 0
+    version: Number.isFinite(version) && version >= 0 ? version : 0
   };
+}
+
+function formatQuestionProgress(startIndex, total) {
+  const totalCount = Math.max(0, Number(total) || 0);
+  const current = totalCount ? Math.min(totalCount, Math.max(1, Number(startIndex) + 1 || 1)) : 0;
+  const format = (value) => String(value).padStart(2, '0');
+  return format(current) + ' / ' + format(totalCount);
 }
 
 Page({
@@ -64,12 +89,14 @@ Page({
     mode: 'writing',
     questions: [],
     page: 1,
-    pageSize: DEFAULT_PAGE_SIZE,
+    pageSize: UI_PAGE_SIZE,
+    questionProgressLabel: '00 / 00',
     totalQuestions: 0,
     pageCount: 0,
     progressPercent: 0,
     restrictedCount: 0,
     categoryScrollLeft: 0,
+    safeTop: 0,
     isGuest: true,
     canPrevious: false,
     canNext: false
@@ -77,7 +104,9 @@ Page({
 
   onLoad(options) {
     this._options = options || {};
+    this.setData({ safeTop: safeTop.getSafeTop(typeof wx !== 'undefined' ? wx : null) });
     this._questionRequest = 0;
+    this._questionPages = {};
     this._loaded = false;
     this._stateMap = {};
     this._pendingState = {};
@@ -96,12 +125,7 @@ Page({
   },
 
   async bootstrap() {
-    const publicResults = await Promise.all([
-      settle(api.config.get()),
-      settle(api.content.categories({ page: 1 }))
-    ]);
-    const configResult = publicResults[0];
-    const categoriesResult = publicResults[1];
+    const categoriesResult = await settle(api.content.categories({ page: 1 }));
     if (!categoriesResult.ok) {
       this.setData({
         loading: false,
@@ -111,9 +135,8 @@ Page({
       return;
     }
 
-    const config = configResult.ok && configResult.value ? configResult.value : {};
     const categories = categoriesResult.value && Array.isArray(categoriesResult.value.results)
-      ? categoriesResult.value.results
+      ? categoriesResult.value.results.map((item) => Object.assign({}, item, { name: displayCategoryName(item) }))
       : [];
     let preference = null;
     let resumeSnapshot = null;
@@ -145,7 +168,8 @@ Page({
     this._preferenceVersion = preference && Number(preference.version) >= 0
       ? Number(preference.version)
       : 0;
-    this._pageSize = Number(config.pageSize) > 0 ? Number(config.pageSize) : DEFAULT_PAGE_SIZE;
+    // 原型固定每页展示 6 道；后端 pageSize 只表示 API 分页大小，不能改变页面题组。
+    this._pageSize = UI_PAGE_SIZE;
     this._loaded = true;
     this.setData({
       categories,
@@ -174,18 +198,38 @@ Page({
     await this.loadPage(1, { findResume: Boolean(this._resumeQuestionId) });
   },
 
+  async loadApiPage(page, requestId) {
+    const categoryId = this.data.categoryId;
+    const cacheKey = categoryId + ':' + page;
+    if (this._questionPages[cacheKey]) return this._questionPages[cacheKey];
+    const response = await api.content.questions({
+      source: SOURCE,
+      categoryId,
+      page
+    });
+    if (requestId !== this._questionRequest) return null;
+    const rows = response && Array.isArray(response.results) ? response.results : [];
+    const pageSize = Number(response && response.access && response.access.pageSize) > 0
+      ? Number(response.access.pageSize)
+      : Math.max(rows.length, 1);
+    const record = {
+      rows,
+      count: Number(response && response.count) >= 0 ? Number(response.count) : rows.length,
+      pageSize,
+      restrictedCount: Number(response && response.access && response.access.restrictedCount) || 0
+    };
+    this._questionPages[cacheKey] = record;
+    return record;
+  },
+
   async loadPage(page, options) {
     if (!this.data.categoryId) return;
-    const targetPage = Math.max(1, Number(page) || 1);
+    let targetPage = Math.max(1, Number(page) || 1);
     const requestId = ++this._questionRequest;
     this.setData({ loading: true, hasError: false, errorMessage: '' });
-    let response;
+    let firstPage;
     try {
-      response = await api.content.questions({
-        source: SOURCE,
-        categoryId: this.data.categoryId,
-        page: targetPage
-      });
+      firstPage = await this.loadApiPage(1, requestId);
     } catch (error) {
       if (requestId !== this._questionRequest) return;
       this.setData({
@@ -197,38 +241,78 @@ Page({
       return;
     }
     if (requestId !== this._questionRequest) return;
-    const rows = response && Array.isArray(response.results) ? response.results : [];
-    const count = Number(response && response.count) >= 0 ? Number(response.count) : rows.length;
-    const pageSize = Number(response && response.access && response.access.pageSize) > 0
-      ? Number(response.access.pageSize)
-      : this._pageSize;
-    const pageCount = count ? Math.ceil(count / pageSize) : 0;
-    this._pageSize = pageSize;
-    const resumeIndex = rows.findIndex((item) => item.id === this._resumeQuestionId);
-    if (options && options.findResume && this._resumeQuestionId && resumeIndex < 0 && targetPage < pageCount) {
-      await this.loadPage(targetPage + 1, options);
+    if (!firstPage) return;
+    const count = firstPage.count;
+    const apiPageSize = firstPage.pageSize;
+    const pageCount = count ? Math.ceil(count / UI_PAGE_SIZE) : 0;
+
+    if (options && options.findResume && this._resumeQuestionId) {
+      const serverPageCount = count ? Math.ceil(count / apiPageSize) : 0;
+      let resumeIndex = -1;
+      for (let apiPage = 1; apiPage <= serverPageCount; apiPage += 1) {
+        let record = this._questionPages[this.data.categoryId + ':' + apiPage];
+        if (!record) record = await this.loadApiPage(apiPage, requestId);
+        if (requestId !== this._questionRequest) return;
+        if (!record) continue;
+        const localIndex = record.rows.findIndex((item) => item.id === this._resumeQuestionId);
+        if (localIndex >= 0) {
+          resumeIndex = (apiPage - 1) * apiPageSize + localIndex;
+          break;
+        }
+      }
+      if (resumeIndex >= 0) {
+        targetPage = Math.floor(resumeIndex / UI_PAGE_SIZE) + 1;
+      } else if (targetPage > 1) {
+        targetPage = 1;
+      }
+    }
+
+    const startIndex = (targetPage - 1) * UI_PAGE_SIZE;
+    const endIndex = Math.min(startIndex + UI_PAGE_SIZE, count);
+    const firstApiPage = Math.floor(startIndex / apiPageSize) + 1;
+    const lastApiPage = endIndex > startIndex
+      ? Math.floor((endIndex - 1) / apiPageSize) + 1
+      : firstApiPage;
+    try {
+      for (let apiPage = firstApiPage; apiPage <= lastApiPage; apiPage += 1) {
+        const cacheKey = this.data.categoryId + ':' + apiPage;
+        if (!this._questionPages[cacheKey]) await this.loadApiPage(apiPage, requestId);
+        if (requestId !== this._questionRequest) return;
+      }
+    } catch (error) {
+      if (requestId !== this._questionRequest) return;
+      this.setData({
+        loading: false,
+        hasError: true,
+        errorMessage: describeError(error, '文学题目加载失败，请稍后重试'),
+        questions: []
+      });
       return;
     }
-    if (options && options.findResume && this._resumeQuestionId && resumeIndex < 0 && targetPage > 1) {
-      await this.loadPage(1, { findResume: false });
-      return;
+
+    const rows = [];
+    for (let index = startIndex; index < endIndex; index += 1) {
+      const apiPage = Math.floor(index / apiPageSize) + 1;
+      const record = this._questionPages[this.data.categoryId + ':' + apiPage];
+      const row = record && record.rows[index % apiPageSize];
+      if (row) rows.push(row);
     }
     await this.loadStates(rows, requestId);
     if (requestId !== this._questionRequest) return;
     this._questionRows = rows;
-    const actualPage = resumeIndex >= 0 ? targetPage : targetPage;
     this.setData({
       loading: false,
       hasError: false,
       questions: this.renderRows(rows),
-      page: actualPage,
-      pageSize,
+      page: targetPage,
+      pageSize: UI_PAGE_SIZE,
+      questionProgressLabel: formatQuestionProgress(startIndex, count),
       totalQuestions: count,
       pageCount,
-      progressPercent: pageCount ? Math.round(actualPage / pageCount * 100) : 0,
-      restrictedCount: Number(response && response.access && response.access.restrictedCount) || 0,
-      canPrevious: actualPage > 1,
-      canNext: actualPage < pageCount,
+      progressPercent: pageCount ? Math.round(targetPage / pageCount * 100) : 0,
+      restrictedCount: firstPage.restrictedCount,
+      canPrevious: targetPage > 1,
+      canNext: targetPage < pageCount,
       personalError: this.data.personalError
     });
     this.queueResume();
@@ -298,6 +382,7 @@ Page({
   async changeMode(event) {
     const mode = isMode(event.detail && event.detail.mode);
     if (mode === this.data.mode) return;
+    this._answerVisible = {};
     this.setData({ mode, questions: this.renderRows(this._questionRows) });
     if (!await this.ensureLogin()) return;
     this.queueResume();
@@ -333,8 +418,18 @@ Page({
     }
   },
 
+  onModeTap(event) {
+    const mode = event && event.currentTarget && event.currentTarget.dataset
+      ? event.currentTarget.dataset.mode
+      : '';
+    return this.changeMode({ detail: { mode } });
+  },
+
   toggleFavorite(event) {
-    return this.updateQuestionState(event && event.detail && event.detail.id, 'favorite');
+    const id = event && event.detail && event.detail.id
+      ? event.detail.id
+      : event && event.currentTarget && event.currentTarget.dataset && event.currentTarget.dataset.id;
+    return this.updateQuestionState(id, 'favorite');
   },
 
   toggleMaster(event) {

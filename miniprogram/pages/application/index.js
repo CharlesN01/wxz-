@@ -9,7 +9,7 @@ const kinds = [
 ];
 
 Page({
-  data: { kinds, items: [], selectedKind: '', selected: null, loading: true, error: '' },
+  data: { kinds, items: [], detailItems: [], selectedKind: '', selectedKindLabel: '', selected: null, detailIntro: '按模块练习，逐步掌握应用文写作。', detailFallback: false, detailVisible: false, loading: true, error: '' },
   onLoad() { this.load(); },
   async load() {
     this.setData({ loading: true, error: '' });
@@ -22,19 +22,21 @@ Page({
   },
   chooseKind(event) {
     const kind = event.currentTarget.dataset.kind;
+    const kindInfo = kinds.find((entry) => entry.id === kind);
     const item = this.data.items.find((entry) => entry.kind === kind);
-    if (item) { this.setData({ selectedKind: kind, selected: item }); return; }
+    if (item) { this.setData({ selectedKind: kind, selectedKindLabel: kindInfo ? kindInfo.label : '应用文', selected: item, detailItems: [item], detailIntro: '按模块练习，逐步掌握应用文写作。', detailFallback: false, detailVisible: true }); return; }
     api.content.writings({ page: 1, kind }).then((result) => {
       const entries = result && Array.isArray(result.results) ? result.results : [];
-      this.setData({ selectedKind: kind, items: this.data.items.concat(entries), selected: entries[0] || null });
+      this.setData({ selectedKind: kind, selectedKindLabel: entries.length ? (kindInfo ? kindInfo.label : '应用文') : '应用文', items: this.data.items.concat(entries), detailItems: entries, selected: entries[0] || null, detailIntro: entries.length ? '按模块练习，逐步掌握应用文写作。' : '山东专升本应用文学习', detailFallback: entries.length === 0, detailVisible: true });
     }).catch((error) => wx.showToast({ title: error.message || '加载失败', icon: 'none' }));
   },
   openItem(event) {
     const id = event.currentTarget.dataset.id;
     const item = this.data.items.find((entry) => String(entry.id) === String(id));
-    if (item) this.setData({ selected: item });
+    if (item) this.setData({ selected: item, detailVisible: true });
   },
-  closeDetail() { this.setData({ selected: null }); },
+  openStudy() { this.chooseKind({ currentTarget: { dataset: { kind: 'exercise' } } }); },
+  closeDetail() { this.setData({ selected: null, detailFallback: false, detailVisible: false }); },
   retry() { this.load(); },
   back() { navigation.openPage('/pages/home/index'); }
 });

@@ -11,3 +11,8 @@
 .book-left, .book-right { width: 14rpx; height: 24rpx; border: 2rpx solid currentColor; box-sizing: border-box; }
 .book-left { border-radius: 5rpx 2rpx 0 3rpx; transform: skewY(8deg); }
 .book-right { border-left: 0; border-radius: 2rpx 5rpx 3rpx 0; transform: skewY(-8deg); }
+.theme-blue { height: 60rpx; padding: 4rpx; border-color: #E9EEF5; border-radius: 16rpx; background: #EAF1FA; }
+.theme-blue .mode { height: 50rpx; border-radius: 12rpx; color: #8995A8; font-size: 22rpx; font-weight: 400; }
+.theme-blue .mode-icon { display: none; }
+.theme-blue .active { color: #237BEA; background: #FFFFFF; box-shadow: 0 2rpx 8rpx rgba(45,91,155,.08); font-weight: 700; }
+.theme-blue .mode + .mode { margin-left: 4rpx; }

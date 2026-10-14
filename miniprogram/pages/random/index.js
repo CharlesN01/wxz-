@@ -1,9 +1,10 @@
 const dataService = require('../../services/data-service');
 const studyStore = require('../../utils/study-store');
+const safeTop = require('../../utils/safe-top');
 const navigation = require('../../utils/navigation');
 const api = require('../../services/api');
 
-const GROUP_SIZE = 5;
+const GROUP_SIZE = 6;
 const PAGE_PATH = '/pages/random/index';
 function settle(promise) { return Promise.resolve(promise).then((value) => ({ ok: true, value }), (error) => ({ ok: false, error })); }
 function hasToken() { try { return Boolean(api.auth && api.auth.getToken && api.auth.getToken()); } catch (_) { return false; } }
@@ -17,12 +18,16 @@ function errorText(error) {
 function normalizeState(value) { return { favorite: Boolean(value && value.favorite), mastered: Boolean(value && value.mastered), version: Number(value && value.version) >= 0 ? Number(value.version) : 0 }; }
 
 Page({
-  data: { loading: true, hasError: false, errorMessage: '', dataSource: 'local', personalError: '', source: 'literature', mode: 'writing', sourceName: '文学常识', subtitle: '分组巩固 · 一轮不重复', questions: [], groupNumber: 0, groupCount: 0, roundQuestionCount: 0, groupPageSize: GROUP_SIZE, nextLabel: '下一组' },
+  data: { loading: true, hasError: false, errorMessage: '', dataSource: 'local', personalError: '', source: 'literature', safeTop: 0, typeFilter: 'word', mode: 'writing', sourceName: '文学常识', subtitle: '8 类混合随机 · 每页 6 题', questions: [], groupNumber: 0, groupCount: 0, roundQuestionCount: 0, groupPageSize: GROUP_SIZE, progressPercent: 0, nextLabel: '下一组' },
 
   onLoad(options = {}) {
     this._source = options.source === 'classical' ? 'classical' : 'literature';
-    this._type = options.type === 'word' || options.type === 'translation' || options.type === 'fact' ? options.type : null;
+    this._typeExplicit = options.type === 'word' || options.type === 'translation' || options.type === 'fact';
+    this._type = options.type === 'word' || options.type === 'translation' || options.type === 'fact'
+      ? options.type
+      : (this._source === 'classical' ? 'word' : null);
     this._articleId = options.articleId || null;
+    this._modeExplicit = options.mode === 'reciting' || options.mode === 'writing';
     this._groupIndex = 1;
     this._roundId = '';
     this._roundIds = [];
@@ -31,16 +36,42 @@ Page({
     this._ready = false;
     const initialMode = options.mode === 'reciting' ? 'reciting' : options.mode === 'writing' ? 'writing' : studyStore.getMode();
     studyStore.setMode(initialMode);
-    this.setData({ source: this._source, mode: initialMode, sourceName: this._source === 'classical' ? '文言文' : '文学常识' });
-    if (typeof wx !== 'undefined' && typeof wx.request === 'function') this.startRemoteRound(options.resume === '1');
-    else { this.startLocalRound(options.resume === '1'); this._ready = true; this.refreshLocalGroup(); }
+    this.setData({
+      source: this._source,
+      safeTop: this._source === 'literature' ? safeTop.getSafeTop(typeof wx !== 'undefined' ? wx : null, 12) : 0,
+      mode: initialMode,
+      typeFilter: this._type === 'translation' ? 'translation' : 'word',
+      sourceName: this._source === 'classical' ? '文言文' : '文学常识',
+      groupPageSize: GROUP_SIZE,
+      subtitle: this._source === 'classical' ? '字词与翻译 · 每页 6 题' : '8 类混合随机 · 每页 6 题'
+    });
+    if (typeof wx !== 'undefined' && typeof wx.request === 'function' && hasToken()) this.startRemoteRound(options.resume === '1');
+    else {
+      this.startLocalRound(options.resume === '1');
+      this._ready = true;
+      this.setData({ dataSource: 'local', personalError: hasToken() ? '' : '未登录，当前显示本地演示题目' });
+      this.refreshLocalGroup();
+    }
   },
 
   onShow() { if (this._ready && this.data.dataSource === 'local') this.refreshLocalGroup(); },
 
   startLocalRound(restore) {
     const resume = restore ? studyStore.getResume() : null;
-    if (resume && resume.path === PAGE_PATH && resume.options && resume.options.source === this._source && Array.isArray(resume.groupIds) && resume.groupIds.length) {
+    const resumeOptions = resume && resume.options || {};
+    const matchesContext = resumeOptions.source === this._source
+      && (!this._typeExplicit || resumeOptions.type === this._type)
+      && (!this._articleId || String(resumeOptions.articleId || '') === String(this._articleId));
+    if (resume && resume.path === PAGE_PATH && matchesContext && Array.isArray(resume.groupIds) && resume.groupIds.length) {
+      if (!this._typeExplicit && (resumeOptions.type === 'word' || resumeOptions.type === 'translation' || resumeOptions.type === 'fact')) {
+        this._type = resumeOptions.type;
+        this.setData({ typeFilter: resumeOptions.type === 'translation' ? 'translation' : 'word' });
+      }
+      if (!this._articleId && resumeOptions.articleId) this._articleId = resumeOptions.articleId;
+      if (!this._modeExplicit && (resumeOptions.mode === 'writing' || resumeOptions.mode === 'reciting')) {
+        this.setData({ mode: resumeOptions.mode });
+        studyStore.setMode(resumeOptions.mode);
+      }
       this._roundIds = resume.groupIds.slice();
       this._groups = [];
       for (let i = 0; i < this._roundIds.length; i += GROUP_SIZE) this._groups.push(this._roundIds.slice(i, i + GROUP_SIZE));
@@ -58,11 +89,12 @@ Page({
     const ids = (this._groups && this._groups[this._groupIndex - 1]) || [];
     const questions = ids.map((id) => dataService.getQuestion(id)).filter(Boolean).map((item) => Object.assign({}, item, normalizeState(this._stateMap[item.id])));
     const count = this._groups ? this._groups.length : 0;
-    this.setData({ loading: false, questions: dataService.decorateQuestions(questions), groupNumber: count ? this._groupIndex : 0, groupCount: count, roundQuestionCount: this._roundIds.length, nextLabel: this._groupIndex >= count ? '再练一轮' : '下一组' });
+    this.setData({ loading: false, dataSource: this.data.dataSource || 'local', questions: dataService.decorateQuestions(questions), groupNumber: count ? this._groupIndex : 0, groupCount: count, roundQuestionCount: this._roundIds.length, groupPageSize: GROUP_SIZE, progressPercent: count ? Math.round(this._groupIndex / count * 100) : 0, nextLabel: this._groupIndex >= count ? '再练一轮' : '下一组' });
     if (count) this.saveResume();
   },
 
   async startRemoteRound(restore) {
+    if (!restore) { this._roundId = ''; this._roundIds = []; this._groupIndex = 1; }
     this.setData({ loading: true, hasError: false, errorMessage: '' });
     if (restore) {
       const savedResult = await settle(api.learning.resume());
@@ -72,7 +104,14 @@ Page({
       if (!savedResult.ok) { this.setData({ loading: false, hasError: true, errorMessage: errorText(savedResult.error), questions: [] }); return; }
       const snapshot = savedResult.value || {};
       const saved = snapshot.valid && snapshot.resume ? snapshot.resume : null;
-      if (saved && saved.source === this._source && (!this._articleId || saved.articleId === this._articleId) && (!this._type || saved.type === this._type) && saved.roundId && Number(saved.groupIndex) > 0) {
+      const matchesType = this._typeExplicit ? saved && saved.type === this._type : Boolean(saved);
+      const matchesArticle = this._articleId ? saved && String(saved.articleId || '') === String(this._articleId) : Boolean(saved);
+      if (saved && saved.source === this._source && matchesArticle && matchesType && saved.roundId && Number(saved.groupIndex) > 0) {
+        if (!this._typeExplicit && (saved.type === 'word' || saved.type === 'translation' || saved.type === 'fact')) {
+          this._type = saved.type;
+          this.setData({ typeFilter: saved.type === 'translation' ? 'translation' : 'word' });
+        }
+        if (!this._articleId && saved.articleId) this._articleId = saved.articleId;
         this._roundId = saved.roundId;
         this._groupIndex = Number(saved.groupIndex);
         this._resumeVersion = Number(snapshot.version) >= 0 ? Number(snapshot.version) : 0;
@@ -111,9 +150,10 @@ Page({
     this._groupPageSize = Number(payload.pageSize) > 0 ? Number(payload.pageSize) : this._groupPageSize || GROUP_SIZE;
     const rows = Array.isArray(payload.results) ? payload.results : [];
     await this.loadStates(rows);
-    this._roundIds = this._roundIds.concat(rows.map((item) => item.id).filter(Boolean));
+    const seenIds = new Set(this._roundIds);
+    rows.forEach((item) => { if (item.id && !seenIds.has(item.id)) { seenIds.add(item.id); this._roundIds.push(item.id); } });
     const questions = rows.map((item) => Object.assign({}, item, this._stateMap[item.id] || normalizeState(null)));
-    this.setData({ loading: false, dataSource: 'remote', questions, groupNumber: this._groupIndex, groupCount: this._roundCount, roundQuestionCount: this._roundTotal, groupPageSize: this._groupPageSize, nextLabel: this._groupIndex >= this._roundCount ? '再练一轮' : '下一组', personalError: '' });
+    this.setData({ loading: false, dataSource: 'remote', questions, groupNumber: this._groupIndex, groupCount: this._roundCount, roundQuestionCount: this._roundTotal, groupPageSize: this._groupPageSize, progressPercent: this._roundCount ? Math.round(this._groupIndex / this._roundCount * 100) : 0, nextLabel: this._groupIndex >= this._roundCount ? '再练一轮' : '下一组', personalError: '' });
     this.saveResume();
     return true;
   },
@@ -125,7 +165,7 @@ Page({
   },
 
   saveResume() {
-    studyStore.saveResume({ path: PAGE_PATH, options: { source: this._source }, groupIds: this._roundIds.slice(), groupIndex: Math.max(0, this._groupIndex - 1) });
+    studyStore.saveResume({ path: PAGE_PATH, options: { source: this._source, type: this._type, articleId: this._articleId || null, mode: this.data.mode }, groupIds: this._roundIds.slice(), groupIndex: Math.max(0, this._groupIndex - 1) });
     if (!hasToken() || !this._roundIds.length) return;
     const id = this.data.questions[0] && this.data.questions[0].id || this._roundIds[0];
     if (!id) return;
@@ -144,22 +184,56 @@ Page({
 
   onRetry() { if (hasToken()) this.startRemoteRound(false); else { this.startLocalRound(false); this.refreshLocalGroup(); } },
   async onModeChange(event) { const mode = event.detail.mode; if (mode !== 'writing' && mode !== 'reciting' || mode === this.data.mode) return; studyStore.setMode(mode); this.setData({ mode }); if (this.data.dataSource === 'remote') { await this.loadRemoteGroup(this._groupIndex); this.saveResume(); } else this.refreshLocalGroup(); },
-  async updateState(id, field) {
-    if (!id || !hasToken()) { this.setData({ personalError: '请先登录后同步收藏和掌握状态' }); return; }
+  async updateState(id, field, desiredValue) {
+    if (!id) return;
+    if (!hasToken()) {
+      const current = studyStore.getState();
+      const isSet = field === 'favorite' ? current.favorites.indexOf(id) !== -1 : Object.prototype.hasOwnProperty.call(current.mastered, id);
+      const next = typeof desiredValue === 'boolean' ? desiredValue : !isSet;
+      if (next !== isSet) studyStore[field === 'favorite' ? 'toggleFavorite' : 'toggleMastered'](id);
+      this._stateMap[id] = normalizeState({ favorite: field === 'favorite' ? next : current.favorites.indexOf(id) !== -1, mastered: field === 'mastered' ? next : Object.prototype.hasOwnProperty.call(current.mastered, id) });
+      this.setData({ personalError: '当前未登录，学习状态仅保存在本地' });
+      this.refreshLocalGroup();
+      return;
+    }
     const currentResult = await settle(api.learning.questionState(id)); if (!currentResult.ok) { this.setData({ personalError: errorText(currentResult.error) }); return; }
-    const current = normalizeState(currentResult.value); const next = !current[field]; const result = await settle(api.learning.setQuestionState(id, { [field]: next, baseVersion: current.version }));
+    const current = normalizeState(currentResult.value); const next = typeof desiredValue === 'boolean' ? desiredValue : !current[field];
+    if (next === current[field]) { this._stateMap[id] = current; await this.loadRemoteGroup(this._groupIndex); return; }
+    const result = await settle(api.learning.setQuestionState(id, { [field]: next, baseVersion: current.version }));
     if (result.ok) { this._stateMap[id] = normalizeState(result.value); if (this.data.dataSource === 'local') this.refreshLocalGroup(); else this.loadRemoteGroup(this._groupIndex); return; }
     const server = result.error && (result.error.current || result.error.fields && result.error.fields.current);
     if (result.error && result.error.code === 'VERSION_CONFLICT' && server) { const retry = await settle(api.learning.setQuestionState(id, { [field]: next, baseVersion: normalizeState(server).version })); if (retry.ok) { this._stateMap[id] = normalizeState(retry.value); this.loadRemoteGroup(this._groupIndex); return; } }
     this.setData({ personalError: errorText(result.error) });
   },
   onFavorite(event) { return this.updateState(event.detail.id, 'favorite'); },
-  onMaster(event) { return this.updateState(event.detail.id, 'mastered'); },
+  onMaster(event) { return this.updateState(event.detail.id, 'mastered', event.detail.mastered); },
+  onTypeChange(event) {
+    const type = event.currentTarget.dataset.type;
+    if (this._source !== 'classical' || (type !== 'word' && type !== 'translation') || type === this._type) return;
+    this._type = type;
+    this._roundId = '';
+    this._roundIds = [];
+    this._groups = [];
+    this._groupIndex = 1;
+    this._stateMap = {};
+    this.setData({ typeFilter: type, questions: [], groupNumber: 0, groupCount: 0, roundQuestionCount: 0, progressPercent: 0 });
+    if (this.data.dataSource === 'remote') this.startRemoteRound(false);
+    else { this.startLocalRound(false); this.refreshLocalGroup(); }
+  },
+  onPreviousGroup() {
+    if (this.data.groupNumber <= 1) return;
+    if (this.data.dataSource === 'remote') this.loadRemoteGroup(this._groupIndex - 1);
+    else { this._groupIndex -= 1; this.refreshLocalGroup(); }
+    if (typeof wx !== 'undefined' && wx.pageScrollTo) wx.pageScrollTo({ scrollTop: 0, duration: 180 });
+  },
   onNextGroup() {
-    if (!this.data.groupCount) return;
-    if (this.data.dataSource === 'remote') { if (this._groupIndex >= this._roundCount) { this.startRemoteRound(false); } else this.loadRemoteGroup(this._groupIndex + 1); }
-    else { if (this._groupIndex >= this._groups.length) this.startLocalRound(false); else this._groupIndex += 1; this.refreshLocalGroup(); }
+    if (!this.data.groupCount || this._groupIndex >= this.data.groupCount) return;
+    if (this.data.dataSource === 'remote') this.loadRemoteGroup(this._groupIndex + 1);
+    else { this._groupIndex += 1; this.refreshLocalGroup(); }
     if (typeof wx !== 'undefined' && wx.pageScrollTo) wx.pageScrollTo({ scrollTop: 0, duration: 200 });
   },
+  openHome() { navigation.openPage('/pages/home/index'); },
+  openFavorites() { navigation.openPage('/pages/favorites/index'); },
+  openProfile() { navigation.openPage('/pages/mine/index'); },
   onGoStudy() { navigation.openPage(this._source === 'classical' ? '/pages/classical/index' : '/pages/literature/index'); }
 });

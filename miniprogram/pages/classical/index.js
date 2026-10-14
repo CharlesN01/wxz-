@@ -46,9 +46,15 @@ Page({
     selectedArticle: null
   },
 
-  onLoad() {
+  onLoad(options = {}) {
+    this._requestedArticleId = options.articleId || '';
+    this._requestedQuestionId = options.questionId || '';
+    const requestedMode = options.mode === 'writing' || options.mode === 'reciting'
+      ? options.mode
+      : studyStore.getMode();
     this._remoteLoaded = false;
-    this.setData({ mode: studyStore.getMode() });
+    this.setData({ mode: requestedMode });
+    if (options.mode === 'writing' || options.mode === 'reciting') studyStore.setMode(requestedMode);
     if (canRequest()) this.loadRemote();
   },
 
@@ -62,7 +68,11 @@ Page({
   },
 
   refreshProgress() {
-    if (this.data.dataSource !== 'remote' || !Array.isArray(this.articles)) this.articles = dataService.getArticleProgress();
+    if (this.data.dataSource !== 'remote' || !Array.isArray(this.articles)) {
+      this.articles = dataService.getArticleProgress().map((article) => article.total > 0
+        ? article
+        : Object.assign({}, article, { completed: 0, status: 'unlearned', statusLabel: '未学' }));
+    }
     const stats = studyStore.getStats();
     const articleTotal = this.data.dataSource === 'remote' ? (Number(this.data.articleTotal) || this.articles.length) : (stats.articleTotal || this.articles.length);
     const learnedCount = this.data.dataSource === 'remote' ? Number(this.data.learnedCount || 0) : Number(stats.articleLearnedCount) || 0;
@@ -72,6 +82,7 @@ Page({
       completionPercent: articleTotal ? Math.round(learnedCount / articleTotal * 100) : 0
     });
     this.applyFilter();
+    this.restoreRequestedArticle();
     if (this.canvasReady) wx.nextTick(() => this.drawProgress());
   },
 
@@ -134,11 +145,20 @@ Page({
       personalError: statsResult.ok ? '' : describeError(statsResult.error)
     });
     this.applyFilter();
+    this.restoreRequestedArticle();
     if (this.canvasReady) wx.nextTick(() => this.drawProgress());
   },
 
   onRetry() {
     if (canRequest()) this.loadRemote();
+  },
+
+  restoreRequestedArticle() {
+    if (!this._requestedArticleId || this._requestedArticleRestored) return;
+    const article = (this.articles || []).find((item) => String(item.id) === String(this._requestedArticleId));
+    if (!article) return;
+    this._requestedArticleRestored = true;
+    this.setData({ selectedArticle: article, modalVisible: true });
   },
 
   applyFilter() {
@@ -200,11 +220,23 @@ Page({
     const article = this.data.selectedArticle;
     if (!article) return;
     this.setData({ modalVisible: false });
-    navigation.openPage('/pages/practice/index', { articleId: article.id, type: event.currentTarget.dataset.type, mode: this.data.mode || undefined });
+    navigation.openPage('/pages/practice/index', {
+      articleId: article.id || undefined,
+      articleTitle: article.id ? article.title : undefined,
+      type: event.currentTarget.dataset.type,
+      mode: this.data.mode || undefined,
+      questionId: this._requestedQuestionId || undefined,
+      resume: this._requestedQuestionId ? 1 : undefined
+    });
   },
 
   onSpecialty(event) {
-    navigation.openPage('/pages/practice/index', { type: event.currentTarget.dataset.type, mode: this.data.mode || undefined });
+    const type = event.currentTarget.dataset.type;
+    if (type !== 'word' && type !== 'translation') return;
+    this.setData({
+      selectedArticle: { title: type === 'word' ? '重点字词' : '重点翻译', placeholder: false },
+      modalVisible: true
+    });
   },
 
   onContinue() {
@@ -223,6 +255,12 @@ Page({
     }
     const articleQuestions = questions.filter((question) => question.articleId === article.id);
     const nextQuestion = articleQuestions.find((question) => !question.mastered) || articleQuestions[0];
-    navigation.openPage('/pages/practice/index', { articleId: article.id, type: nextQuestion.type, mode: this.data.mode || undefined });
+    navigation.openPage('/pages/practice/index', { articleId: article.id, articleTitle: article.title, type: nextQuestion.type, mode: this.data.mode || undefined });
+  },
+
+  moreSettings() {
+    if (typeof wx !== 'undefined' && typeof wx.showToast === 'function') {
+      wx.showToast({ title: '更多设置', icon: 'none' });
+    }
   }
 });

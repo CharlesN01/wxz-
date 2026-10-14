@@ -88,6 +88,7 @@ Page({
     resumeLabel: '开始学习：文学常识',
     resumeDescription: '从第一个文学分类开始学习',
     resumeAvailable: false,
+    groupModalVisible: false,
     trendBars: [
       { label: '一', height: 56 }, { label: '二', height: 82 }, { label: '三', height: 108, active: true },
       { label: '四', height: 70 }, { label: '五', height: 128, active: true }, { label: '六', height: 92 }, { label: '日', height: 60 }
@@ -225,6 +226,22 @@ Page({
     this.loadPublicData();
   },
 
+  openGroupModal() {
+    navigation.openPage('/pages/resources/index');
+  },
+
+  closeGroupModal() {
+    this.setData({ groupModalVisible: false });
+  },
+
+  noop() {},
+
+  moreSettings() {
+    if (typeof wx !== 'undefined' && typeof wx.showToast === 'function') {
+      wx.showToast({ title: '更多设置', icon: 'none' });
+    }
+  },
+
   openModule(event) {
     const dataset = event.currentTarget.dataset || {};
     if (!dataset.page) return;
@@ -250,6 +267,8 @@ Page({
     if (resume.roundId) {
       navigation.openPage('/pages/random/index', {
         source: resume.source,
+        type: resume.type || undefined,
+        articleId: resume.articleId || undefined,
         roundId: resume.roundId,
         groupIndex: resume.groupIndex,
         mode: resume.mode,

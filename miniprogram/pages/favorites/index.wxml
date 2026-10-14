@@ -1,5 +1,5 @@
 <view class="favorites-page">
-  <study-navbar title="我的收藏" theme="paper" back="{{true}}" />
+  <study-navbar title="我的收藏" theme="paper" centered="{{true}}" back="{{true}}" more="{{true}}" bind:more="onManage" />
   <view class="favorites-content">
     <view class="favorites-summary">
       <text class="summary-title">收藏内容</text>
@@ -10,24 +10,25 @@
       <view class="favorites-tab {{sourceFilter === 'literature' ? 'favorites-tab-active' : ''}}" data-source="literature" bindtap="onSourceChange" aria-pressed="{{sourceFilter === 'literature'}}">文学常识</view>
       <view class="favorites-tab {{sourceFilter === 'classical' ? 'favorites-tab-active' : ''}}" data-source="classical" bindtap="onSourceChange" aria-pressed="{{sourceFilter === 'classical'}}">文言文</view>
     </view>
-    <view wx:if="{{dataSource === 'local' && !loading}}" class="favorites-source">当前为本地演示收藏，登录并联网后同步账号收藏。</view>
-    <view wx:if="{{dataSource === 'local' && personalError}}" class="favorites-source">{{personalError}}</view>
+    <view wx:if="{{dataSource === 'local' && !loading && !personalError}}" class="favorites-source">当前显示本地收藏，登录后同步账号数据。</view>
+    <view wx:if="{{personalError}}" class="favorites-source">{{personalError}}</view>
     <view wx:if="{{loading}}" class="favorites-state">正在加载收藏...</view>
     <view wx:if="{{hasError}}" class="favorites-state favorites-error">
       <view class="favorites-error-text">{{errorMessage}}</view>
       <view wx:if="{{requiresLogin}}" class="favorites-retry" bindtap="onLogin">登录后重试</view>
       <view wx:else class="favorites-retry" bindtap="onRetry">重新加载</view>
     </view>
-    <view class="favorites-questions" wx:if="{{questions.length}}">
+    <view class="favorites-questions" wx:if="{{hasQuestions}}">
       <view class="favorites-question" wx:for="{{questions}}" wx:key="id">
         <view class="favorite-card">
-          <view class="favorite-card-head"><text class="favorite-tag">{{item.source === 'classical' ? '文言文' : '文学常识'}}</text><text class="favorite-title">{{item.title || item.stem}}</text><view class="favorite-star" data-id="{{item.id}}" bindtap="onFavorite" aria-label="取消收藏">★</view></view>
+          <view class="favorite-card-head"><text class="favorite-tag">{{item.source === 'classical' ? '文言文' : '文学常识'}}</text><text class="favorite-title">{{item.stem || item.title || '收藏考点'}}</text><view class="favorite-star" data-id="{{item.id}}" bindtap="onFavorite" aria-label="取消收藏">★</view></view>
           <view wx:if="{{item.answerVisible}}" class="favorite-answer">{{item.answerText || item.answers}}</view>
           <view class="favorite-actions"><view class="answer-button" data-id="{{item.id}}" bindtap="onToggleAnswer">{{item.answerVisible ? '收起答案' : '查看答案'}}</view><view class="remove-button" data-id="{{item.id}}" bindtap="onFavorite">取消收藏</view></view>
         </view>
       </view>
     </view>
-    <empty-state wx:if="{{!loading && !hasError && !questions.length}}" title="{{totalFavorites ? '这个分类还没有收藏' : '还没有收藏内容'}}" description="去文学常识或文言文学习，点击题目旁的星标收藏。" action-text="去学习" bindaction="onGoStudy" />
+    <view wx:if="{{!loading && !hasError && !hasQuestions}}" class="favorites-empty">这里还没有收藏内容</view>
+    <text class="favorites-version">文常记 · 山东专升本语文</text>
   </view>
   <view class="favorites-footer">
     <view class="bottom-tab" data-page="home" bindtap="onTab"><text class="bottom-icon">⌂</text><text>首页</text></view><view class="bottom-tab bottom-tab-active"><text class="bottom-icon">☆</text><text>收藏</text></view><view class="bottom-tab" data-page="mine" bindtap="onTab"><text class="bottom-icon">◎</text><text>我的</text></view>

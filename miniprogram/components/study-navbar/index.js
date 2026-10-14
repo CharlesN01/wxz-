@@ -3,6 +3,7 @@ Component({
     title: String,
     region: { type: String, value: '' },
     subtitle: { type: String, value: '' },
+    centered: { type: Boolean, value: false },
     more: { type: Boolean, value: false },
     theme: { type: String, value: 'green' },
     back: { type: Boolean, value: true }
@@ -34,9 +35,10 @@ Component({
       const paper = this.data.theme === 'paper';
       wx.setNavigationBarColor({
         frontColor: paper ? '#000000' : '#ffffff',
-        backgroundColor: paper ? '#F5FAFE' : '#12345B'
+        backgroundColor: paper ? '#FFFFFF' : '#12345B'
       });
     },
+    onMore() { this.triggerEvent('more'); },
     goBack() {
       const pages = getCurrentPages();
       if (pages.length > 1) wx.navigateBack();

@@ -43,7 +43,26 @@ test('目录专项入口透传当前背诵模式', () => {
   page.data.selectedArticle = page.selectedArticle;
   page.data.modalVisible = true;
   page.onChooseType({ currentTarget: { dataset: { type: 'translation' } } });
-  assert.deepEqual(routes, ['/pages/practice/index?articleId=quanxue&type=translation&mode=reciting']);
+  assert.deepEqual(routes, ['/pages/practice/index?articleId=quanxue&articleTitle=%E5%8A%9D%E5%AD%A6&type=translation&mode=reciting']);
+});
+
+test('没有题目的篇目保持未学状态，不因 0/0 被标为已学', () => {
+  const { page } = createClassicalPage();
+  page.onShow();
+  const article = page.articles.find((item) => item.id === 'guaren');
+  assert.equal(article.total, 0);
+  assert.equal(article.status, 'unlearned');
+  assert.equal(article.statusLabel, '未学');
+});
+
+test('目录顶部专项卡先开原型选择弹窗，确认后进入不限定篇目的题型', () => {
+  const { page, routes } = createClassicalPage();
+  page.data.mode = 'writing';
+  page.onSpecialty({ currentTarget: { dataset: { type: 'translation' } } });
+  assert.equal(page.data.modalVisible, true);
+  assert.equal(page.data.selectedArticle.title, '重点翻译');
+  page.onChooseType({ currentTarget: { dataset: { type: 'word' } } });
+  assert.deepEqual(routes, ['/pages/practice/index?type=word&mode=writing']);
 });
 
 test('目录续学在字词翻译全掌握后回到可练习篇目，跳过只有常识题的师说', () => {
@@ -54,7 +73,7 @@ test('目录续学在字词翻译全掌握后回到可练习篇目，跳过只�
   assert.equal(service.getQuestions({ articleId: 'shishuo', type: 'translation' }).length, 0);
   page.onShow();
   page.onContinue();
-  assert.deepEqual(routes, ['/pages/practice/index?articleId=quanxue&type=word']);
+  assert.deepEqual(routes, ['/pages/practice/index?articleId=quanxue&articleTitle=%E5%8A%9D%E5%AD%A6&type=word']);
 });
 
 test('目录续学在字词已掌握而翻译未掌握时进入翻译练习', () => {
@@ -63,7 +82,7 @@ test('目录续学在字词已掌握而翻译未掌握时进入翻译练习', ()
   store.saveResume({ path: '/pages/literature/index', options: { categoryId: 'pre-qin' }, groupIds: [], groupIndex: 0 });
   page.onShow();
   page.onContinue();
-  assert.deepEqual(routes, ['/pages/practice/index?articleId=quanxue&type=translation']);
+  assert.deepEqual(routes, ['/pages/practice/index?articleId=quanxue&articleTitle=%E5%8A%9D%E5%AD%A6&type=translation']);
 });
 
 test('目录续学优先恢复已有练习断点，保留其题型及题序', () => {
