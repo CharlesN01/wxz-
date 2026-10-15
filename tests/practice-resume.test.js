@@ -9,10 +9,18 @@ const pagePath = path.join(__dirname, '..', 'miniprogram', 'pages', 'practice', 
 function createPage(resume) {
   let definition;
   let savedBody;
+  const questionCalls = [];
   const questions = Array.from({ length: 12 }, (_value, index) => ({ id: 'question-' + (index + 1) }));
   const api = {
     auth: { getToken: () => 'qa-session' },
+    content: {
+      questions: async (params, options) => {
+        questionCalls.push({ params, options });
+        return { results: [{ id: 'question-1', source: 'classical', articleId: 'quanxue', type: 'word', stem: '题干', answers: ['答案'] }], next: null };
+      }
+    },
     learning: {
+      questionState: async (id) => ({ questionId: id, favorite: false, mastered: false, version: 0 }),
       resume: async () => ({ valid: true, resume, version: 3 }),
       saveResume: async (body) => { savedBody = body; return { version: 4 }; }
     }
@@ -41,7 +49,10 @@ function createPage(resume) {
   page.articleId = 'quanxue';
   page.questionType = 'word';
   page.allQuestions = questions;
-  return { page, questions, getSavedBody: () => savedBody };
+  page._stateMap = {};
+  page._groupCache = {};
+  page._resumeVersion = 0;
+  return { page, questions, getSavedBody: () => savedBody, questionCalls };
 }
 
 test('专项练习按 API 约定只用 questionId 恢复顺序题组', async () => {
@@ -67,4 +78,11 @@ test('专项练习续学请求不向非随机位置提交 groupIndex', async () 
   assert.equal(getSavedBody().questionId, 'question-7');
   assert.equal(getSavedBody().roundId, null);
   assert.equal(getSavedBody().groupIndex, null);
+});
+
+test('专项练习首个题目分页请求在已有会话时携带 Bearer 认证选项', async () => {
+  const { page, questionCalls } = createPage(null);
+  await page.loadRemote(false);
+  assert.equal(questionCalls.length, 1);
+  assert.equal(questionCalls[0].options.auth, true);
 });

@@ -8,6 +8,7 @@ const pagePath = require.resolve('../miniprogram/pages/classical/index');
 const storePath = require.resolve('../miniprogram/utils/study-store');
 const servicePath = require.resolve('../miniprogram/services/data-service');
 const navigationPath = require.resolve('../miniprogram/utils/navigation');
+const session = require('../miniprogram/utils/session');
 
 function createClassicalPage() {
   let storage;
@@ -118,4 +119,26 @@ test('目录远端续学按服务端掌握状态选题，不读取本地演示�
   ];
   page.onContinue();
   assert.deepEqual(routes, ['/pages/practice/index?articleId=remote-a&articleTitle=%E8%BF%9C%E7%AB%AF%E7%AF%87%E4%B8%80&type=translation&mode=reciting&questionId=remote-q2&resume=1']);
+});
+
+test('文言目录首个题目分页请求在已有会话时携带 Bearer 认证', async () => {
+  const { page } = createClassicalPage();
+  session.saveSession({ token: 'activated-token', expiresAt: '' });
+  const calls = [];
+  global.wx.request = (options) => {
+    calls.push(options);
+    if (options.url.includes('/me/questions/')) {
+      options.success({ statusCode: 200, data: { questionId: 'remote-q1', favorite: false, mastered: true, version: 1 }, header: {} });
+      return;
+    }
+    options.success({ statusCode: 200, data: {
+      count: 1,
+      next: null,
+      previous: null,
+      results: [{ id: 'remote-q1', source: 'classical', categoryId: null, articleId: 'remote-a', type: 'word', tag: '字词', stem: '题干', answers: ['答案'], sortOrder: 1, revision: 1 }],
+      access: { activated: true, pageSize: 20, freeCount: 1, totalCount: 1, restrictedCount: 0 }
+    }, header: {} });
+  };
+  await page.loadArticleStates([{ id: 'remote-a', title: '远端篇一' }]);
+  assert.equal(calls[0].header.Authorization, 'Bearer activated-token');
 });

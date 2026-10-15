@@ -169,7 +169,10 @@ Page({
     let firstError = null;
     const remoteQuestions = [];
     for (const article of articles) {
-      const questionResult = await settle(api.content.questions({ source: 'classical', articleId: article.id, page: 1 }));
+      const questionResult = await settle(api.content.questions(
+        { source: 'classical', articleId: article.id, page: 1 },
+        { auth: hasToken() }
+      ));
       if (!questionResult.ok) {
         firstError = firstError || questionResult.error;
         continue;

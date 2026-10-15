@@ -36,9 +36,10 @@ Page({
   chooseKind(event) {
     const kind = event.currentTarget.dataset.kind;
     const kindInfo = kinds.find((entry) => entry.id === kind);
-    const item = this.data.items.find((entry) => entry.kind === kind);
+    const items = this.data.items.filter((entry) => entry.kind === kind);
+    const item = items[0];
     if (item) {
-      this.setData({ selectedKind: kind, selectedKindLabel: kindInfo ? kindInfo.label : '应用文', selected: item, detailItems: [item], detailIntro: '按模块练习，逐步掌握应用文写作。', detailFallback: false, detailError: '', detailVisible: true });
+      this.setData({ selectedKind: kind, selectedKindLabel: kindInfo ? kindInfo.label : '应用文', selected: item, detailItems: items, detailIntro: '按模块练习，逐步掌握应用文写作。', detailFallback: false, detailError: '', detailVisible: true });
       this.loadDetail(item);
       return;
     }

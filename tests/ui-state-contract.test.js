@@ -99,6 +99,12 @@ test('首页入口固定进入自测；随机续学保留上下文；资料群�
 });
 
 test('首页内容顺序与原型保持一致，学习趋势排在资料群之后', () => {
+  const template = fs.readFileSync(path.join(root, 'miniprogram/pages/home/index.wxml'), 'utf8');
+  assert.ok(template.indexOf('class="dashboard-card"') < template.indexOf('class="section-title"'));
+  assert.ok(template.indexOf('class="section-title"') < template.indexOf('class="module-grid"'));
+  assert.ok(template.indexOf('class="module-grid"') < template.indexOf('class="continue-card"'));
+  assert.ok(template.indexOf('class="continue-card"') < template.indexOf('class="group-card"'));
+  assert.ok(template.indexOf('class="group-card"') < template.indexOf('class="growth-card"'));
   const styles = fs.readFileSync(path.join(root, 'miniprogram/pages/home/index.wxss'), 'utf8');
   assert.match(styles, /\.home-body\s*\{[^}]*display:\s*flex;[^}]*flex-direction:\s*column/s);
   assert.match(styles, /\.section-title\s*\{\s*order:\s*2;/);

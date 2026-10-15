@@ -47,7 +47,10 @@ Page({
   onShow() { if (this._remoteLoaded) this.refreshQuestions(); },
   async loadRemote(restore) {
     this.setData({ loading: true, hasError: false, errorMessage: '' });
-    const response = await settle(api.content.questions({ source: 'classical', articleId: this.articleId || undefined, type: this.questionType, page: 1 }));
+    const response = await settle(api.content.questions(
+      { source: 'classical', articleId: this.articleId || undefined, type: this.questionType, page: 1 },
+      { auth: hasToken() }
+    ));
     if (!response.ok) {
       if (response.error && response.error.code === 'NETWORK_ERROR' && restore && this.restoreCachedResume()) {
         this._remoteLoaded = true;

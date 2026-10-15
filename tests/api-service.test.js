@@ -42,6 +42,13 @@ test('public content request is anonymous and uses the configured API prefix', a
   assert.equal(calls[0].header.Authorization, undefined);
 });
 
+test('content requests can opt into the Bearer contract for activated learners', async () => {
+  session.saveSession({ token: 'activated-token', expiresAt: '' });
+  const calls = installWx((options) => respond(options, 200, { results: [] }));
+  await api.content.questions({ source: 'classical', articleId: 'quanxue', page: 1 }, { auth: true });
+  assert.equal(calls[0].header.Authorization, 'Bearer activated-token');
+});
+
 test('app extension configuration overrides the local API origin', async () => {
   const calls = installWx((options) => respond(options, 200, { pageSize: 20 }));
   global.wx.getExtConfigSync = () => ({ apiBaseUrl: 'https://student-api.example' });

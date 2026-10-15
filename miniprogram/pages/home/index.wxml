@@ -18,11 +18,6 @@
       </view>
     </view>
 
-    <view class="growth-card">
-      <view class="growth-head"><text class="growth-title">学习趋势</text><text class="growth-value">较上周 +23%</text></view>
-      <view class="trend-bars"><view wx:for="{{trendBars}}" wx:key="label" class="trend-column"><view class="trend-bar {{item.active ? 'trend-bar-active' : ''}}" style="height: {{item.height}}rpx;"></view><text>{{item.label}}</text></view></view>
-    </view>
-
     <view class="section-title"><text>学习专区</text></view>
     <view class="module-grid">
       <view class="module-card" data-page="literature" bindtap="openModule" hover-class="module-pressed">
@@ -47,6 +42,10 @@
     </view>
     <view class="group-card" data-page="resources" bindtap="openModule" hover-class="module-pressed">
       <view class="group-icon">群</view><view class="group-copy"><text class="group-badge">备考资料共享</text><text class="group-title">山东专升本资料备考群</text><text class="group-desc">每日更新最新资料 · 进群有机会领取免费会员</text></view><view class="group-action" role="button" catchtap="openGroupModal">扫码进群</view>
+    </view>
+    <view class="growth-card">
+      <view class="growth-head"><text class="growth-title">学习趋势</text><text class="growth-value">较上周 +23%</text></view>
+      <view class="trend-bars"><view wx:for="{{trendBars}}" wx:key="label" class="trend-column"><view class="trend-bar {{item.active ? 'trend-bar-active' : ''}}" style="height: {{item.height}}rpx;"></view><text>{{item.label}}</text></view></view>
     </view>
     <text wx:if="{{personalError}}" class="personal-note">{{personalError}}</text>
   </view>

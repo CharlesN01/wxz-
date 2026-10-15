@@ -99,6 +99,30 @@ test('应用文列表和分类查询会跟随 next 分页', async () => {
   assert.equal(calls[1][2].basePath, '/api/student/v1/writings/');
 });
 
+test('应用文分类已在首屏出现时仍展示该分类的全部条目', async () => {
+  const api = {
+    content: {
+      writings() {
+        return Promise.resolve({
+          results: [
+            { id: 'template-1', kind: 'template' },
+            { id: 'template-2', kind: 'template' },
+            { id: 'example-1', kind: 'example' }
+          ],
+          next: null
+        });
+      },
+      writing(id) { return Promise.resolve({ id, title: id, body: '正文' }); }
+    },
+    pagination: { follow() { throw new Error('首屏完整时不应再次分页'); } }
+  };
+  const page = load('pages/application/index.js', api);
+  await page.load();
+  page.chooseKind({ currentTarget: { dataset: { kind: 'template' } } });
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  assert.deepEqual(page.data.detailItems.map((item) => item.id), ['template-1', 'template-2']);
+});
+
 test('应用文详情错误支持独立重试', async () => {
   let attempts = 0;
   const api = {
