@@ -1,5 +1,6 @@
 const dataService = require('../../services/data-service');
 const studyStore = require('../../utils/study-store');
+const questionUtils = require('../../utils/question-utils');
 const api = require('../../services/api');
 const navigation = require('../../utils/navigation');
 
@@ -18,7 +19,7 @@ function normalizeFavoriteRow(row) {
   const item = row || {};
   const question = item.question && typeof item.question === 'object' ? item.question : null;
   const state = normalizeState(item.state || item);
-  if (!question) return { id: String(item.questionId || ''), unavailable: true, unavailableReason: item.unavailableReason || 'ENTITLEMENT_REQUIRED', favorite: state.favorite, mastered: state.mastered, version: state.version, title: '该考点暂不可访问', stem: '当前账号暂无查看此题内容的权限。' };
+  if (!question) return { id: String(item.questionId || state.questionId || ''), source: item.source || '', categoryId: item.categoryId || null, articleId: item.articleId || null, type: item.type || null, unavailable: true, unavailableReason: item.unavailableReason || 'ENTITLEMENT_REQUIRED', favorite: state.favorite, mastered: state.mastered, version: state.version, title: '该考点暂不可访问', stem: '当前账号暂无查看此题内容的权限。' };
   return Object.assign({}, question, state, { id: String(question.id || item.questionId || '') });
 }
 
@@ -27,7 +28,12 @@ function decorateFavorite(question) {
   const answers = Array.isArray(item.answers) ? item.answers : (item.answer ? [item.answer] : []);
   const prefix = item.source === 'classical' && item.type === 'translation' ? '译文：' : '答案：';
   const answerText = answers.filter(Boolean).join('；');
-  return Object.assign({}, item, { answerText: answerText ? prefix + answerText : '', answerVisible: false, title: item.title || item.stem || '收藏考点' });
+  const stem = String(item.stem || item.title || '收藏考点');
+  const parts = questionUtils.segments(stem, answers, studyStore.getMode()).map((part) => {
+    const text = part.isAnswer ? part.text.slice(1, -1) : part.text;
+    return Object.assign({}, part, { text, isBlank: text === '____', isFilled: Boolean(part.isAnswer) });
+  });
+  return Object.assign({}, item, { parts, answerText: answerText ? prefix + answerText : '', answerVisible: false, title: item.title || item.stem || '收藏考点' });
 }
 
 Page({
@@ -75,7 +81,7 @@ Page({
     this.setData({ loading: false, hasError: false, errorMessage: '', dataSource: 'remote', personalError: '', mode: studyStore.getMode(), questions: filtered, hasQuestions: filtered.length > 0, pageNumber: filtered.length ? 1 : 0, pageCount: filtered.length ? 1 : 0, totalFavorites: Number(payload && payload.count) || this._remoteRows.length, todayAdded: 0, nextLabel: '下一页' });
   },
   _matchesCategory(question) {
-    if (question.source !== this._sourceFilter) return false;
+    if (question.source && question.source !== this._sourceFilter) return false;
     if (!this._categoryId) return true;
     const categoryId = question.categoryId || (question.category && question.category.id);
     if (categoryId === this._categoryId) return true;

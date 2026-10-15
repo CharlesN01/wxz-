@@ -21,7 +21,8 @@
     <view class="favorites-questions" wx:if="{{hasQuestions}}">
       <view class="favorites-question" wx:for="{{questions}}" wx:key="id">
         <view class="favorite-card">
-          <view class="favorite-card-head"><text class="favorite-tag">{{item.source === 'classical' ? '文言文' : '文学常识'}}</text><text class="favorite-title">{{item.stem || item.title || '收藏考点'}}</text><view class="favorite-star" data-id="{{item.id}}" bindtap="onFavorite" aria-label="取消收藏">★</view></view>
+          <view class="favorite-card-head"><text class="favorite-tag">{{item.source === 'classical' ? '文言文' : '文学常识'}}</text><text class="favorite-title"><text wx:for="{{item.parts}}" wx:for-item="part" wx:key="key" class="{{part.isBlank ? 'favorite-blank' : part.isFilled ? 'favorite-filled' : ''}}">{{part.text}}</text></text><view class="favorite-star" data-id="{{item.id}}" bindtap="onFavorite" aria-label="取消收藏">★</view></view>
+          <view wx:if="{{item.unavailable}}" class="favorite-unavailable">{{item.unavailableReason === 'CONTENT_UNAVAILABLE' ? '该内容已下架' : '当前账号暂无查看此题内容的权限'}}</view>
           <view wx:if="{{item.answerVisible}}" class="favorite-answer">{{item.answerText || item.answers}}</view>
           <view class="favorite-actions"><view class="answer-button" data-id="{{item.id}}" bindtap="onToggleAnswer">{{item.answerVisible ? '收起答案' : '查看答案'}}</view><view class="remove-button" data-id="{{item.id}}" bindtap="onFavorite">取消收藏</view></view>
         </view>

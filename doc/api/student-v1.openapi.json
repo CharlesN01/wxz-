@@ -1532,6 +1532,10 @@
                         "version": 1
                       },
                       "question": null,
+                      "source": null,
+                      "categoryId": null,
+                      "articleId": null,
+                      "type": null,
                       "unavailableReason": null
                     }
                   ]
@@ -2820,6 +2824,7 @@
             }
           }
         },
+        "description": "categoryId/articleId 可省略或设为 null，表示在 source 下跨全部分类或篇目随机；提供与 source 匹配的唯一 ID 时限制为该分类或篇目。文学常识仅支持 fact 题型。",
         "requestBody": {
           "required": true,
           "content": {
@@ -4328,6 +4333,7 @@
             }
           }
         },
+        "description": "categoryId/articleId 可省略或设为 null，表示在 source 下跨全部分类或篇目随机；提供与 source 匹配的唯一 ID 时限制为该分类或篇目。文学常识仅支持 fact 题型。",
         "requestBody": {
           "required": true,
           "content": {
@@ -6754,6 +6760,55 @@
               }
             ]
           },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "literature",
+                  "classical"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "categoryId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "articleId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "type": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "fact",
+                  "word",
+                  "translation"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "unavailableReason": {
             "anyOf": [
               {
@@ -6772,6 +6827,10 @@
         "required": [
           "state",
           "question",
+          "source",
+          "categoryId",
+          "articleId",
+          "type",
           "unavailableReason"
         ],
         "additionalProperties": false

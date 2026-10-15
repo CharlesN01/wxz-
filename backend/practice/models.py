@@ -45,8 +45,8 @@ class PracticeRecord(models.Model):
 
 def scope_condition():
     return (
-        models.Q(source="literature", category__isnull=False, article__isnull=True, question_type__in=("", "fact"))
-        | models.Q(source="classical", article__isnull=False, category__isnull=True, question_type__in=("", "fact", "word", "translation"))
+        models.Q(source="literature", article__isnull=True, question_type__in=("", "fact"))
+        | models.Q(source="classical", category__isnull=True, question_type__in=("", "fact", "word", "translation"))
     )
 
 

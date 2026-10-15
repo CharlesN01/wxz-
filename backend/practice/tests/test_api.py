@@ -12,7 +12,7 @@ from rest_framework.test import APIClient
 
 from accounts.models import StudentSession
 from common.models import IdempotencyRecord, RateBucket
-from content.models import Article, LearningConfiguration, Question
+from content.models import Article, Category, LearningConfiguration, Question
 from content.tests.test_student_access import StudentContentFixture
 from entitlements.services import grant_entitlement, revoke_entitlement
 from practice.models import PracticeRound, ResumePosition, RoundItem
@@ -62,6 +62,72 @@ class PracticeAPITests(StudentContentFixture):
         word = self.create_round({**self.scope, "type": "word"}, key="p08-word-key")
         self.assertEqual(word.data["totalCount"], 1)
         self.assertEqual(PracticeRound.objects.count(), 2)
+
+    def test_source_wide_rounds_span_categories_and_articles_and_resume_in_scope(self):
+        grant_entitlement(self.user, "activation", "p08-source-wide")
+        second_category = Category.objects.create(id="modern", name="近现代文学")
+        other_literature = self.make_question("literature-modern", source="literature", type="fact", order=2)
+        other_literature.category = second_category
+        other_literature.save()
+        self.publish(other_literature)
+
+        literature_round = self.create_round(
+            {"source": "literature", "categoryId": None, "mode": "writing"},
+            key="p08-global-literature",
+        ).data
+        self.assertIsNone(literature_round["categoryId"])
+        self.assertIsNone(literature_round["articleId"])
+        literature_group = self.group(literature_round["id"]).data
+        self.assertEqual({item["categoryId"] for item in literature_group["results"]}, {self.category.pk, second_category.pk})
+        literature_resume = self.save_resume(
+            other_literature,
+            source="literature",
+            categoryId=None,
+            articleId=None,
+            type=None,
+            roundId=literature_round["id"],
+            groupIndex=1,
+        )
+        self.assertEqual(literature_resume.status_code, 200, literature_resume.data)
+        self.assertTrue(literature_resume.data["current"]["valid"])
+
+        classical_round = self.create_round(
+            {"source": "classical", "categoryId": None, "mode": "writing"},
+            key="p08-global-classical",
+        ).data
+        self.assertIsNone(classical_round["categoryId"])
+        self.assertIsNone(classical_round["articleId"])
+        classical_groups = [self.group(classical_round["id"], index).data
+                           for index in range(1, classical_round["groupCount"] + 1)]
+        classical_items = [item for group in classical_groups for item in group["results"]]
+        self.assertEqual({item["articleId"] for item in classical_items}, {self.article.pk, self.other_article.pk})
+        other_group = next(group["groupIndex"] for group in classical_groups
+                           if any(item["id"] == self.other.pk for item in group["results"]))
+        classical_resume = self.save_resume(
+            self.other,
+            version=1,
+            source="classical",
+            categoryId=None,
+            articleId=None,
+            type=None,
+            roundId=classical_round["id"],
+            groupIndex=other_group,
+            key="p08-global-classical-resume",
+        )
+        self.assertEqual(classical_resume.status_code, 200, classical_resume.data)
+        self.assertTrue(classical_resume.data["current"]["valid"])
+
+    def test_source_wide_round_validation_still_rejects_cross_source_fields(self):
+        cases = [
+            {"source": "literature", "categoryId": None, "articleId": self.article.pk, "mode": "writing"},
+            {"source": "classical", "categoryId": self.category.pk, "articleId": None, "mode": "writing"},
+            {"source": "literature", "categoryId": None, "type": "word", "mode": "writing"},
+        ]
+        for index, payload in enumerate(cases):
+            with self.subTest(payload=payload):
+                response = self.client.post(self.create_url, payload, format="json",
+                                            HTTP_IDEMPOTENCY_KEY=f"p08-invalid-source-wide-{index}")
+                self.assertEqual(response.status_code, 400, response.data)
 
     def test_randomization_is_persisted_and_original_groups_survive_capacity_changes(self):
         grant_entitlement(self.user, "activation", "p08-full")

@@ -41,15 +41,21 @@ def scope_context(record):
 
 
 def _query(context):
-    query = scope_questions(context["source"], _scope_id(context))
+    scope_id = _scope_id(context)
+    if scope_id is None:
+        query = published_questions().filter(published_revision__source=context["source"])
+    else:
+        query = scope_questions(context["source"], scope_id)
     if context.get("type"):
         query = query.filter(published_revision__type=context["type"])
     return query
 
 
 def _check_scope(context):
-    model = Category if context["source"] == "literature" else Article
-    get_object_or_404(model, pk=_scope_id(context), is_active=True)
+    scope_id = _scope_id(context)
+    if scope_id is not None:
+        model = Category if context["source"] == "literature" else Article
+        get_object_or_404(model, pk=scope_id, is_active=True)
 
 
 def round_metadata(round_):

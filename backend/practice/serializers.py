@@ -1,7 +1,5 @@
 from rest_framework import serializers
 
-from content.student_api import StudentQuestionQuery
-
 
 class StrictSerializer(serializers.Serializer):
     def to_internal_value(self, data):
@@ -49,9 +47,13 @@ class RoundRequest(StrictSerializer):
     mode = StrictChoice(choices=("writing", "reciting"))
 
     def validate(self, values):
-        scope = {key: value for key, value in values.items() if key in ("source", "categoryId", "articleId", "type") and value is not None}
-        validator = StudentQuestionQuery(data=scope)
-        validator.is_valid(raise_exception=True)
+        if values["source"] == "literature":
+            if values.get("articleId") is not None:
+                raise serializers.ValidationError({"articleId": "文学常识范围不能指定文言篇目。"})
+            if values.get("type") not in (None, "fact"):
+                raise serializers.ValidationError({"type": "文学分类只支持 fact。"})
+        elif values.get("categoryId") is not None:
+            raise serializers.ValidationError({"categoryId": "文言文范围不能指定文学分类。"})
         for key in ("categoryId", "articleId", "type"):
             values.setdefault(key, None)
         return values

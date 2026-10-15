@@ -91,7 +91,11 @@ Page({
       if (local && /pages\/practice\/index$/.test(local.path || '') && options.articleId === this.articleId && options.type === this.questionType) saved = { groupIndex: Number(local.groupIndex) + 1 };
     }
     if (saved) {
-      const rawIndex = Number(saved.groupIndex);
+      let rawIndex = Number(saved.groupIndex);
+      if ((!Number.isInteger(rawIndex) || rawIndex < 1) && saved.questionId) {
+        const questionIndex = this.allQuestions.findIndex((question) => String(question.id) === String(saved.questionId));
+        if (questionIndex >= 0) rawIndex = Math.floor(questionIndex / GROUP_SIZE) + 1;
+      }
       if (Number.isInteger(rawIndex) && rawIndex >= 1) this.setData({ groupIndex: rawIndex - 1 });
     }
   },
@@ -107,7 +111,7 @@ Page({
     studyStore.saveResume({ path: '/pages/practice/index', options: { articleId: this.articleId, type: this.questionType }, groupIds: (this.allQuestions || []).map((question) => question.id), groupIndex: this.data.groupIndex });
     if (!hasToken() || !this.allQuestions.length) return;
     const first = this.allQuestions[this.data.groupIndex * GROUP_SIZE] || this.allQuestions[0]; if (!first) return;
-    const body = { source: 'classical', articleId: this.articleId || null, type: this.questionType, mode: this.data.mode, questionId: first.id, roundId: null, groupIndex: this.data.groupIndex + 1, baseVersion: this._resumeVersion };
+    const body = { source: 'classical', articleId: this.articleId || null, type: this.questionType, mode: this.data.mode, questionId: first.id, roundId: null, groupIndex: null, baseVersion: this._resumeVersion };
     settle(api.learning.saveResume(body)).then((result) => {
       if (result.ok && Number(result.value && result.value.version) >= 0) this._resumeVersion = Number(result.value.version);
       else if (!result.ok && result.error && result.error.code === 'VERSION_CONFLICT') {

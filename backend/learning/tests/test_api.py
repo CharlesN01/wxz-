@@ -159,6 +159,9 @@ class LearningAPITests(TestCase):
         favorite = self.client.get("/api/student/v1/me/favorites/").data["results"][0]
         self.assertIsNone(favorite["question"])
         self.assertEqual(favorite["unavailableReason"], "ENTITLEMENT_REQUIRED")
+        self.assertEqual({favorite["source"], favorite["type"]}, {"classical", "word"})
+        self.assertEqual(favorite["articleId"], self.paid.article_id)
+        self.assertIsNone(favorite["categoryId"])
         self.assertNotIn(self.paid.stem, str(favorite))
         self.assertNotIn(self.paid.answers[0], str(favorite))
         self.assertEqual(self.state(self.paid, {"favorite": False, "mastered": False, "baseVersion": 1}, "cancel-paid-001").status_code, 200)
@@ -173,6 +176,8 @@ class LearningAPITests(TestCase):
         self.assertEqual(row["unavailableReason"], "CONTENT_UNAVAILABLE")
         self.assertIsNone(row["question"])
         self.assertEqual(row["state"]["questionId"], self.first.pk)
+        self.assertEqual(row["source"], "classical")
+        self.assertEqual(row["articleId"], self.first.article_id)
         self.assertEqual(self.state(self.first, {"favorite": False, "baseVersion": 1}, "cancel-down-001").status_code, 200)
         self.assertEqual(LearningActivity.objects.count(), 1)
         Article.objects.filter(pk=self.article.pk).update(is_active=False)

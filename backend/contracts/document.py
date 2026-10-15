@@ -127,6 +127,8 @@ def schemas():
                     "todayQuestions": INTEGER, "studyDays": INTEGER, "completedArticles": INTEGER,
                     "dailyTarget": {"type": "integer", "minimum": 1, "maximum": 1000}}),
         "FavoriteItem": obj({"state": ref("QuestionState"), "question": nullable(ref("Question")),
+                    "source": nullable(SOURCE), "categoryId": nullable(STRING),
+                    "articleId": nullable(STRING), "type": nullable(TYPE),
                     "unavailableReason": nullable({"type": "string", "enum": ["ENTITLEMENT_REQUIRED", "CONTENT_UNAVAILABLE"]})}),
         "Round": obj({"id": UUID, **SCOPE, "mode": MODE, "pageSize": CAPACITY,
                     "totalCount": INTEGER, "groupCount": INTEGER, "createdAt": DATE_TIME}),
@@ -349,6 +351,11 @@ def build_document():
             "x-query-policy": "ignored" if query_path is None else "strict", "x-idempotency": keyed,
             "responses": {str(status): {"description": "成功；示例为脱敏结构示例。"}},
         }
+        if (route["name"], method) in (("student-practice-create", "post"), ("student-resume", "put")):
+            operation["description"] = (
+                "categoryId/articleId 可省略或设为 null，表示在 source 下跨全部分类或篇目随机；"
+                "提供与 source 匹配的唯一 ID 时限制为该分类或篇目。文学常识仅支持 fact 题型。"
+            )
         if response_name:
             response_example = example(ref(response_name), definitions)
             if "results" in response_example and "count" in response_example:

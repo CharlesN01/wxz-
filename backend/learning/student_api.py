@@ -6,7 +6,7 @@ from rest_framework.response import Response
 
 from common.api import StudentAPIView
 from content.access import accessible_questions, published_questions
-from content.models import LearningConfiguration
+from content.models import LearningConfiguration, Question
 from content.serializers import PublishedQuestionSerializer, StrictPositiveIntegerField, validate_query_params
 from .models import QuestionState
 from .serializers import PreferenceInput, QuestionStateInput
@@ -78,14 +78,25 @@ class FavoritesView(LearningAPIView):
         page = paginator.paginate_queryset(states, request, view=self)
         ids = [state.question_id for state in page]
         published = published_questions().filter(pk__in=ids)
+        metadata_questions = Question.objects.filter(pk__in=ids).select_related("published_revision")
+        metadata_by_id = {question.pk: question for question in metadata_questions}
         visible_ids = set(published.values_list("pk", flat=True))
         readable = {obj.pk: obj for obj in accessible_questions(request.user, published, page_size=config.page_size)}
         results = []
         for state in page:
             question = readable.get(state.question_id)
+            metadata_question = metadata_by_id.get(state.question_id)
+            revision = getattr(metadata_question, "published_revision", None) or metadata_question
+            metadata = {
+                "source": getattr(revision, "source", None),
+                "categoryId": getattr(revision, "category_id", None),
+                "articleId": getattr(revision, "article_id", None),
+                "type": getattr(revision, "type", None),
+            }
             results.append({
                 "state": state_snapshot(state, state.question_id),
                 "question": PublishedQuestionSerializer(question).data if question else None,
+                **metadata,
                 "unavailableReason": None if question else (
                     "ENTITLEMENT_REQUIRED" if state.question_id in visible_ids else "CONTENT_UNAVAILABLE"
                 ),

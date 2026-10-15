@@ -79,6 +79,47 @@ test('409 errors expose the current server version and request id', async () => 
   });
 });
 
+test('403 entitlement errors preserve the session and do not retry anonymously', async () => {
+  session.saveSession({ token: 'stored-token', expiresAt: '' });
+  const calls = installWx((options) => respond(options, 403, {
+    error: { code: 'ENTITLEMENT_REQUIRED', message: 'restricted' }, requestId: 'req-403'
+  }));
+
+  await assert.rejects(api.practice.createRound({ source: 'classical', articleId: 'quanxue', mode: 'writing' }), (error) => {
+    assert.equal(error.status, 403);
+    assert.equal(error.code, 'ENTITLEMENT_REQUIRED');
+    assert.equal(error.requestId, 'req-403');
+    return true;
+  });
+  assert.equal(calls.length, 1);
+  assert.equal(session.getToken(), 'stored-token');
+});
+
+test('429 and 5xx responses retain structured errors and request IDs', async () => {
+  let status = 429;
+  const calls = installWx((options) => respond(options, status, {
+    error: { code: status === 429 ? 'RATE_LIMITED' : 'INTERNAL_ERROR', message: 'temporary error' },
+    requestId: 'req-' + status
+  }));
+
+  await assert.rejects(api.learning.statistics(), (error) => error.status === 429 && error.code === 'RATE_LIMITED' && error.requestId === 'req-429');
+  status = 503;
+  await assert.rejects(api.learning.statistics(), (error) => error.status === 503 && error.code === 'INTERNAL_ERROR' && error.requestId === 'req-503');
+  assert.equal(calls.length, 2);
+});
+
+test('network failures become explicit retryable network errors', async () => {
+  const calls = installWx((options) => options.fail({ errMsg: 'request:fail timeout' }));
+
+  await assert.rejects(api.learning.resume(), (error) => {
+    assert.equal(error.code, 'NETWORK_ERROR');
+    assert.equal(error.network, true);
+    assert.equal(error.message, 'request:fail timeout');
+    return true;
+  });
+  assert.equal(calls.length, 1);
+});
+
 test('401 refresh logs in without Bearer and retries the original request once', async () => {
   session.saveSession({ token: 'expired-token', expiresAt: '' });
   const calls = installWx((options) => {
