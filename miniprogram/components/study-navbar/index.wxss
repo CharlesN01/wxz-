@@ -18,3 +18,4 @@
 .home-brand-with-subtitle .brand-title { font-size: 36rpx; line-height: 1.15; }
 .brand-subtitle { display: block; margin-top: 6rpx; color: #8492A8; font-size: 20rpx; line-height: 1.25; white-space: nowrap; }
 .more-button { display: flex; align-items: center; justify-content: center; flex-shrink: 0; width: 62rpx; height: 54rpx; margin-right: 10rpx; border: 1rpx solid #E5EDF7; border-radius: 28rpx; color: #6D7B90; background: #FFFFFF; font-size: 22rpx; letter-spacing: 2rpx; }
+.more-button-plain { border: 0; border-radius: 0; background: transparent; }

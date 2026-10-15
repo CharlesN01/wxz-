@@ -4,7 +4,7 @@
     <view class="hero">
       <text class="eyebrow">文常记 · 山东专升本语文</text>
       <text class="hero-title">备考资料已经为你准备好了</text>
-      <text class="hero-copy">添加微信好友，发送“文常”，领取学习资料与备考提醒。</text>
+      <text class="hero-copy">{{heroCopy}}</text>
     </view>
 
     <view wx:if="{{loading}}" class="config-state">正在加载资料配置...</view>

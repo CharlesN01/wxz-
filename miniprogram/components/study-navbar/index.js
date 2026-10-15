@@ -5,6 +5,7 @@ Component({
     subtitle: { type: String, value: '' },
     centered: { type: Boolean, value: false },
     more: { type: Boolean, value: false },
+    morePlain: { type: Boolean, value: false },
     theme: { type: String, value: 'green' },
     back: { type: Boolean, value: true }
   },

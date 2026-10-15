@@ -1,5 +1,5 @@
 <view class="favorites-page">
-  <study-navbar title="我的收藏" theme="paper" centered="{{true}}" back="{{true}}" more="{{true}}" bind:more="onManage" />
+  <study-navbar title="我的收藏" theme="paper" centered="{{true}}" back="{{true}}" more="{{true}}" more-plain="{{true}}" bind:more="onManage" />
   <view class="favorites-content">
     <view class="favorites-summary">
       <text class="summary-title">收藏内容</text>
