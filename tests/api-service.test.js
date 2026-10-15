@@ -161,6 +161,35 @@ test('a second 401 ends the single retry and clears the session', async () => {
   assert.equal(session.getToken(), '');
 });
 
+test('concurrent 401 requests share one session refresh', async () => {
+  session.saveSession({ token: 'expired-token', expiresAt: '' });
+  let loginCount = 0;
+  let privateCount = 0;
+  global.wx = {
+    request(options) {
+      if (options.url.endsWith('/auth/wechat/')) {
+        loginCount += 1;
+        setTimeout(() => respond(options, 200, { token: 'fresh-token', expiresAt: '', user: { id: 1 } }), 0);
+        return;
+      }
+      privateCount += 1;
+      const token = options.header.Authorization;
+      setTimeout(() => respond(options, token === 'Bearer expired-token' ? 401 : 200, token === 'Bearer expired-token'
+        ? { error: { code: 'INVALID_TOKEN', message: 'expired' } }
+        : { active: true }), 0);
+    },
+    login(options) { options.success({ code: 'one-time-code' }); },
+    getStorageSync() { return this.session || null; },
+    setStorageSync(key, value) { this.session = value; },
+    removeStorageSync() { this.session = null; }
+  };
+  const results = await Promise.all([api.entitlements.current(), api.learning.statistics()]);
+  assert.deepEqual(results, [{ active: true }, { active: true }]);
+  assert.equal(loginCount, 1);
+  assert.equal(privateCount, 4);
+  assert.equal(session.getToken(), 'fresh-token');
+});
+
 test('payment argument adapter preserves signed data as an opaque string', () => {
   const signData = '{"offerId":"x","env":0,"productId":"p"}';
   const args = api.payment.toVirtualPaymentArgs({ mode: 'short_series_goods', signData, paySig: 'pay-sig', signature: 'sig' });

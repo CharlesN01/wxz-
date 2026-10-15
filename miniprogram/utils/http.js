@@ -1,6 +1,8 @@
 const session = require('./session');
 const apiConfig = require('../services/api-config');
 
+let refreshPromise = null;
+
 const API_PREFIX = '/api/student/v1';
 
 class ApiError extends Error {
@@ -123,7 +125,12 @@ async function perform(options, authRetried) {
   if (status === 401 && canRefresh && options.retryAuth !== false && !authRetried) {
     try {
       const auth = require('../services/auth');
-      await auth.refreshSession();
+      if (!refreshPromise) {
+        refreshPromise = Promise.resolve().then(() => auth.refreshSession()).finally(() => {
+          refreshPromise = null;
+        });
+      }
+      await refreshPromise;
     } catch (_) {
       session.clearSession();
       throw apiError;
