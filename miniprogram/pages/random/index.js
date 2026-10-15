@@ -15,7 +15,13 @@ function errorText(error) {
   if (error && error.code === 'NETWORK_ERROR') return '网络暂不可用，当前显示本地演示题目';
   return error && error.message ? String(error.message) : '随机练习加载失败';
 }
-function normalizeState(value) { return { favorite: Boolean(value && value.favorite), mastered: Boolean(value && value.mastered), version: Number(value && value.version) >= 0 ? Number(value.version) : 0 }; }
+function normalizeState(value) {
+  const version = Number(value && value.version);
+  return { favorite: Boolean(value && value.favorite), mastered: Boolean(value && value.mastered), version: Number.isFinite(version) && version >= 0 ? version : 0 };
+}
+function cloneRows(rows) {
+  try { return JSON.parse(JSON.stringify(Array.isArray(rows) ? rows : [])); } catch (_) { return []; }
+}
 
 Page({
   data: { loading: true, hasError: false, errorMessage: '', dataSource: 'local', personalError: '', source: 'literature', safeTop: 0, typeFilter: 'word', mode: 'writing', sourceName: '文学常识', subtitle: '8 类混合随机 · 每页 6 题', questions: [], groupNumber: 0, groupCount: 0, roundQuestionCount: 0, groupPageSize: GROUP_SIZE, progressPercent: 0, nextLabel: '下一组' },
@@ -31,6 +37,7 @@ Page({
     this._groupIndex = 1;
     this._roundId = '';
     this._roundIds = [];
+    this._groupCache = {};
     this._stateMap = {};
     this._resumeVersion = 0;
     this._ready = false;
@@ -73,6 +80,7 @@ Page({
         studyStore.setMode(resumeOptions.mode);
       }
       this._roundIds = resume.groupIds.slice();
+      this._groupCache = resume.groupCache || {};
       this._groups = [];
       for (let i = 0; i < this._roundIds.length; i += GROUP_SIZE) this._groups.push(this._roundIds.slice(i, i + GROUP_SIZE));
       this._groupIndex = Math.max(1, Math.min(Number(resume.groupIndex) + 1 || 1, this._groups.length || 1));
@@ -87,7 +95,9 @@ Page({
 
   refreshLocalGroup() {
     const ids = (this._groups && this._groups[this._groupIndex - 1]) || [];
-    const questions = ids.map((id) => dataService.getQuestion(id)).filter(Boolean).map((item) => Object.assign({}, item, normalizeState(this._stateMap[item.id])));
+    const cached = this._groupCache && this._groupCache[String(this._groupIndex)];
+    const questions = (Array.isArray(cached) ? cached : ids.map((id) => dataService.getQuestion(id)).filter(Boolean))
+      .map((item) => Object.assign({}, item, normalizeState(this._stateMap[item.id])));
     const count = this._groups ? this._groups.length : 0;
     this.setData({ loading: false, dataSource: this.data.dataSource || 'local', questions: dataService.decorateQuestions(questions), groupNumber: count ? this._groupIndex : 0, groupCount: count, roundQuestionCount: this._roundIds.length, groupPageSize: GROUP_SIZE, progressPercent: count ? Math.round(this._groupIndex / count * 100) : 0, nextLabel: this._groupIndex >= count ? '再练一轮' : '下一组' });
     if (count) this.saveResume();
@@ -95,11 +105,19 @@ Page({
 
   async startRemoteRound(restore) {
     if (!restore) { this._roundId = ''; this._roundIds = []; this._groupIndex = 1; }
+    const localResume = restore ? studyStore.getResume() : null;
+    if (restore) this.hydrateLocalResume(localResume);
     this.setData({ loading: true, hasError: false, errorMessage: '' });
     if (restore) {
       const savedResult = await settle(api.learning.resume());
       if (!savedResult.ok && savedResult.error && savedResult.error.code === 'NETWORK_ERROR') {
-        this.startLocalRound(true); this._ready = true; this.setData({ loading: false, dataSource: 'local', personalError: errorText(savedResult.error) }); this.refreshLocalGroup(); return;
+        if (!this.renderCachedGroup(this._groupIndex, errorText(savedResult.error))) {
+          this.startLocalRound(true);
+          this.setData({ loading: false, dataSource: 'local', personalError: errorText(savedResult.error) });
+          this.refreshLocalGroup();
+        }
+        this._ready = true;
+        return;
       }
       if (!savedResult.ok) { this.setData({ loading: false, hasError: true, errorMessage: errorText(savedResult.error), questions: [] }); return; }
       const snapshot = savedResult.value || {};
@@ -119,7 +137,12 @@ Page({
         const restored = await this.loadRemoteGroup(this._groupIndex);
         if (restored) return;
         if (!this.data.errorMessage || !this.data.errorMessage.includes('网络')) return;
-        this.startLocalRound(true); this.setData({ hasError: false, loading: false, dataSource: 'local', personalError: this.data.errorMessage }); this.refreshLocalGroup(); return;
+        if (!this.renderCachedGroup(this._groupIndex, this.data.errorMessage)) {
+          this.startLocalRound(true);
+          this.setData({ hasError: false, loading: false, dataSource: 'local', personalError: this.data.errorMessage });
+          this.refreshLocalGroup();
+        }
+        return;
       }
     }
     const result = await settle(api.practice.createRound({ source: this._source, categoryId: null, articleId: this._articleId, type: this._type, mode: this.data.mode }));
@@ -142,13 +165,19 @@ Page({
   async loadRemoteGroup(index) {
     this.setData({ loading: true, hasError: false });
     const result = await settle(api.practice.group(this._roundId, index));
-    if (!result.ok) { this.setData({ loading: false, hasError: true, errorMessage: errorText(result.error), questions: [] }); return false; }
+    if (!result.ok) {
+      const message = errorText(result.error);
+      if (result.error && result.error.code === 'NETWORK_ERROR' && this.renderCachedGroup(index, message)) return false;
+      this.setData({ loading: false, hasError: true, errorMessage: message, questions: [] });
+      return false;
+    }
     const payload = result.value || {};
     this._groupIndex = Number(payload.groupIndex) || index;
     this._roundCount = Number(payload.groupCount) || this._roundCount || 0;
     this._roundTotal = Number(payload.totalCount) || this._roundTotal || 0;
     this._groupPageSize = Number(payload.pageSize) > 0 ? Number(payload.pageSize) : this._groupPageSize || GROUP_SIZE;
     const rows = Array.isArray(payload.results) ? payload.results : [];
+    this._groupCache[String(this._groupIndex)] = cloneRows(rows);
     await this.loadStates(rows);
     const seenIds = new Set(this._roundIds);
     rows.forEach((item) => { if (item.id && !seenIds.has(item.id)) { seenIds.add(item.id); this._roundIds.push(item.id); } });
@@ -165,7 +194,17 @@ Page({
   },
 
   saveResume() {
-    studyStore.saveResume({ path: PAGE_PATH, options: { source: this._source, type: this._type, articleId: this._articleId || null, mode: this.data.mode }, groupIds: this._roundIds.slice(), groupIndex: Math.max(0, this._groupIndex - 1) });
+    studyStore.saveResume({
+      path: PAGE_PATH,
+      options: { source: this._source, type: this._type, articleId: this._articleId || null, mode: this.data.mode },
+      groupIds: this._roundIds.slice(),
+      groupIndex: Math.max(0, this._groupIndex - 1),
+      roundId: this._roundId || null,
+      groupCount: this._roundCount || 0,
+      roundQuestionCount: this._roundTotal || this._roundIds.length,
+      groupPageSize: this._groupPageSize || GROUP_SIZE,
+      groupCache: this._groupCache
+    });
     if (!hasToken() || !this._roundIds.length) return;
     const id = this.data.questions[0] && this.data.questions[0].id || this._roundIds[0];
     if (!id) return;
@@ -180,6 +219,39 @@ Page({
         }
       }
     });
+  },
+
+  hydrateLocalResume(record) {
+    if (!record || record.path !== PAGE_PATH) return false;
+    const options = record.options || {};
+    if (options.source !== this._source || (this._typeExplicit && options.type !== this._type)
+      || (this._articleId && String(options.articleId || '') !== String(this._articleId))) return false;
+    this._roundId = record.roundId || this._roundId || '';
+    this._roundIds = Array.isArray(record.groupIds) ? record.groupIds.slice() : this._roundIds;
+    this._groupCache = record.groupCache && typeof record.groupCache === 'object' ? record.groupCache : this._groupCache;
+    this._roundCount = Number(record.groupCount) || this._roundCount || 0;
+    this._roundTotal = Number(record.roundQuestionCount) || this._roundTotal || this._roundIds.length;
+    this._groupPageSize = Number(record.groupPageSize) || this._groupPageSize || GROUP_SIZE;
+    if (record.groupIndex != null) this._groupIndex = Math.max(1, Number(record.groupIndex) + 1);
+    this._groups = [];
+    for (let i = 0; i < this._roundIds.length; i += GROUP_SIZE) this._groups.push(this._roundIds.slice(i, i + GROUP_SIZE));
+    return true;
+  },
+
+  renderCachedGroup(index, message) {
+    const rows = this._groupCache && this._groupCache[String(index)];
+    if (!Array.isArray(rows) || !rows.length) return false;
+    this._groupIndex = Number(index) || this._groupIndex || 1;
+    const states = this._stateMap || {};
+    const questions = rows.map((item) => Object.assign({}, item, normalizeState(states[item.id])));
+    const count = this._roundCount || Math.max(this._groupIndex, Math.ceil(this._roundIds.length / GROUP_SIZE));
+    this.setData({
+      loading: false, hasError: false, errorMessage: '', dataSource: 'local', personalError: message || '网络暂不可用，当前显示已缓存题组',
+      questions, groupNumber: this._groupIndex, groupCount: count, roundQuestionCount: this._roundTotal || this._roundIds.length,
+      groupPageSize: this._groupPageSize || GROUP_SIZE, progressPercent: count ? Math.round(this._groupIndex / count * 100) : 0,
+      nextLabel: this._groupIndex >= count ? '再练一轮' : '下一组'
+    });
+    return true;
   },
 
   onRetry() { if (hasToken()) this.startRemoteRound(false); else { this.startLocalRound(false); this.refreshLocalGroup(); } },

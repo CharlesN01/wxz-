@@ -13,7 +13,13 @@ function errorText(error) {
   if (error && error.code === 'NETWORK_ERROR') return '网络暂不可用，当前显示本地演示题目';
   return error && error.message ? String(error.message) : '题目加载失败';
 }
-function normalizeState(value) { return { favorite: Boolean(value && value.favorite), mastered: Boolean(value && value.mastered), version: Number(value && value.version) >= 0 ? Number(value.version) : 0 }; }
+function normalizeState(value) {
+  const version = Number(value && value.version);
+  return { favorite: Boolean(value && value.favorite), mastered: Boolean(value && value.mastered), version: Number.isFinite(version) && version >= 0 ? version : 0 };
+}
+function cloneRows(rows) {
+  try { return JSON.parse(JSON.stringify(Array.isArray(rows) ? rows : [])); } catch (_) { return []; }
+}
 function localQuestionState(id) {
   const state = studyStore.getState();
   return { favorite: state.favorites.indexOf(id) !== -1, mastered: Object.prototype.hasOwnProperty.call(state.mastered, id), version: 0 };
@@ -29,6 +35,7 @@ Page({
     this.questionType = options.type === 'translation' ? 'translation' : 'word';
     this.allQuestions = [];
     this._stateMap = {};
+    this._groupCache = {};
     this._resumeVersion = 0;
     this._remoteLoaded = false;
     const initialMode = options.mode === 'reciting' ? 'reciting' : options.mode === 'writing' ? 'writing' : studyStore.getMode();
@@ -41,6 +48,12 @@ Page({
     this.setData({ loading: true, hasError: false, errorMessage: '' });
     const response = await settle(api.content.questions({ source: 'classical', articleId: this.articleId || undefined, type: this.questionType, page: 1 }));
     if (!response.ok) {
+      if (response.error && response.error.code === 'NETWORK_ERROR' && restore && this.restoreCachedResume()) {
+        this._remoteLoaded = true;
+        this.setData({ loading: false, dataSource: 'local', personalError: errorText(response.error) });
+        this.refreshQuestions();
+        return;
+      }
       this.allQuestions = dataService.getQuestions({ source: 'classical', articleId: this.articleId || undefined, type: this.questionType });
       this._remoteLoaded = true;
       if (response.error && response.error.code !== 'NETWORK_ERROR') this.setData({ loading: false, hasError: true, errorMessage: errorText(response.error), total: 0, questions: [] });
@@ -100,7 +113,8 @@ Page({
     }
   },
   refreshQuestions() {
-    const decorated = (this.allQuestions || []).map((question) => Object.assign({}, question, this._stateMap[question.id] || (!hasToken() ? localQuestionState(question.id) : normalizeState(null))));
+    const states = this._stateMap || {};
+    const decorated = (this.allQuestions || []).map((question) => Object.assign({}, question, states[question.id] || (!hasToken() ? localQuestionState(question.id) : normalizeState(null))));
     const total = decorated.length; const groupCount = Math.ceil(total / GROUP_SIZE); const groupIndex = groupCount ? Math.min(Math.max(this.data.groupIndex, 0), groupCount - 1) : 0; const completed = decorated.filter((question) => question.mastered).length;
     const questions = decorated.slice(groupIndex * GROUP_SIZE, groupIndex * GROUP_SIZE + GROUP_SIZE);
     const pageCompleted = questions.filter((question) => question.mastered).length;
@@ -108,7 +122,22 @@ Page({
     if (total) this.savePosition();
   },
   savePosition() {
-    studyStore.saveResume({ path: '/pages/practice/index', options: { articleId: this.articleId, type: this.questionType }, groupIds: (this.allQuestions || []).map((question) => question.id), groupIndex: this.data.groupIndex });
+    const groupCache = {};
+    (this.allQuestions || []).forEach((question, index) => {
+      const group = String(Math.floor(index / GROUP_SIZE) + 1);
+      if (!groupCache[group]) groupCache[group] = [];
+      groupCache[group].push(cloneRows([question])[0]);
+    });
+    studyStore.saveResume({
+      path: '/pages/practice/index',
+      options: { articleId: this.articleId, type: this.questionType },
+      groupIds: (this.allQuestions || []).map((question) => question.id),
+      groupIndex: this.data.groupIndex,
+      groupCount: Math.ceil((this.allQuestions || []).length / GROUP_SIZE),
+      roundQuestionCount: (this.allQuestions || []).length,
+      groupPageSize: GROUP_SIZE,
+      groupCache
+    });
     if (!hasToken() || !this.allQuestions.length) return;
     const first = this.allQuestions[this.data.groupIndex * GROUP_SIZE] || this.allQuestions[0]; if (!first) return;
     const body = { source: 'classical', articleId: this.articleId || null, type: this.questionType, mode: this.data.mode, questionId: first.id, roundId: null, groupIndex: null, baseVersion: this._resumeVersion };
@@ -122,6 +151,22 @@ Page({
         }
       }
     });
+  },
+  restoreCachedResume() {
+    const resume = studyStore.getResume();
+    const options = resume && resume.options || {};
+    if (!resume || resume.path !== '/pages/practice/index' || options.articleId !== this.articleId || options.type !== this.questionType) return false;
+    const cache = resume.groupCache && typeof resume.groupCache === 'object' ? resume.groupCache : {};
+    const rows = Object.keys(cache).sort((a, b) => Number(a) - Number(b)).reduce((all, key) => {
+      return all.concat(Array.isArray(cache[key]) ? cache[key] : []);
+    }, []);
+    if (!rows.length) return false;
+    this._groupCache = cache;
+    this.allQuestions = rows;
+    const groupCount = Number(resume.groupCount) || Math.ceil(rows.length / GROUP_SIZE);
+    const groupIndex = Math.max(0, Math.min(Number(resume.groupIndex) || 0, groupCount - 1));
+    this.setData({ groupIndex, groupCount, total: rows.length });
+    return true;
   },
   onRetry() { this.loadRemote(false); },
   onModeChange(event) { const mode = event.detail.mode; if (mode !== 'writing' && mode !== 'reciting') return; studyStore.setMode(mode); this.setData({ mode }); this.refreshQuestions(); },

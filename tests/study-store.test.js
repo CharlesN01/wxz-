@@ -75,6 +75,25 @@ test('模式和随机本轮顺序可以恢复', () => {
   assert.equal(reloaded.getResume().groupIndex, 1);
 });
 
+test('远端随机续学保留非 mock 题目 ID、当前组和题组缓存', () => {
+  const { store, read } = createStore();
+  const group = [{ id: 'remote-question-7', source: 'literature', stem: '远端题目' }];
+  store.saveResume({
+    path: '/pages/random/index',
+    options: { source: 'literature', mode: 'writing' },
+    groupIds: ['remote-question-1', 'remote-question-7'],
+    groupIndex: 1,
+    roundId: 'round-remote-1', groupCount: 2, roundQuestionCount: 2, groupPageSize: 1,
+    groupCache: { '2': group }
+  });
+  const saved = read().resume;
+  const reloaded = createStore(read()).store.getResume();
+  assert.deepEqual(saved.groupIds, ['remote-question-1', 'remote-question-7']);
+  assert.equal(reloaded.roundId, 'round-remote-1');
+  assert.equal(reloaded.groupIndex, 1);
+  assert.deepEqual(reloaded.groupCache['2'], group);
+});
+
 test('目录无题篇目保持未学，有题篇目按实际题目掌握', () => {
   const { store } = createStore();
   const service = require(servicePath);

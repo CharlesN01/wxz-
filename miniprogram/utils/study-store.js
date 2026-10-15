@@ -14,6 +14,42 @@ function freshState() {
   return { version: 1, favorites: [], mastered: {}, studyDates: [], mode: 'writing', resume: null };
 }
 
+function cloneJson(value) {
+  try { return JSON.parse(JSON.stringify(value)); } catch (_) { return null; }
+}
+
+function normalizeGroupCache(value) {
+  const cache = {};
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return cache;
+  Object.keys(value).forEach((key) => {
+    const index = Number(key);
+    if (!Number.isInteger(index) || index < 1 || !Array.isArray(value[key])) return;
+    const rows = value[key].filter((row) => row && typeof row === 'object' && row.id != null)
+      .slice(0, 12).map((row) => cloneJson(row)).filter(Boolean);
+    if (rows.length) cache[String(index)] = rows;
+  });
+  return cache;
+}
+
+function normalizeResume(input) {
+  if (!input || typeof input !== 'object' || typeof input.path !== 'string') return null;
+  const groupIds = Array.isArray(input.groupIds)
+    ? Array.from(new Set(input.groupIds.map((id) => String(id || '').trim()).filter(Boolean)))
+    : [];
+  const resume = {
+    path: input.path,
+    options: input.options && typeof input.options === 'object' ? cloneJson(input.options) || {} : {},
+    groupIds,
+    groupIndex: Math.max(0, Math.floor(Number(input.groupIndex) || 0))
+  };
+  if (Object.prototype.hasOwnProperty.call(input, 'roundId')) resume.roundId = input.roundId == null ? null : String(input.roundId);
+  if (Object.prototype.hasOwnProperty.call(input, 'groupCount')) resume.groupCount = Math.max(0, Math.floor(Number(input.groupCount) || 0));
+  if (Object.prototype.hasOwnProperty.call(input, 'roundQuestionCount')) resume.roundQuestionCount = Math.max(0, Math.floor(Number(input.roundQuestionCount) || 0));
+  if (Object.prototype.hasOwnProperty.call(input, 'groupPageSize')) resume.groupPageSize = Math.max(0, Math.floor(Number(input.groupPageSize) || 0));
+  if (Object.prototype.hasOwnProperty.call(input, 'groupCache')) resume.groupCache = normalizeGroupCache(input.groupCache);
+  return resume;
+}
+
 function normalize(input) {
   if (!input || typeof input !== 'object' || input.version !== 1) return freshState();
   const mastered = {};
@@ -23,7 +59,7 @@ function normalize(input) {
   const favorites = Array.isArray(input.favorites) ? input.favorites.filter((id) => validIds.has(id)) : [];
   const studyDates = Array.isArray(input.studyDates) ? input.studyDates.filter((day) => /^\d{4}-\d{2}-\d{2}$/.test(day)) : [];
   const allowedPaths = ['/pages/literature/index', '/pages/practice/index', '/pages/random/index'];
-  const resume = input.resume && allowedPaths.indexOf(input.resume.path) !== -1 ? input.resume : null;
+  const resume = input.resume && allowedPaths.indexOf(input.resume.path) !== -1 ? normalizeResume(input.resume) : null;
   return { version: 1, favorites: Array.from(new Set(favorites)), mastered, studyDates: Array.from(new Set(studyDates)), mode: input.mode === 'reciting' ? 'reciting' : 'writing', resume };
 }
 
@@ -79,12 +115,7 @@ function setMode(mode) {
 
 function saveResume(record) {
   const state = getState();
-  state.resume = record ? {
-    path: record.path,
-    options: record.options || {},
-    groupIds: Array.isArray(record.groupIds) ? record.groupIds.filter((id) => validIds.has(id)) : [],
-    groupIndex: Math.max(0, Math.floor(Number(record.groupIndex) || 0))
-  } : null;
+  state.resume = record ? normalizeResume(record) : null;
   save(state);
 }
 function getResume() { return getState().resume; }
