@@ -102,6 +102,48 @@ test('403 entitlement errors preserve the session and do not retry anonymously',
   assert.equal(session.getToken(), 'stored-token');
 });
 
+test('practice round creation matches the authenticated idempotent contract', async () => {
+  session.saveSession({ token: 'practice-token', expiresAt: '' });
+  const calls = installWx((options) => respond(options, 201, {
+    id: 'round-1',
+    source: 'classical',
+    categoryId: null,
+    articleId: 'quanxue',
+    type: 'translation',
+    mode: 'reciting'
+  }));
+  const payload = {
+    source: 'classical',
+    categoryId: null,
+    articleId: 'quanxue',
+    type: 'translation',
+    mode: 'reciting'
+  };
+
+  const result = await api.practice.createRound(payload);
+
+  assert.equal(result.id, 'round-1');
+  assert.equal(calls[0].method, 'POST');
+  assert.equal(calls[0].url, 'http://127.0.0.1:8000/api/student/v1/practice/rounds/');
+  assert.deepEqual(calls[0].data, payload);
+  assert.equal(calls[0].header.Authorization, 'Bearer practice-token');
+  assert.match(calls[0].header['Idempotency-Key'], /^[A-Za-z0-9._:-]{8,128}$/);
+});
+
+test('practice group reads use a 1-based encoded path without query parameters', async () => {
+  session.saveSession({ token: 'practice-token', expiresAt: '' });
+  const calls = installWx((options) => respond(options, 200, { groupIndex: 2, results: [] }));
+
+  const result = await api.practice.group('round/1', 2);
+
+  assert.deepEqual(result, { groupIndex: 2, results: [] });
+  assert.equal(calls[0].method, 'GET');
+  assert.equal(calls[0].url, 'http://127.0.0.1:8000/api/student/v1/practice/rounds/round%2F1/groups/2/');
+  assert.deepEqual(calls[0].data, {});
+  assert.equal(calls[0].header.Authorization, 'Bearer practice-token');
+  assert.equal(calls[0].header['Idempotency-Key'], undefined);
+});
+
 test('429 and 5xx responses retain structured errors and request IDs', async () => {
   let status = 429;
   const calls = installWx((options) => respond(options, status, {

@@ -39,7 +39,7 @@ function decorateFavorite(question) {
 
 Page({
   data: { categoryRows: [], categoryId: '', activeCategoryElement: '', activeCategoryRow: 'literature', sourceFilter: 'literature', mode: 'writing', questions: [], hasQuestions: false, pageNumber: 0, pageCount: 0, totalFavorites: 0, todayAdded: 0, nextLabel: '下一页', loading: true, hasError: false, errorMessage: '', dataSource: 'local', personalError: '', requiresLogin: false },
-  onLoad(options = {}) { this._categories = dataService.getCategories('favorites'); this._pageIndex = 0; this._categoryId = options.categoryId || ''; this._sourceFilter = options.source === 'classical' ? 'classical' : 'literature'; this._remoteRows = []; this._remoteLoaded = false; this._ready = true; this._setupCategories(); this._refreshFavorites(); },
+  onLoad(options = {}) { this._categories = dataService.getCategories('favorites'); this._pageIndex = 0; this._categoryId = options.categoryId || ''; this._sourceFilter = options.source === 'classical' ? 'classical' : 'literature'; this._remoteRows = []; this._remoteLoaded = false; this._stateInFlight = Object.create(null); this._ready = true; this._setupCategories(); this._refreshFavorites(); },
   onShow() { if (this._ready) this._refreshFavorites(); },
   _setupCategories() {
     const localState = studyStore.getState(); const favorites = new Set(localState.favorites);
@@ -104,12 +104,25 @@ Page({
   onTab(event) { const page = event.currentTarget.dataset.page; if (page === 'home') navigation.openPage('/pages/home/index'); if (page === 'mine') navigation.openPage('/pages/mine/index'); },
   async _updateState(id, field) {
     if (!id) return;
-    if (!hasToken()) { studyStore[field === 'favorite' ? 'toggleFavorite' : 'toggleMastered'](id); this._renderLocal(); this.setData({ personalError: '当前未登录，已保存到本地；登录后可同步' }); return; }
-    const currentResult = await settle(api.learning.questionState(id)); if (!currentResult.ok) { this.setData({ personalError: errorText(currentResult.error) }); return; }
-    const current = normalizeState(currentResult.value); const next = !current[field]; let result = await settle(api.learning.setQuestionState(id, { [field]: next, baseVersion: current.version }));
-    if (!result.ok && result.error && result.error.code === 'VERSION_CONFLICT') { const server = result.error.current || result.error.fields && result.error.fields.current; if (server) result = await settle(api.learning.setQuestionState(id, { [field]: next, baseVersion: normalizeState(server).version })); }
-    if (!result.ok) { this.setData({ personalError: errorText(result.error) }); return; }
-    this.setData({ personalError: '' }); this._pageIndex = 0; this._refreshFavorites();
+    const lockKey = `${field}:${id}`;
+    if (!this._stateInFlight) this._stateInFlight = Object.create(null);
+    if (this._stateInFlight[lockKey]) return;
+    this._stateInFlight[lockKey] = true;
+    try {
+      if (!hasToken()) { studyStore[field === 'favorite' ? 'toggleFavorite' : 'toggleMastered'](id); this._renderLocal(); this.setData({ personalError: '当前未登录，已保存到本地；登录后可同步' }); return; }
+      const currentResult = await settle(api.learning.questionState(id)); if (!currentResult.ok) { this.setData({ personalError: errorText(currentResult.error) }); return; }
+      const current = normalizeState(currentResult.value); const next = !current[field];
+      const createWriteOptions = () => {
+        const idempotencyKey = api.createIdempotencyKey ? api.createIdempotencyKey() : '';
+        return idempotencyKey ? { idempotencyKey } : undefined;
+      };
+      let result = await settle(api.learning.setQuestionState(id, { [field]: next, baseVersion: current.version }, createWriteOptions()));
+      if (!result.ok && result.error && result.error.code === 'VERSION_CONFLICT') { const server = result.error.current || result.error.fields && result.error.fields.current; if (server) result = await settle(api.learning.setQuestionState(id, { [field]: next, baseVersion: normalizeState(server).version }, createWriteOptions())); }
+      if (!result.ok) { this.setData({ personalError: errorText(result.error) }); return; }
+      this.setData({ personalError: '' }); this._pageIndex = 0; this._refreshFavorites();
+    } finally {
+      delete this._stateInFlight[lockKey];
+    }
   },
   onFavorite(event) { const id = event && event.currentTarget && event.currentTarget.dataset ? event.currentTarget.dataset.id : event && event.detail && event.detail.id; return this._updateState(id, 'favorite'); },
   onMaster(event) { return this._updateState(event.detail.id, 'mastered'); },

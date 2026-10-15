@@ -195,7 +195,9 @@ Page({
     const seenIds = new Set(this._roundIds);
     rows.forEach((item) => { if (item.id && !seenIds.has(item.id)) { seenIds.add(item.id); this._roundIds.push(item.id); } });
     const questions = rows.map((item) => Object.assign({}, item, this._stateMap[item.id] || normalizeState(null)));
-    this.setData({ loading: false, dataSource: 'remote', questions, groupNumber: this._groupIndex, groupCount: this._roundCount, roundQuestionCount: this._roundTotal, groupPageSize: this._groupPageSize, progressPercent: this._roundCount ? Math.round(this._groupIndex / this._roundCount * 100) : 0, nextLabel: this._groupIndex >= this._roundCount ? '再练一轮' : '下一组', personalError: '' });
+    const restricted = !rows.length && Array.isArray(payload.skipped)
+      && payload.skipped.some((item) => item && item.reason === 'ENTITLEMENT_REQUIRED');
+    this.setData({ loading: false, dataSource: 'remote', questions, groupNumber: this._groupIndex, groupCount: this._roundCount, roundQuestionCount: this._roundTotal, groupPageSize: this._groupPageSize, progressPercent: this._roundCount ? Math.round(this._groupIndex / this._roundCount * 100) : 0, nextLabel: this._groupIndex >= this._roundCount ? '再练一轮' : '下一组', personalError: restricted ? errorText({ code: 'ENTITLEMENT_REQUIRED' }) : '' });
     this.saveResume();
     return true;
   },
@@ -228,9 +230,12 @@ Page({
         const current = result.error.current || result.error.fields && result.error.fields.current;
         if (current && Number(current.version) >= 0) {
           this._resumeVersion = Number(current.version);
-          settle(api.learning.saveResume(Object.assign({}, body, { baseVersion: this._resumeVersion }))).then((retry) => { if (retry.ok && Number(retry.value && retry.value.version) >= 0) this._resumeVersion = Number(retry.value.version); });
+          settle(api.learning.saveResume(Object.assign({}, body, { baseVersion: this._resumeVersion }))).then((retry) => {
+            if (retry.ok && Number(retry.value && retry.value.version) >= 0) this._resumeVersion = Number(retry.value.version);
+            else if (!retry.ok) this.setData({ personalError: errorText(retry.error) });
+          });
         }
-      }
+      } else if (!result.ok) this.setData({ personalError: errorText(result.error) });
     });
   },
 

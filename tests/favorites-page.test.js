@@ -7,9 +7,9 @@ const path = require('node:path');
 const pagePath = path.join(__dirname, '..', 'miniprogram', 'pages', 'favorites', 'index.js');
 const templatePath = path.join(__dirname, '..', 'miniprogram', 'pages', 'favorites', 'index.wxml');
 
-function createPage(mode = 'writing') {
+function createPage(mode = 'writing', apiOverrides = {}) {
   let definition;
-  const api = { auth: { getToken: () => null } };
+  const api = Object.assign({ auth: { getToken: () => null } }, apiOverrides);
   const currentMode = mode || 'writing';
   const studyStore = { getMode: () => currentMode, getState: () => ({ favorites: [], mode: currentMode }) };
   const questionUtils = require('../miniprogram/utils/question-utils');
@@ -183,4 +183,76 @@ test('收藏空态与原型一致，只显示简短提示而不显示插画或�
   const template = fs.readFileSync(templatePath, 'utf8');
   assert.match(template, /class="favorites-empty"[^>]*>这里还没有收藏内容<\/view>/);
   assert.doesNotMatch(template, /<empty-state/);
+});
+
+test('受限收藏不显示查看答案操作，避免误导用户请求受保护答案', () => {
+  const template = fs.readFileSync(templatePath, 'utf8');
+  assert.match(template, /wx:if="\{\{!item\.unavailable\}\}" class="answer-button"/);
+});
+
+test('收藏切换读取 baseVersion，并为写入传递幂等键', async () => {
+  const calls = [];
+  const { page } = createPage('writing', {
+    auth: { getToken: () => 'token' },
+    createIdempotencyKey: () => 'favorites-key-1',
+    learning: {
+      questionState: async () => ({ favorite: true, mastered: false, version: 7 }),
+      setQuestionState: async (...args) => { calls.push(args); return { favorite: false, version: 8 }; }
+    }
+  });
+
+  await page._updateState('q-1', 'favorite');
+  assert.equal(calls[0][1].favorite, false);
+  assert.equal(calls[0][1].baseVersion, 7);
+  assert.equal(calls[0][2].idempotencyKey, 'favorites-key-1');
+});
+
+test('收藏状态 409 重试使用服务端版本和新的幂等键', async () => {
+  const calls = [];
+  let keyIndex = 0;
+  const { page } = createPage('writing', {
+    auth: { getToken: () => 'token' },
+    createIdempotencyKey: () => `favorites-key-${++keyIndex}`,
+    learning: {
+      questionState: async () => ({ favorite: false, mastered: false, version: 3 }),
+      setQuestionState: async (...args) => {
+        calls.push(args);
+        if (calls.length === 1) {
+          const error = new Error('conflict');
+          error.code = 'VERSION_CONFLICT';
+          error.current = { favorite: true, mastered: false, version: 4 };
+          throw error;
+        }
+        return { favorite: true, version: 5 };
+      }
+    }
+  });
+
+  await page._updateState('q-1', 'favorite');
+  assert.equal(calls.length, 2);
+  assert.equal(calls[0][1].baseVersion, 3);
+  assert.equal(calls[1][1].baseVersion, 4);
+  assert.equal(calls[0][2].idempotencyKey, 'favorites-key-1');
+  assert.equal(calls[1][2].idempotencyKey, 'favorites-key-2');
+});
+
+test('收藏快速重复点击只提交一次状态写入', async () => {
+  const calls = [];
+  let resolveWrite;
+  const writeDone = new Promise((resolve) => { resolveWrite = resolve; });
+  const { page } = createPage('writing', {
+    auth: { getToken: () => 'token' },
+    createIdempotencyKey: () => 'favorites-key-1',
+    learning: {
+      questionState: async () => ({ favorite: true, mastered: false, version: 1 }),
+      setQuestionState: async (...args) => { calls.push(args); await writeDone; return { favorite: false, version: 2 }; }
+    }
+  });
+
+  const first = page._updateState('q-1', 'favorite');
+  const second = page._updateState('q-1', 'favorite');
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(calls.length, 1);
+  resolveWrite();
+  await Promise.all([first, second]);
 });

@@ -4,6 +4,7 @@ const navigation = require('../../utils/navigation');
 const api = require('../../services/api');
 
 const GROUP_SIZE = 6;
+function canRequest() { return typeof wx !== 'undefined' && typeof wx.request === 'function'; }
 function settle(promise) { return Promise.resolve(promise).then((value) => ({ ok: true, value }), (error) => ({ ok: false, error })); }
 function hasToken() { try { return Boolean(api.auth && api.auth.getToken && api.auth.getToken()); } catch (_) { return false; } }
 function errorText(error) {
@@ -42,15 +43,23 @@ Page({
     const initialMode = options.mode === 'reciting' ? 'reciting' : options.mode === 'writing' ? 'writing' : studyStore.getMode();
     studyStore.setMode(initialMode);
     this.setData({ title: this.questionType === 'word' ? '重点字词专项' : '重点翻译专项', articleTitle: this.articleTitle, typeLabel: this.questionType === 'word' ? '重点字词' : '重点翻译', isWord: this.questionType === 'word', mode: initialMode });
-    this.loadRemote(options && options.resume === '1');
+    if (canRequest()) this.loadRemote(options && options.resume === '1');
+    else {
+      this.allQuestions = dataService.getQuestions({ source: 'classical', articleId: this.articleId || undefined, type: this.questionType });
+      this._remoteLoaded = true;
+      this.setData({ loading: false, dataSource: 'local', personalError: '当前环境无法连接服务，显示本地演示题目' });
+      this.refreshQuestions();
+    }
   },
   onShow() { if (this._remoteLoaded) this.refreshQuestions(); },
   async loadRemote(restore) {
     this.setData({ loading: true, hasError: false, errorMessage: '' });
-    const response = await settle(api.content.questions(
-      { source: 'classical', articleId: this.articleId || undefined, type: this.questionType, page: 1 },
-      { auth: hasToken() }
-    ));
+    const response = this.articleId
+      ? await settle(api.content.questions(
+        { source: 'classical', articleId: this.articleId, type: this.questionType, page: 1 },
+        { auth: hasToken() }
+      ))
+      : await this.loadGlobalRemoteQuestions();
     if (!response.ok) {
       if (response.error && response.error.code === 'NETWORK_ERROR' && restore && this.restoreCachedResume()) {
         this._remoteLoaded = true;
@@ -82,16 +91,54 @@ Page({
     }
     this._remoteLoaded = true;
     if (!this.allQuestions.length) { this.setData({ loading: false, dataSource: 'remote', total: 0, questions: [] }); return; }
-    await this.loadStates(this.allQuestions);
-    if (!this.articleId && this.allQuestions[0].articleId) this.articleId = this.allQuestions[0].articleId;
+    const stateError = await this.loadStates(this.allQuestions);
     if (restore) await this.restoreResume();
-    this.setData({ loading: false, dataSource: 'remote', personalError: '' });
+    this.setData({ loading: false, dataSource: 'remote', personalError: stateError ? errorText(stateError) : '' });
     this.refreshQuestions();
+  },
+  async loadGlobalRemoteQuestions() {
+    const articlesResult = await settle(api.content.articles({ page: 1 }, { auth: hasToken() }));
+    if (!articlesResult.ok) return articlesResult;
+    const articlePayload = articlesResult.value || {};
+    const articles = Array.isArray(articlePayload.results) ? articlePayload.results.slice() : [];
+    let next = articlePayload.next || null;
+    const seenPages = new Set();
+    while (next && !seenPages.has(String(next))) {
+      seenPages.add(String(next));
+      const pageResult = await settle(api.pagination.follow(next, { auth: 'optional', basePath: '/api/student/v1/articles/' }));
+      if (!pageResult.ok) return pageResult;
+      const page = pageResult.value || {};
+      if (Array.isArray(page.results)) articles.push(...page.results);
+      next = page.next || null;
+    }
+    const rows = [];
+    for (const article of articles) {
+      const result = await settle(api.content.questions(
+        { source: 'classical', articleId: article.id, type: this.questionType, page: 1 },
+        { auth: hasToken() }
+      ));
+      if (!result.ok) return result;
+      const payload = result.value || {};
+      if (Array.isArray(payload.results)) rows.push(...payload.results);
+      let questionNext = payload.next || null;
+      const seenQuestions = new Set();
+      while (questionNext && !seenQuestions.has(String(questionNext))) {
+        seenQuestions.add(String(questionNext));
+        const pageResult = await settle(api.pagination.follow(questionNext, { auth: 'optional', basePath: '/api/student/v1/questions/' }));
+        if (!pageResult.ok) return pageResult;
+        const page = pageResult.value || {};
+        if (Array.isArray(page.results)) rows.push(...page.results);
+        questionNext = page.next || null;
+      }
+    }
+    return { ok: true, value: { results: rows, next: null } };
   },
   async loadStates(rows) {
     if (!hasToken()) return;
     const results = await Promise.all(rows.map((item) => settle(api.learning.questionState(item.id))));
-    results.forEach((item, index) => { if (item.ok) this._stateMap[rows[index].id] = normalizeState(item.value); });
+    let firstError = null;
+    results.forEach((item, index) => { if (item.ok) this._stateMap[rows[index].id] = normalizeState(item.value); else firstError = firstError || item.error; });
+    return firstError;
   },
   async restoreResume() {
     if (this._requestedQuestionId) {
@@ -105,14 +152,21 @@ Page({
     if (hasToken()) {
       const result = await settle(api.learning.resume());
       const remote = result.ok && result.value && result.value.valid ? result.value.resume : null;
-      if (remote && remote.source === 'classical' && remote.articleId === this.articleId && remote.type === this.questionType) {
+      const sameArticle = this.articleId
+        ? String(remote && remote.articleId || '') === String(this.articleId)
+        : !remote || remote.articleId == null;
+      if (remote && remote.source === 'classical' && sameArticle && remote.type === this.questionType) {
         saved = remote;
+        if (!this.articleId && remote.articleId) this.articleId = remote.articleId;
         if (result.value && Number(result.value.version) >= 0) this._resumeVersion = Number(result.value.version);
       }
     }
     if (!saved) {
       const local = studyStore.getResume(); const options = local && local.options || {};
-      if (local && /pages\/practice\/index$/.test(local.path || '') && options.articleId === this.articleId && options.type === this.questionType) saved = { groupIndex: Number(local.groupIndex) + 1 };
+      const sameArticle = this.articleId
+        ? String(options.articleId || '') === String(this.articleId)
+        : !options.articleId;
+      if (local && /pages\/practice\/index$/.test(local.path || '') && sameArticle && options.type === this.questionType) saved = { groupIndex: Number(local.groupIndex) + 1 };
     }
     if (saved) {
       let rawIndex = Number(saved.groupIndex);
@@ -141,7 +195,7 @@ Page({
     });
     studyStore.saveResume({
       path: '/pages/practice/index',
-      options: { articleId: this.articleId, type: this.questionType },
+      options: { articleId: this.articleId || null, type: this.questionType },
       groupIds: (this.allQuestions || []).map((question) => question.id),
       groupIndex: this.data.groupIndex,
       groupCount: Math.ceil((this.allQuestions || []).length / GROUP_SIZE),
@@ -158,9 +212,12 @@ Page({
         const current = result.error.current || result.error.fields && result.error.fields.current;
         if (current && Number(current.version) >= 0) {
           this._resumeVersion = Number(current.version);
-          settle(api.learning.saveResume(Object.assign({}, body, { baseVersion: this._resumeVersion }))).then((retry) => { if (retry.ok && Number(retry.value && retry.value.version) >= 0) this._resumeVersion = Number(retry.value.version); });
+          settle(api.learning.saveResume(Object.assign({}, body, { baseVersion: this._resumeVersion }))).then((retry) => {
+            if (retry.ok && Number(retry.value && retry.value.version) >= 0) this._resumeVersion = Number(retry.value.version);
+            else if (!retry.ok) this.setData({ personalError: errorText(retry.error) });
+          });
         }
-      }
+      } else if (!result.ok) this.setData({ personalError: errorText(result.error) });
     });
   },
   restoreCachedResume() {
