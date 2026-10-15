@@ -1,6 +1,13 @@
 page { background: #F5FAFE; }
 .home-page { min-height: 100vh; padding-bottom: calc(152rpx + env(safe-area-inset-bottom)); background: #F5FAFE; color: #172433; }
-.home-body { padding: 24rpx 24rpx 40rpx; }
+.home-body { display: flex; flex-direction: column; padding: 24rpx 24rpx 40rpx; }
+.dashboard-card { order: 1; }
+.section-title { order: 2; }
+.module-grid { order: 3; }
+.continue-card { order: 4; }
+.group-card { order: 5; }
+.growth-card { order: 6; }
+.personal-note { order: 7; }
 .dashboard-card { padding: 24rpx 32rpx; border-radius: 34rpx; color: #FFFFFF; background: linear-gradient(135deg, #1B72DB, #69B0F4); box-shadow: 0 14rpx 34rpx rgba(36, 123, 234, .15); }
 .dashboard-head, .growth-head { display: flex; align-items: center; justify-content: space-between; gap: 12rpx; }
 .dashboard-head { color: rgba(255,255,255,.9); font-size: 20rpx; }

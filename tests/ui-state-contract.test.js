@@ -98,6 +98,16 @@ test('首页入口固定进入自测；随机续学保留上下文；资料群�
   assert.match(homeTemplate, /study-navbar[^>]*bind:more="moreSettings"/);
 });
 
+test('首页内容顺序与原型保持一致，学习趋势排在资料群之后', () => {
+  const styles = fs.readFileSync(path.join(root, 'miniprogram/pages/home/index.wxss'), 'utf8');
+  assert.match(styles, /\.home-body\s*\{[^}]*display:\s*flex;[^}]*flex-direction:\s*column/s);
+  assert.match(styles, /\.section-title\s*\{\s*order:\s*2;/);
+  assert.match(styles, /\.module-grid\s*\{\s*order:\s*3;/);
+  assert.match(styles, /\.continue-card\s*\{\s*order:\s*4;/);
+  assert.match(styles, /\.group-card\s*\{\s*order:\s*5;/);
+  assert.match(styles, /\.growth-card\s*\{\s*order:\s*6;/);
+});
+
 test('文言目录接收首页续学模式和篇目，并保留 questionId 进入对应专项', () => {
   const routes = [];
   const modes = [];
