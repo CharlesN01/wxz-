@@ -18,9 +18,10 @@ function errorText(error) {
 function normalizeFavoriteRow(row) {
   const item = row || {};
   const question = item.question && typeof item.question === 'object' ? item.question : null;
+  const questionId = item.questionId || item.state && item.state.questionId || '';
   const state = normalizeState(item.state || item);
-  if (!question) return { id: String(item.questionId || state.questionId || ''), source: item.source || '', categoryId: item.categoryId || null, articleId: item.articleId || null, type: item.type || null, unavailable: true, unavailableReason: item.unavailableReason || 'ENTITLEMENT_REQUIRED', favorite: state.favorite, mastered: state.mastered, version: state.version, title: '该考点暂不可访问', stem: '当前账号暂无查看此题内容的权限。' };
-  return Object.assign({}, question, state, { id: String(question.id || item.questionId || '') });
+  if (!question) return { id: String(questionId), source: item.source || '', categoryId: item.categoryId || null, articleId: item.articleId || null, type: item.type || null, unavailable: true, unavailableReason: item.unavailableReason || 'ENTITLEMENT_REQUIRED', favorite: state.favorite, mastered: state.mastered, version: state.version, title: '该考点暂不可访问', stem: '当前账号暂无查看此题内容的权限。' };
+  return Object.assign({}, question, state, { id: String(question.id || questionId) });
 }
 
 function decorateFavorite(question) {

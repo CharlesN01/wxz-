@@ -153,6 +153,32 @@ test('收藏页保留带安全元数据的受限收藏并按来源展示', () =>
   assert.equal(page.data.questions.length, 0);
 });
 
+test('收藏页从 question=null 的原始接口行保留来源并展示受限占位', () => {
+  const { page } = createPage();
+  page._categoryId = '';
+  page._sourceFilter = 'classical';
+
+  page._remoteRows = page._extractRows({
+    count: 1,
+    results: [{
+      state: { questionId: 'paid-classical', favorite: true, mastered: false, version: 2 },
+      question: null,
+      source: 'classical',
+      categoryId: null,
+      articleId: 'quanxue',
+      type: 'word',
+      unavailableReason: 'ENTITLEMENT_REQUIRED'
+    }]
+  });
+  page._renderRemote({ count: 1 });
+
+  assert.equal(page.data.questions.length, 1);
+  assert.equal(page.data.questions[0].id, 'paid-classical');
+  assert.equal(page.data.questions[0].source, 'classical');
+  assert.equal(page.data.questions[0].unavailable, true);
+  assert.equal(page.data.questions[0].unavailableReason, 'ENTITLEMENT_REQUIRED');
+});
+
 test('收藏空态与原型一致，只显示简短提示而不显示插画或去学习按钮', () => {
   const template = fs.readFileSync(templatePath, 'utf8');
   assert.match(template, /class="favorites-empty"[^>]*>这里还没有收藏内容<\/view>/);
