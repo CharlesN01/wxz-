@@ -1,0 +1,70 @@
+<view class="home-page">
+  <study-navbar title="专升本语文" subtitle="山东专升本文学与文言文" more="{{true}}" theme="paper" back="{{false}}" bind:more="moreSettings" />
+  <view wx:if="{{loading}}" class="home-loading"><view class="loading-spinner"></view><text>正在加载学习内容...</text></view>
+  <view wx:elif="{{hasError}}" class="home-error">
+    <view class="error-icon">!</view>
+    <text class="error-title">暂时无法连接学习服务</text>
+    <text class="error-copy">{{errorMessage}}</text>
+    <view class="retry-button" role="button" bindtap="retry">重新加载</view>
+  </view>
+  <view wx:else class="home-body">
+    <view class="dashboard-card">
+      <view class="dashboard-head"><text>山东专升本考试倒计时</text><text class="target-pill">{{targetLabel}}</text></view>
+      <view class="countdown-line"><text class="countdown-number">{{countdown}}</text><text class="countdown-unit">天</text></view>
+      <text class="dashboard-caption">每天进步一点，稳步走向上岸</text>
+      <view class="dashboard-stats">
+        <view class="dashboard-stat"><text class="stat-number">{{statsReady ? stats.studyDays : '--'}}</text><text class="stat-label">连续学习 / 天</text></view>
+        <view class="dashboard-stat"><text class="stat-number">{{statsReady ? stats.todayCount : '--'}}</text><text class="stat-label">今日学习 / 分钟</text></view>
+      </view>
+    </view>
+
+    <view class="section-title"><text>学习专区</text></view>
+    <view class="module-grid">
+      <view class="module-card" data-page="literature" bindtap="openModule" hover-class="module-pressed">
+        <view class="module-icon module-blue">书</view><view class="module-copy"><text class="module-name">文学常识</text><text class="module-desc">{{categoryCount}} 个时期分类 · {{literatureCount}} 个考点</text></view>
+      </view>
+      <view class="module-card" data-page="random" data-source="literature" bindtap="openModule" hover-class="module-pressed">
+        <view class="module-icon module-orange">测</view><view class="module-copy"><text class="module-name">文常测试</text><text class="module-desc">随机抽题 · 每组 {{config.pageSize}} 题</text></view>
+      </view>
+      <view class="module-card" data-page="classical" bindtap="openModule" hover-class="module-pressed">
+        <view class="module-icon module-green">背</view><view class="module-copy"><text class="module-name">文言文背诵</text><text class="module-desc">{{articleCount}} 篇重点篇目</text></view>
+      </view>
+      <view class="module-card" data-page="random" data-source="classical" bindtap="openModule" hover-class="module-pressed">
+        <view class="module-icon module-purple">练</view><view class="module-copy"><text class="module-name">文言测试</text><text class="module-desc">字词与翻译强化</text></view>
+      </view>
+      <view class="module-card module-wide" data-page="application" bindtap="openModule" hover-class="module-pressed">
+        <view class="module-icon module-blue">应用</view><view class="module-copy"><text class="module-name">应用文</text><text class="module-desc">写作模板 · 范文示例 · 历年真题 · 专项练习</text></view><text class="module-arrow">›</text>
+      </view>
+    </view>
+
+    <view class="continue-card" bindtap="continueLearning" role="button" hover-class="module-pressed">
+      <view class="continue-icon">文</view><view class="continue-copy"><text class="continue-title">{{resumeLabel}}</text><text class="continue-desc">{{resumeDescription}}</text></view><text class="continue-action">继续</text>
+    </view>
+    <view class="group-card" data-page="resources" bindtap="openModule" hover-class="module-pressed">
+      <view class="group-icon">群</view><view class="group-copy"><text class="group-badge">备考资料共享</text><text class="group-title">山东专升本资料备考群</text><text class="group-desc">每日更新最新资料 · 进群有机会领取免费会员</text></view><view class="group-action" role="button" catchtap="openGroupModal">扫码进群</view>
+    </view>
+    <view class="growth-card">
+      <view class="growth-head"><text class="growth-title">学习趋势</text><text class="growth-value">较上周 +23%</text></view>
+      <view class="trend-bars"><view wx:for="{{trendBars}}" wx:key="label" class="trend-column"><view class="trend-bar {{item.active ? 'trend-bar-active' : ''}}" style="height: {{item.height}}rpx;"></view><text>{{item.label}}</text></view></view>
+    </view>
+    <text wx:if="{{personalError}}" class="personal-note">{{personalError}}</text>
+  </view>
+
+  <view wx:if="{{groupModalVisible}}" class="group-modal" catchtap="closeGroupModal">
+    <view class="group-modal-card" catchtap="noop">
+      <view class="group-modal-close" role="button" aria-label="关闭" catchtap="closeGroupModal">×</view>
+      <text class="group-modal-kicker">备考资料共享</text>
+      <text class="group-modal-title">山东专升本资料备考群</text>
+      <text class="group-modal-copy">扫码添加微信，邀请你进群</text>
+      <view class="group-qr"><view class="group-qr-text"><text class="group-qr-heading">微信二维码</text><text>请放入你的真实二维码</text></view></view>
+      <text class="group-modal-tip">每日更新最新资料</text>
+      <text class="group-modal-note">进群有机会领取免费会员</text>
+    </view>
+  </view>
+
+  <view wx:if="{{!loading && !hasError}}" class="home-nav">
+    <view class="nav-item nav-active"><text class="nav-symbol">⌂</text><text>首页</text></view>
+    <view class="nav-item" data-page="favorites" bindtap="openNav"><text class="nav-symbol">☆</text><text>收藏</text></view>
+    <view class="nav-item" data-page="mine" bindtap="openNav"><text class="nav-symbol">◎</text><text>我的</text></view>
+  </view>
+</view>

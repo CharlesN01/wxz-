@@ -1,0 +1,20 @@
+:host { display: block; position: sticky; top: 0; z-index: 40; }
+.navbar { color: #FFFFFF; background: #12345B; }
+.bar { position: relative; display: flex; align-items: center; }
+.back-hit { position: absolute; top: 0; bottom: 0; left: 8rpx; width: 88rpx; display: flex; align-items: center; justify-content: center; z-index: 2; }
+.chevron { width: 20rpx; height: 20rpx; border-bottom: 4rpx solid currentColor; border-left: 4rpx solid currentColor; transform: rotate(45deg); }
+.title-wrap { width: 100%; text-align: center; box-sizing: border-box; }
+.title { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 34rpx; line-height: 1.4; font-weight: 600; font-family: "Songti SC", "Noto Serif SC", STSong, SimSun, serif; }
+.centered-title-wrap { position: absolute; top: 0; right: 0; bottom: 0; left: 0; display: flex; align-items: center; justify-content: center; box-sizing: border-box; text-align: center; }
+.centered-title { display: block; overflow: hidden; color: #18243B; font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif; font-size: 34rpx; line-height: 1.4; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+.centered-more { position: absolute; right: 12rpx; margin-right: 0; }
+.theme-paper { color: #12345B; background: #FFFFFF; border-bottom: 1px solid #E5EDF7; }
+.home-brand { display: flex; align-items: center; min-width: 0; width: 100%; padding-left: 32rpx; box-sizing: border-box; }
+.brand-title { flex-shrink: 0; white-space: nowrap; font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif; font-size: 36rpx; line-height: 1.4; font-weight: 700; letter-spacing: 1rpx; }
+.region { display: block; min-width: 0; margin-left: 16rpx; padding: 3rpx 12rpx; border: 1px solid #CFE2EF; border-radius: 20rpx; color: #1B5E91; background: #EAF4FB; font-size: 21rpx; line-height: 1.4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif; }
+.home-brand-with-subtitle { align-items: center; justify-content: space-between; padding-left: 34rpx; }
+.home-brand.home-brand-has-back, .home-brand-with-subtitle.home-brand-has-back { padding-left: 112rpx; }
+.home-brand-copy { min-width: 0; display: flex; flex-direction: column; justify-content: center; }
+.home-brand-with-subtitle .brand-title { font-size: 36rpx; line-height: 1.15; }
+.brand-subtitle { display: block; margin-top: 6rpx; color: #8492A8; font-size: 20rpx; line-height: 1.25; white-space: nowrap; }
+.more-button { display: flex; align-items: center; justify-content: center; flex-shrink: 0; width: 62rpx; height: 54rpx; margin-right: 10rpx; border: 1rpx solid #E5EDF7; border-radius: 28rpx; color: #6D7B90; background: #FFFFFF; font-size: 22rpx; letter-spacing: 2rpx; }
