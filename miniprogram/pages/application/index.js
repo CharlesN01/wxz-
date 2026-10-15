@@ -9,7 +9,7 @@ const kinds = [
 ];
 
 Page({
-  data: { kinds, items: [], detailItems: [], selectedKind: '', selectedKindLabel: '', selected: null, detailIntro: '按模块练习，逐步掌握应用文写作。', detailFallback: false, detailVisible: false, loading: true, error: '' },
+  data: { kinds, items: [], detailItems: [], selectedKind: '', selectedKindLabel: '', selected: null, detailIntro: '按模块练习，逐步掌握应用文写作。', detailFallback: false, detailVisible: false, detailLoading: false, detailError: '', loading: true, error: '' },
   onLoad() { this.load(); },
   async load() {
     this.setData({ loading: true, error: '' });
@@ -24,16 +24,31 @@ Page({
     const kind = event.currentTarget.dataset.kind;
     const kindInfo = kinds.find((entry) => entry.id === kind);
     const item = this.data.items.find((entry) => entry.kind === kind);
-    if (item) { this.setData({ selectedKind: kind, selectedKindLabel: kindInfo ? kindInfo.label : '应用文', selected: item, detailItems: [item], detailIntro: '按模块练习，逐步掌握应用文写作。', detailFallback: false, detailVisible: true }); return; }
+    if (item) {
+      this.setData({ selectedKind: kind, selectedKindLabel: kindInfo ? kindInfo.label : '应用文', selected: item, detailItems: [item], detailIntro: '按模块练习，逐步掌握应用文写作。', detailFallback: false, detailError: '', detailVisible: true });
+      this.loadDetail(item);
+      return;
+    }
     api.content.writings({ page: 1, kind }).then((result) => {
       const entries = result && Array.isArray(result.results) ? result.results : [];
-      this.setData({ selectedKind: kind, selectedKindLabel: entries.length ? (kindInfo ? kindInfo.label : '应用文') : '应用文', items: this.data.items.concat(entries), detailItems: entries, selected: entries[0] || null, detailIntro: entries.length ? '按模块练习，逐步掌握应用文写作。' : '山东专升本应用文学习', detailFallback: entries.length === 0, detailVisible: true });
+      this.setData({ selectedKind: kind, selectedKindLabel: entries.length ? (kindInfo ? kindInfo.label : '应用文') : '应用文', items: this.data.items.concat(entries), detailItems: entries, selected: entries[0] || null, detailIntro: entries.length ? '按模块练习，逐步掌握应用文写作。' : '山东专升本应用文学习', detailFallback: entries.length === 0, detailError: '', detailVisible: true });
     }).catch((error) => wx.showToast({ title: error.message || '加载失败', icon: 'none' }));
+  },
+  async loadDetail(item) {
+    if (!item || !item.id) return;
+    this.setData({ selected: item, detailVisible: true, detailLoading: true, detailError: '' });
+    try {
+      const detail = await api.content.writing(item.id);
+      this.setData({ selected: detail && (detail.writing || detail) || item, detailLoading: false });
+    } catch (error) {
+      this.setData({ detailLoading: false, detailError: error && error.message ? error.message : '正文暂时无法加载' });
+    }
   },
   openItem(event) {
     const id = event.currentTarget.dataset.id;
     const item = this.data.items.find((entry) => String(entry.id) === String(id));
-    if (item) this.setData({ selected: item, detailVisible: true });
+    if (!item) return;
+    this.loadDetail(item);
   },
   openStudy() { this.chooseKind({ currentTarget: { dataset: { kind: 'exercise' } } }); },
   closeDetail() { this.setData({ selected: null, detailFallback: false, detailVisible: false }); },

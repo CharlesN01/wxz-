@@ -14,7 +14,7 @@
       <view class="detail-hero"><text class="detail-tag">山东专升本语文</text><text class="detail-heading">{{selectedKindLabel || '应用文'}}</text><text class="detail-intro">{{detailIntro}}</text></view>
       <view wx:if="{{detailItems.length}}" class="detail-list"><view wx:for="{{detailItems}}" wx:key="id" class="detail-item" data-id="{{item.id}}" bindtap="openItem"><text class="detail-tag">{{item.genreName || item.categoryName || '应用文'}}</text><text class="detail-item-title">{{item.title}}</text><text class="detail-item-copy">{{item.body || item.referenceAnswer || '点击查看该模块内容。'}}</text></view></view>
       <view wx:else class="detail-note">{{detailFallback ? '这里是应用文学习页面，后续可在此查看学习内容。' : '该模块暂无已发布内容，请稍后再试。'}}</view>
-      <view wx:if="{{selected && selected.title}}" class="detail-note"><text class="detail-note-title">{{selected.title}}</text><text>{{selected.body || selected.referenceAnswer || '该内容暂未提供正文。'}}</text></view>
+      <view wx:if="{{detailLoading}}" class="detail-note">正在加载正文...</view><view wx:elif="{{detailError}}" class="detail-note detail-error">{{detailError}}</view><view wx:elif="{{selected && selected.title}}" class="detail-note"><text class="detail-note-title">{{selected.title}}</text><text>{{selected.body || selected.referenceAnswer || '该内容暂未提供正文。'}}</text></view>
     </view>
   </view>
 </view>

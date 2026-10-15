@@ -19,9 +19,10 @@ function apiMessage(error, fallback) {
 Page({
   data: {
     loggedIn: false, userId: '', entitlement: null, stats: null, product: null,
-    orders: [], loading: false, feedbackTypes, feedbackType: 'feature',
+    orders: [], loading: false, error: '', feedbackTypes, feedbackType: 'feature',
     activationVisible: false, feedbackVisible: false, ordersVisible: false,
     infoVisible: false, infoTitle: '', infoText: '', infoKind: '', memberVisible: false, activationCode: '',
+    selectedOrder: null, orderDetailVisible: false, orderDetailLoading: false, orderDetailError: '',
     feedbackContent: '', feedbackContact: '', busy: false
   },
 
@@ -29,7 +30,7 @@ Page({
 
   async refresh() {
     const session = api.auth.getSession();
-    this.setData({ loggedIn: Boolean(session && session.token), userId: session && session.user ? String(session.user.id || '') : '', loading: true });
+    this.setData({ loggedIn: Boolean(session && session.token), userId: session && session.user ? String(session.user.id || '') : '', loading: true, error: '' });
     const productTask = api.products.list().catch(() => null);
     if (!session || !session.token) {
       const products = await productTask;
@@ -41,12 +42,13 @@ Page({
     ]);
     const products = await productTask;
     const product = products && products.results && products.results[0] || null;
+    const failed = results.filter((result) => result.status === 'rejected');
     this.setData({
       entitlement: results[0].status === 'fulfilled' ? results[0].value : null,
       stats: results[1].status === 'fulfilled' ? results[1].value : null,
       preferences: results[2].status === 'fulfilled' ? results[2].value : null,
       orders: results[3].status === 'fulfilled' && results[3].value && Array.isArray(results[3].value.results) ? results[3].value.results : [],
-      product, loading: false
+      product, loading: false, error: failed.length ? '部分账户数据暂时无法加载' : ''
     });
   },
 
@@ -84,6 +86,18 @@ Page({
     this.setData({ ordersVisible: true });
   },
   closeOrders() { this.setData({ ordersVisible: false }); },
+  async openOrder(event) {
+    const id = event.currentTarget.dataset.id;
+    if (!id || this.data.orderDetailLoading) return;
+    this.setData({ selectedOrder: this.data.orders.find((order) => String(order.id) === String(id)) || null, ordersVisible: false, orderDetailVisible: true, orderDetailLoading: true, orderDetailError: '' });
+    try {
+      const detail = await api.orders.detail(id);
+      this.setData({ selectedOrder: detail && (detail.order || detail) || this.data.selectedOrder, orderDetailLoading: false });
+    } catch (error) {
+      this.setData({ orderDetailLoading: false, orderDetailError: error && error.message ? error.message : '订单详情暂时无法加载' });
+    }
+  },
+  closeOrderDetail() { this.setData({ orderDetailVisible: false, selectedOrder: null, orderDetailError: '' }); },
   openActivation() {
     if (!this.data.loggedIn) { showToast('请先登录'); return; }
     this.setData({ activationVisible: true, activationCode: '' });

@@ -5,6 +5,8 @@ page { background: #f5f9ff; }
 .top-side { display: grid; place-items: center; width: 64rpx; height: 64rpx; color: #728097; font-size: 44rpx; line-height: 1; }
 .top-side.more { font-size: 26rpx; letter-spacing: 3rpx; }
 .mine-body { padding: 24rpx; }
+.login-card { margin-bottom: 20rpx; padding: 26rpx; border: 1rpx solid #dce9fb; border-radius: 26rpx; background: #fff; }.login-title { display: block; color: #152844; font-size: 26rpx; font-weight: 700; }.login-copy { display: block; margin-top: 8rpx; color: #8492a8; font-size: 20rpx; line-height: 1.5; }.login-button { margin: 18rpx 0 0; width: 100%; height: 72rpx; border: 0; border-radius: 18rpx; color: #fff; background: #247fee; font-size: 24rpx; line-height: 72rpx; }.state.error-state { margin: 0 0 20rpx; padding: 20rpx; border-radius: 20rpx; color: #b65f4c; background: #fff5f2; font-size: 20rpx; text-align: center; }.error-copy { color: #b65f4c; }
+.state.loading-state { margin: 0 0 20rpx; padding: 20rpx; border-radius: 20rpx; color: #52709a; background: #eef6ff; font-size: 20rpx; text-align: center; }
 .profile { padding: 30rpx; border-radius: 32rpx; color: #fff; background: linear-gradient(135deg,#1b72db,#69b0f4); }
 .profile-head { display: flex; align-items: center; gap: 22rpx; }
 .avatar { display: grid; place-items: center; flex: none; width: 88rpx; height: 88rpx; border: 4rpx solid rgba(255,255,255,.5); border-radius: 50%; background: rgba(255,255,255,.15); font-size: 36rpx; font-weight: 800; }
