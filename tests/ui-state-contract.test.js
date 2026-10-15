@@ -66,7 +66,7 @@ test('文常随机使用原型底栏，文言随机保留顶部自定义导航',
   assert.match(script, /openProfile\(\)/);
 });
 
-test('首页随机续学传递题源、题型、篇目和模式；资料群入口进入资源页', () => {
+test('首页入口固定进入自测；随机续学保留上下文；资料群按钮打开首页弹窗', () => {
   const routes = [];
   const navigation = { openPage(path, params) { routes.push({ path, params: jsonCopy(params || {}) }); } };
   const toasts = [];
@@ -89,7 +89,9 @@ test('首页随机续学传递题源、题型、篇目和模式；资料群入�
   });
 
   page.openGroupModal();
-  assert.deepEqual(routes.pop(), { path: '/pages/resources/index', params: {} });
+  assert.equal(page.data.groupModalVisible, true);
+  page.openModule({ currentTarget: { dataset: { page: 'random', source: 'literature' } } });
+  assert.deepEqual(routes.pop(), { path: '/pages/random/index', params: { source: 'literature', mode: 'writing' } });
   page.moreSettings();
   assert.equal(toasts[0].title, '更多设置');
   const homeTemplate = fs.readFileSync(path.join(root, 'miniprogram/pages/home/index.wxml'), 'utf8');

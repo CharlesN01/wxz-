@@ -30,6 +30,7 @@ Page({
   onLoad(options) {
     options = options || {};
     this.articleId = options.articleId || '';
+    this._requestedQuestionId = options.questionId || '';
     const localArticle = dataService.getArticles().find((article) => article.id === this.articleId);
     this.articleTitle = options.articleTitle || (localArticle && localArticle.title) || '';
     this.questionType = options.type === 'translation' ? 'translation' : 'word';
@@ -90,6 +91,13 @@ Page({
     results.forEach((item, index) => { if (item.ok) this._stateMap[rows[index].id] = normalizeState(item.value); });
   },
   async restoreResume() {
+    if (this._requestedQuestionId) {
+      const requestedIndex = this.allQuestions.findIndex((question) => String(question.id) === String(this._requestedQuestionId));
+      if (requestedIndex >= 0) {
+        this.setData({ groupIndex: Math.floor(requestedIndex / GROUP_SIZE) });
+        return;
+      }
+    }
     let saved = null;
     if (hasToken()) {
       const result = await settle(api.learning.resume());

@@ -23,7 +23,7 @@ test('带返回的非居中 paper 标题避开返回触控区，不改变无返�
   assert.match(styles, /\.home-brand\.home-brand-has-back, \.home-brand-with-subtitle\.home-brand-has-back \{ padding-left: 112rpx; \}/);
 });
 
-test('应用文详情标题按 375px 原型尺寸设置为 23px', () => {
+test('应用文详情标题按 430px 原型尺寸设置为 23px', () => {
   const styles = read('miniprogram/pages/application/index.wxss');
-  assert.match(styles, /\.detail-heading \{[^}]*font-size: 46rpx;/);
+  assert.match(styles, /\.detail-heading \{[^}]*font-size: 23px;/);
 });

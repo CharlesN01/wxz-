@@ -65,3 +65,59 @@ page { background: #F5FAFE; }
 .group-modal-tip { display: block; color: #247FEE; font-size: 20rpx; font-weight: 700; }
 .group-modal-note { display: block; margin-top: 10rpx; color: #778AA3; font-size: 18rpx; }
 @keyframes home-spin { from { transform: rotate(0); } to { transform: rotate(360deg); } }
+
+/* 430px prototype baseline; keep the same geometry across simulator widths. */
+.home-page { padding-bottom: 76px; }
+.home-body { padding: 12px; }
+.dashboard-card { padding: 12px 16px; border-radius: 17px; }
+.dashboard-head { font-size: 10px; }
+.target-pill { padding: 5px 8px; border-radius: 8px; font-size: 9px; }
+.countdown-line { margin-top: 9px; }
+.countdown-number { font-size: 27px; }
+.countdown-unit { margin-left: 5px; font-size: 10px; }
+.dashboard-caption { margin-top: 7px; font-size: 10px; }
+.dashboard-stats { gap: 8px; margin-top: 11px; }
+.dashboard-stat { padding: 8px 7px; border-radius: 11px; }
+.stat-number { font-size: 17px; }
+.stat-label { margin-top: 3px; font-size: 9px; }
+.growth-card { margin-top: 10px; padding: 10px 12px; border-radius: 13px; }
+.growth-title { font-size: 12px; }
+.growth-value { font-size: 10px; }
+.trend-bars { height: 57px; margin-top: 7px; padding: 0 5px; }
+.trend-column { gap: 3px; font-size: 8px; }
+.trend-bar { width: 17px; max-height: 44px; border-radius: 5px 5px 0 0; }
+.section-title { margin: 15px 2px 8px; font-size: 14px; }
+.module-grid { gap: 8px; }
+.module-card, .module-wide { min-height: 74px; padding: 11px; border-radius: 13px; }
+.module-icon, .continue-icon { width: 31px; height: 31px; border-radius: 9px; font-size: 11px; }
+.module-copy { margin-left: 9px; }
+.module-name { font-size: 11px; }
+.module-desc { margin-top: 3px; font-size: 9px; }
+.module-arrow { font-size: 18px; }
+.continue-card { gap: 10px; margin-top: 11px; padding: 12px; border-radius: 14px; }
+.continue-title { font-size: 12px; }
+.continue-desc { margin-top: 3px; font-size: 9px; }
+.continue-action { padding: 7px 9px; border-radius: 8px; font-size: 10px; }
+.group-card { gap: 9px; margin-top: 9px; padding: 11px; border-radius: 14px; }
+.group-icon { flex-basis: 34px; height: 34px; border-radius: 10px; font-size: 11px; }
+.group-badge { padding: 2px 6px; border-radius: 5px; font-size: 8px; }
+.group-title { margin-top: 3px; font-size: 11px; }
+.group-desc { margin-top: 3px; font-size: 9px; }
+.group-action { padding: 7px 10px; border-radius: 8px; font-size: 10px; }
+.home-nav { height: 64px; padding-bottom: env(safe-area-inset-bottom); }
+.nav-item { font-size: 10px; }
+.nav-symbol { margin-bottom: 3px; font-size: 17px; }
+.group-modal { padding: 16px; }
+.group-modal-card { max-width: 310px; padding: 17px 16px 14px; border-radius: 20px; }
+.group-modal-close { top: 9px; right: 9px; width: 27px; height: 27px; border-radius: 8px; font-size: 18px; }
+.group-modal-kicker { padding: 4px 8px; border-radius: 7px; font-size: 9px; }
+.group-modal-title { margin-top: 8px; font-size: 16px; }
+.group-modal-copy { margin-top: 3px; font-size: 10px; }
+.group-qr { width: 126px; height: 126px; margin: 10px auto 7px; border-radius: 11px; }
+.group-qr::before, .group-qr::after { width: 18px; height: 18px; border-width: 3px; }
+.group-qr::before { top: 10px; left: 10px; }
+.group-qr::after { right: 10px; bottom: 10px; }
+.group-qr-text { font-size: 10px; }
+.group-qr-heading { margin-bottom: 4px; font-size: 11px; }
+.group-modal-tip { font-size: 10px; }
+.group-modal-note { margin-top: 5px; font-size: 9px; }

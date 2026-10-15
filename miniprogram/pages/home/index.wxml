@@ -18,16 +18,21 @@
       </view>
     </view>
 
+    <view class="growth-card">
+      <view class="growth-head"><text class="growth-title">学习趋势</text><text class="growth-value">较上周 +23%</text></view>
+      <view class="trend-bars"><view wx:for="{{trendBars}}" wx:key="label" class="trend-column"><view class="trend-bar {{item.active ? 'trend-bar-active' : ''}}" style="height: {{item.height}}rpx;"></view><text>{{item.label}}</text></view></view>
+    </view>
+
     <view class="section-title"><text>学习专区</text></view>
     <view class="module-grid">
       <view class="module-card" data-page="literature" bindtap="openModule" hover-class="module-pressed">
-        <view class="module-icon module-blue">书</view><view class="module-copy"><text class="module-name">文学常识</text><text class="module-desc">{{categoryCount}} 个时期分类 · {{literatureCount}} 个考点</text></view>
+        <view class="module-icon module-blue">书</view><view class="module-copy"><text class="module-name">文学常识</text><text class="module-desc">八大时期分类</text></view>
       </view>
       <view class="module-card" data-page="random" data-source="literature" bindtap="openModule" hover-class="module-pressed">
-        <view class="module-icon module-orange">测</view><view class="module-copy"><text class="module-name">文常测试</text><text class="module-desc">随机抽题 · 每组 {{config.pageSize}} 题</text></view>
+        <view class="module-icon module-orange">测</view><view class="module-copy"><text class="module-name">文常测试</text><text class="module-desc">随机抽题</text></view>
       </view>
       <view class="module-card" data-page="classical" bindtap="openModule" hover-class="module-pressed">
-        <view class="module-icon module-green">背</view><view class="module-copy"><text class="module-name">文言文背诵</text><text class="module-desc">{{articleCount}} 篇重点篇目</text></view>
+        <view class="module-icon module-green">背</view><view class="module-copy"><text class="module-name">文言文背诵</text><text class="module-desc">25 篇重点篇目</text></view>
       </view>
       <view class="module-card" data-page="random" data-source="classical" bindtap="openModule" hover-class="module-pressed">
         <view class="module-icon module-purple">练</view><view class="module-copy"><text class="module-name">文言测试</text><text class="module-desc">字词与翻译强化</text></view>
@@ -42,10 +47,6 @@
     </view>
     <view class="group-card" data-page="resources" bindtap="openModule" hover-class="module-pressed">
       <view class="group-icon">群</view><view class="group-copy"><text class="group-badge">备考资料共享</text><text class="group-title">山东专升本资料备考群</text><text class="group-desc">每日更新最新资料 · 进群有机会领取免费会员</text></view><view class="group-action" role="button" catchtap="openGroupModal">扫码进群</view>
-    </view>
-    <view class="growth-card">
-      <view class="growth-head"><text class="growth-title">学习趋势</text><text class="growth-value">较上周 +23%</text></view>
-      <view class="trend-bars"><view wx:for="{{trendBars}}" wx:key="label" class="trend-column"><view class="trend-bar {{item.active ? 'trend-bar-active' : ''}}" style="height: {{item.height}}rpx;"></view><text>{{item.label}}</text></view></view>
     </view>
     <text wx:if="{{personalError}}" class="personal-note">{{personalError}}</text>
   </view>

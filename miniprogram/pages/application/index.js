@@ -32,7 +32,19 @@ Page({
     api.content.writings({ page: 1, kind }).then((result) => {
       const entries = result && Array.isArray(result.results) ? result.results : [];
       this.setData({ selectedKind: kind, selectedKindLabel: entries.length ? (kindInfo ? kindInfo.label : '应用文') : '应用文', items: this.data.items.concat(entries), detailItems: entries, selected: entries[0] || null, detailIntro: entries.length ? '按模块练习，逐步掌握应用文写作。' : '山东专升本应用文学习', detailFallback: entries.length === 0, detailError: '', detailVisible: true });
-    }).catch((error) => wx.showToast({ title: error.message || '加载失败', icon: 'none' }));
+    }).catch((error) => {
+      const message = error && error.message ? error.message : '该模块暂时无法加载';
+      this.setData({
+        selectedKind: kind,
+        selectedKindLabel: kindInfo ? kindInfo.label : '应用文',
+        detailItems: [],
+        selected: null,
+        detailIntro: '山东专升本应用文学习',
+        detailFallback: false,
+        detailError: message,
+        detailVisible: true
+      });
+    });
   },
   async loadDetail(item) {
     if (!item || !item.id) return;

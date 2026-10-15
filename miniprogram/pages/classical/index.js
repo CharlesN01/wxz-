@@ -23,6 +23,16 @@ function settle(promise) {
   return Promise.resolve(promise).then((value) => ({ ok: true, value }), (error) => ({ ok: false, error }));
 }
 
+function normalizeQuestionState(value) {
+  return { mastered: Boolean(value && value.mastered) };
+}
+
+function articleStatus(completed, total) {
+  if (!total || completed <= 0) return { status: 'unlearned', statusLabel: '未学' };
+  if (completed >= total) return { status: 'learned', statusLabel: '已学' };
+  return { status: 'learning', statusLabel: '练习中' };
+}
+
 Page({
   data: {
     loading: true,
@@ -135,6 +145,8 @@ Page({
       statusLabel: '未学',
       placeholder: false
     }));
+    let stateResult = { ok: true, value: null };
+    if (hasToken()) stateResult = await this.loadArticleStates(this.articles);
     this._remoteLoaded = true;
     this.setData({
       loading: false,
@@ -142,11 +154,55 @@ Page({
       articleTotal: total,
       learnedCount,
       completionPercent: total ? Math.round(learnedCount / total * 100) : 0,
-      personalError: statsResult.ok ? '' : describeError(statsResult.error)
+      personalError: !statsResult.ok
+        ? describeError(statsResult.error)
+        : (!stateResult.ok ? describeError(stateResult.error) : '')
     });
     this.applyFilter();
     this.restoreRequestedArticle();
     if (this.canvasReady) wx.nextTick(() => this.drawProgress());
+  },
+
+  async loadArticleStates(articles) {
+    const progress = {};
+    let firstError = null;
+    for (const article of articles) {
+      const questionResult = await settle(api.content.questions({ source: 'classical', articleId: article.id, page: 1 }));
+      if (!questionResult.ok) {
+        firstError = firstError || questionResult.error;
+        continue;
+      }
+      const payload = questionResult.value || {};
+      const questions = Array.isArray(payload.results) ? payload.results.slice() : [];
+      let next = payload.next || null;
+      const seen = new Set();
+      while (next && !seen.has(String(next))) {
+        seen.add(String(next));
+        const pageResult = await settle(api.pagination.follow(next, { auth: true, basePath: '/api/student/v1/questions/' }));
+        if (!pageResult.ok) {
+          firstError = firstError || pageResult.error;
+          break;
+        }
+        const page = pageResult.value || {};
+        if (Array.isArray(page.results)) questions.push(...page.results);
+        next = page.next || null;
+      }
+      if (!progress[article.id]) progress[article.id] = { total: 0, completed: 0 };
+      progress[article.id].total = questions.length;
+      const stateResults = await Promise.all(questions.map((question) => settle(api.learning.questionState(question.id))));
+      stateResults.forEach((state) => {
+        if (state.ok && normalizeQuestionState(state.value).mastered) progress[article.id].completed += 1;
+      });
+    }
+    const updated = articles.map((article) => {
+      const item = progress[article.id];
+      if (!item) return article;
+      const total = article.total || item.total;
+      return Object.assign({}, article, { total, completed: item.completed }, articleStatus(item.completed, total));
+    });
+    this.articles = updated;
+    this.setData({ visibleArticles: updated, visibleCount: updated.length });
+    return firstError ? { ok: false, error: firstError } : { ok: true, value: progress };
   },
 
   onRetry() {

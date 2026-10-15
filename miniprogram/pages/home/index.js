@@ -227,7 +227,7 @@ Page({
   },
 
   openGroupModal() {
-    navigation.openPage('/pages/resources/index');
+    this.setData({ groupModalVisible: true });
   },
 
   closeGroupModal() {
@@ -245,9 +245,13 @@ Page({
   openModule(event) {
     const dataset = event.currentTarget.dataset || {};
     if (!dataset.page) return;
+    const params = dataset.source ? { source: dataset.source } : {};
+    if (dataset.page === 'literature' || dataset.page === 'random' || dataset.page === 'classical') {
+      params.mode = 'writing';
+    }
     navigation.openPage(
       '/pages/' + dataset.page + '/index',
-      dataset.source ? { source: dataset.source } : {}
+      params
     );
   },
 
@@ -289,7 +293,8 @@ Page({
         articleId: resume.articleId || undefined,
         type: resume.type,
         mode: resume.mode || undefined,
-        questionId: resume.questionId || undefined
+        questionId: resume.questionId || undefined,
+        resume: resume.questionId ? 1 : undefined
       });
       return;
     }

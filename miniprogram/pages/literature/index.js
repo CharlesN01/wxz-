@@ -104,7 +104,10 @@ Page({
 
   onLoad(options) {
     this._options = options || {};
-    this.setData({ safeTop: safeTop.getSafeTop(typeof wx !== 'undefined' ? wx : null) });
+    // These prototype pages have no custom navigation bar; the WeChat viewport
+    // already starts below the status bar, so adding a capsule spacer would
+    // create a large blank band above the period tabs.
+    this.setData({ safeTop: 0 });
     this._questionRequest = 0;
     this._questionPages = {};
     this._loaded = false;
