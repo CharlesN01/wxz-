@@ -366,7 +366,8 @@ async function main() {
   await captureRoute('11-文言随机-自测', '/pages/random/index?source=classical&type=word&mode=writing', 'pages/random/index');
   await captureRoute('12-文言随机-背诵', '/pages/random/index?source=classical&type=word&mode=reciting', 'pages/random/index');
   await captureRoute('13-应用文', '/pages/application/index', 'pages/application/index');
-  await captureRoute('14-我的收藏', '/pages/favorites/index?source=classical', 'pages/favorites/index');
+  // 原型默认打开文学常识收藏；文言来源空态由专项收藏场景单独验收。
+  await captureRoute('14-我的收藏', '/pages/favorites/index?source=literature', 'pages/favorites/index');
   await captureRoute('15-我的', '/pages/mine/index', 'pages/mine/index');
   await captureRoute('16-资料群', '/pages/resources/index', 'pages/resources/index');
 
