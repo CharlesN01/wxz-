@@ -28,6 +28,20 @@ Page({
 
   onShow() { this.refresh(); },
 
+  async loadOrders() {
+    let response = await api.orders.list({ page: 1 });
+    const orders = response && Array.isArray(response.results) ? response.results.slice() : [];
+    let next = response && response.next;
+    const seen = new Set();
+    while (next && !seen.has(String(next))) {
+      seen.add(String(next));
+      response = await api.pagination.follow(next, { auth: true, basePath: '/api/student/v1/orders/' });
+      if (response && Array.isArray(response.results)) orders.push(...response.results);
+      next = response && response.next;
+    }
+    return orders;
+  },
+
   async refresh() {
     const session = api.auth.getSession();
     this.setData({ loggedIn: Boolean(session && session.token), userId: session && session.user ? String(session.user.id || '') : '', loading: true, error: '' });
@@ -38,16 +52,21 @@ Page({
       return;
     }
     const results = await Promise.allSettled([
-      api.entitlements.current(), api.learning.statistics(), api.learning.preferences(), api.orders.list({ page: 1 })
+      api.entitlements.current(), api.learning.statistics(), api.learning.preferences(), this.loadOrders()
     ]);
     const products = await productTask;
     const product = products && products.results && products.results[0] || null;
     const failed = results.filter((result) => result.status === 'rejected');
+    const authFailure = failed.some((result) => result.reason && (result.reason.status === 401 || result.reason.code === 'INVALID_TOKEN'));
+    if (authFailure) {
+      this.setData({ loggedIn: false, userId: '', entitlement: null, stats: null, preferences: null, orders: [], product, loading: false, error: '登录状态已失效，请重新登录' });
+      return;
+    }
     this.setData({
       entitlement: results[0].status === 'fulfilled' ? results[0].value : null,
       stats: results[1].status === 'fulfilled' ? results[1].value : null,
       preferences: results[2].status === 'fulfilled' ? results[2].value : null,
-      orders: results[3].status === 'fulfilled' && results[3].value && Array.isArray(results[3].value.results) ? results[3].value.results : [],
+      orders: results[3].status === 'fulfilled' && Array.isArray(results[3].value) ? results[3].value : [],
       product, loading: false, error: failed.length ? '部分账户数据暂时无法加载' : ''
     });
   },

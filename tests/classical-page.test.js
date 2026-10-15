@@ -101,3 +101,21 @@ test('目录续学优先恢复已有练习断点，保留其题型及题序', ()
   assert.deepEqual(routes, ['/pages/practice/index?articleId=quanxue&type=word&resume=1']);
   assert.deepEqual(store.getResume(), resume);
 });
+
+test('目录远端续学按服务端掌握状态选题，不读取本地演示断点', () => {
+  const { page, store, routes } = createClassicalPage();
+  store.saveResume({ path: '/pages/practice/index', options: { articleId: 'quanxue', type: 'word' }, groupIds: [], groupIndex: 0 });
+  page.data.dataSource = 'remote';
+  page.data.mode = 'reciting';
+  page.articles = [
+    { id: 'remote-a', title: '远端篇一' },
+    { id: 'remote-b', title: '远端篇二' }
+  ];
+  page._remoteQuestions = [
+    { id: 'remote-q1', articleId: 'remote-a', type: 'word', mastered: true },
+    { id: 'remote-q2', articleId: 'remote-a', type: 'translation', mastered: false },
+    { id: 'remote-q3', articleId: 'remote-b', type: 'word', mastered: false }
+  ];
+  page.onContinue();
+  assert.deepEqual(routes, ['/pages/practice/index?articleId=remote-a&articleTitle=%E8%BF%9C%E7%AB%AF%E7%AF%87%E4%B8%80&type=translation&mode=reciting&questionId=remote-q2&resume=1']);
+});

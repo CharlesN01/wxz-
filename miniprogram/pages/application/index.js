@@ -11,11 +11,24 @@ const kinds = [
 Page({
   data: { kinds, items: [], detailItems: [], selectedKind: '', selectedKindLabel: '', selected: null, detailIntro: '按模块练习，逐步掌握应用文写作。', detailFallback: false, detailVisible: false, detailLoading: false, detailError: '', loading: true, error: '' },
   onLoad() { this.load(); },
+  async loadWritings(params) {
+    let response = await api.content.writings(params);
+    const entries = response && Array.isArray(response.results) ? response.results.slice() : [];
+    let next = response && response.next;
+    const seen = new Set();
+    while (next && !seen.has(String(next))) {
+      seen.add(String(next));
+      response = await api.pagination.follow(next, { basePath: '/api/student/v1/writings/' });
+      if (response && Array.isArray(response.results)) entries.push(...response.results);
+      next = response && response.next;
+    }
+    return { entries, count: Number(response && response.count) || entries.length };
+  },
   async load() {
     this.setData({ loading: true, error: '' });
     try {
-      const result = await api.content.writings({ page: 1 });
-      this.setData({ items: result && Array.isArray(result.results) ? result.results : [], loading: false });
+      const result = await this.loadWritings({ page: 1 });
+      this.setData({ items: result.entries, loading: false });
     } catch (error) {
       this.setData({ loading: false, error: error.message || '应用文暂时无法加载' });
     }
@@ -29,8 +42,8 @@ Page({
       this.loadDetail(item);
       return;
     }
-    api.content.writings({ page: 1, kind }).then((result) => {
-      const entries = result && Array.isArray(result.results) ? result.results : [];
+    this.loadWritings({ page: 1, kind }).then((result) => {
+      const entries = result.entries;
       this.setData({ selectedKind: kind, selectedKindLabel: entries.length ? (kindInfo ? kindInfo.label : '应用文') : '应用文', items: this.data.items.concat(entries), detailItems: entries, selected: entries[0] || null, detailIntro: entries.length ? '按模块练习，逐步掌握应用文写作。' : '山东专升本应用文学习', detailFallback: entries.length === 0, detailError: '', detailVisible: true });
     }).catch((error) => {
       const message = error && error.message ? error.message : '该模块暂时无法加载';
@@ -55,6 +68,9 @@ Page({
     } catch (error) {
       this.setData({ detailLoading: false, detailError: error && error.message ? error.message : '正文暂时无法加载' });
     }
+  },
+  retryDetail() {
+    return this.data.selected ? this.loadDetail(this.data.selected) : Promise.resolve();
   },
   openItem(event) {
     const id = event.currentTarget.dataset.id;
