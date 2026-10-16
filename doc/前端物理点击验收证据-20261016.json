@@ -1,0 +1,13 @@
+{
+  "checkedAt": "2026-10-16",
+  "endpoint": "ws://127.0.0.1:9485",
+  "viewport": "430x932",
+  "currentCommit": "b62736b",
+  "interactions": {
+    "literatureAnswer": { "before": false, "after": true, "passed": true, "click": { "x": 1485, "y": 303 }, "screenshots": [".devtools/automation/physical-literature-answer-before-430.jpg", ".devtools/automation/physical-literature-answer-after-430.jpg"] },
+    "orderDetail": { "ordersVisible": false, "orderDetailVisible": true, "orderDetailLoading": false, "orderDetailError": "", "selectedOrderId": "qa-order-20261015-001", "passed": true, "clicks": [{ "x": 1355, "y": 390 }, { "x": 1300, "y": 910 }], "screenshot": ".devtools/automation/physical-mine-order-detail-430-final.jpg" },
+    "feedbackSubmit": { "openedByPhysicalClick": true, "contentInjectedForInput": true, "after": { "feedbackVisible": false, "busy": false }, "passed": true, "click": { "x": 1335, "y": 910 }, "screenshots": [".devtools/automation/physical-mine-feedback-filled.jpg", ".devtools/automation/physical-mine-feedback-after-submit.jpg"] },
+    "resourcesCopy": { "before": { "loading": false, "canCopy": true, "copied": false }, "after": { "loading": false, "canCopy": true, "copied": true, "clipboardPresent": true, "clipboardLength": 11 }, "passed": true, "click": { "x": 1330, "y": 891 }, "screenshots": [".devtools/automation/physical-resources-before.jpg", ".devtools/automation/physical-resources-after-copy.jpg"] }
+  },
+  "result": "passed"
+}
