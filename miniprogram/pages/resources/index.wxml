@@ -24,17 +24,17 @@
         <view class="qr-mark qr-mark-tr"></view>
         <view class="qr-mark qr-mark-bl"></view>
         <view class="qr-mark qr-mark-br"></view>
-        <view class="qr-placeholder-copy"><text>微信二维码待放置</text><text>请替换为你的个人微信二维码</text><text>当前不是可扫码二维码</text></view>
+        <view class="qr-placeholder-copy"><text class="qr-placeholder-title">微信二维码待放置</text><text class="qr-placeholder-line">请替换为你的个人微信二维码</text><text class="qr-placeholder-line">当前不是可扫码二维码</text></view>
       </view>
       <text class="qr-note">建议使用清晰、未过期的个人微信二维码</text>
       <text wx:if="{{wechatId}}" class="wechat">微信号：{{wechatId}}</text>
       <text wx:if="{{announcement}}" class="announcement">{{announcement}}</text>
-      <view class="trust"><text>免费领取</text><text>资料持续更新</text></view>
+      <view class="trust"><text class="trust-item"><text class="trust-check">✓</text>免费领取</text><text class="trust-item"><text class="trust-check">✓</text>资料持续更新</text></view>
     </view>
   </view>
 
   <view class="bottom">
     <button bindtap="copyCode" disabled="{{!canCopy}}">{{copied ? copiedText : copyButtonText}}</button>
-    <text>{{canCopy ? '复制后添加微信并发送口令，即可领取' : '资料配置完成后，可复制口令并领取'}}</text>
+    <text class="bottom-note">{{canCopy ? '复制后添加微信并发送口令，即可领取' : '资料配置完成后，可复制口令并领取'}}</text>
   </view>
 </view>
