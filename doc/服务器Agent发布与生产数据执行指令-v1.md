@@ -1,8 +1,8 @@
 # 服务器 Agent 发布与生产数据执行指令
 
-目标服务器：`152.136.62.224`  
-服务目录：`/srv/chinese-study`  
-运行服务：`chinese-study.service`  
+目标服务器：`152.136.62.224`
+服务目录：`/srv/chinese-study`
+运行服务：`chinese-study.service`
 公网域名：`https://zsbzy.com`
 
 本指令使用已生成的 `wxz.tar.gz` 发布包。包外 SHA-256 文件必须一起上传；任何校验失败都停止，不覆盖当前 release。命令不会打印环境密钥，也不执行支付开关开启。
