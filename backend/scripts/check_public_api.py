@@ -6,6 +6,7 @@ assuming demo IDs. It never authenticates, writes data, or changes settings.
 
 import argparse
 import json
+import math
 import sys
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode, urljoin
@@ -36,11 +37,6 @@ def page_count(payload):
     return value if isinstance(value, int) else None
 
 
-def first_result(payload):
-    rows = payload.get("results") if isinstance(payload, dict) else None
-    return rows[0] if isinstance(rows, list) and rows and isinstance(rows[0], dict) else {}
-
-
 def check(base_url, timeout):
     checks = []
     failures = []
@@ -59,29 +55,66 @@ def check(base_url, timeout):
                 item["purchaseAvailable"] = payload["purchaseAvailable"]
             if isinstance(payload.get("results"), list):
                 item["resultCount"] = len(payload["results"])
-            item["firstId"] = payload["results"][0].get("id") if payload.get("results") else None
+                item["firstId"] = payload["results"][0].get("id") if payload["results"] else None
         checks.append(item)
         return item, payload
 
+    def catalog_rows(name, path, payload):
+        rows = payload.get("results", []) if isinstance(payload, dict) else []
+        rows = [row for row in rows if isinstance(row, dict)]
+        total = page_count(payload)
+        page_size = len(rows)
+        if total is None or total <= page_size:
+            return rows
+        if page_size == 0:
+            failures.append(f"{name} pagination returned no rows despite count={total}")
+            return rows
+
+        page_count_expected = math.ceil(total / page_size)
+        for page_number in range(2, page_count_expected + 1):
+            separator = "&" if "?" in path else "?"
+            page_path = f"{path}{separator}{urlencode({'page': page_number})}"
+            item, page_payload = add(f"{name} page {page_number}", page_path)
+            page_rows = page_payload.get("results", []) if isinstance(page_payload, dict) else []
+            rows.extend(row for row in page_rows if isinstance(row, dict))
+            if item["status"] != 200:
+                break
+        if len(rows) < total:
+            failures.append(f"{name} pagination incomplete: expected={total} received={len(rows)}")
+        return rows
+
+    def has_questions(name, source, scopes, scope_parameter):
+        if not scopes:
+            checks.append({
+                "name": name,
+                "path": f"(skipped: no {scope_parameter})",
+                "status": None,
+                "required": True,
+            })
+            failures.append(f"{name} status=None")
+            return
+
+        for scope in scopes:
+            scope_id = scope.get("id")
+            if not scope_id:
+                continue
+            query = {"source": source, scope_parameter: scope_id, "page": "1"}
+            item, payload = add(
+                name,
+                "/api/student/v1/questions/?" + urlencode(query),
+            )
+            if item["status"] == 200 and (page_count(payload) or 0) > 0:
+                return
+        failures.append(f"{name} is empty across {len(scopes)} {scope_parameter} values")
+
     add("healthz", "/healthz")
     _, category_payload = add("categories", "/api/student/v1/categories/")
-    articles, article_payload = add("articles", "/api/student/v1/articles/")
+    categories = catalog_rows("categories", "/api/student/v1/categories/", category_payload)
+    _, article_payload = add("articles", "/api/student/v1/articles/")
+    articles = catalog_rows("articles", "/api/student/v1/articles/", article_payload)
 
-    category_id = first_result(category_payload).get("id")
-    if category_id:
-        add("literature questions", "/api/student/v1/questions/?" + urlencode({
-            "source": "literature", "categoryId": category_id, "page": "1",
-        }))
-    else:
-        checks.append({"name": "literature questions", "path": "(skipped: no category)", "status": None, "required": True})
-
-    article_id = first_result(article_payload).get("id")
-    if article_id:
-        add("classical questions", "/api/student/v1/questions/?" + urlencode({
-            "source": "classical", "articleId": article_id, "type": "word", "page": "1",
-        }))
-    else:
-        checks.append({"name": "classical questions", "path": "(skipped: no article)", "status": None, "required": True})
+    has_questions("literature questions", "literature", categories, "categoryId")
+    has_questions("classical questions", "classical", articles, "articleId")
 
     add("writings", "/api/student/v1/writings/")
     products, product_payload = add("products", "/api/student/v1/products/")
@@ -106,8 +139,6 @@ def check(base_url, timeout):
         if item["status"] != 200:
             failures.append(item["name"] + " status=" + str(item["status"]))
         elif item["name"] in {"categories", "articles", "writings", "products"} and item.get("count") == 0:
-            failures.append(item["name"] + " is empty")
-        elif item["name"] in {"literature questions", "classical questions"} and item.get("count") == 0:
             failures.append(item["name"] + " is empty")
     return checks, failures, warnings
 
