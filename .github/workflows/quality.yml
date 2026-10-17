@@ -2,7 +2,7 @@ name: Quality
 
 on:
   push:
-    branches: [main, 'codex/backend-**']
+    branches: [main, 'codex/backend-**', 'codex/restore-prototype-*']
   pull_request:
   workflow_dispatch:
 
