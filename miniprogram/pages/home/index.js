@@ -89,6 +89,13 @@ Page({
     resumeDescription: '从第一个文学分类开始学习',
     resumeAvailable: false,
     groupModalVisible: false,
+    groupQrCode: '',
+    groupWechatId: '',
+    groupClaimCode: '',
+    groupModalCopy: '扫码添加微信，邀请你进群',
+    groupModalTip: '每日更新最新资料',
+    groupModalNote: '进群有机会领取免费会员',
+    groupResourceError: '',
     trendBars: [
       { label: '一', height: 56 }, { label: '二', height: 82 }, { label: '三', height: 108, active: true },
       { label: '四', height: 70 }, { label: '五', height: 128, active: true }, { label: '六', height: 92 }, { label: '日', height: 60 }
@@ -99,10 +106,14 @@ Page({
     this._loadVersion = 0;
     this._loaded = false;
     this.loadPublicData();
+    this.loadGroupResource();
   },
 
   onShow() {
-    if (this._loaded) this.loadPersonalData();
+    if (this._loaded) {
+      this.loadPersonalData();
+      this.loadGroupResource();
+    }
   },
 
   async loadPublicData() {
@@ -224,10 +235,44 @@ Page({
 
   retry() {
     this.loadPublicData();
+    this.loadGroupResource();
   },
 
   openGroupModal() {
     this.setData({ groupModalVisible: true });
+    this.loadGroupResource();
+  },
+
+  async loadGroupResource() {
+    if (!api.resources || typeof api.resources.group !== 'function') return;
+    const result = await settle(api.resources.group());
+    if (!result.ok) {
+      this.setData({ groupResourceError: describeError(result.error, '资料群配置暂时无法加载') });
+      return;
+    }
+    const resource = result.value && result.value.enabled ? result.value : {};
+    const claimCode = resource.claimCode || '';
+    this.setData({
+      groupQrCode: resource.groupQrCode || '',
+      groupWechatId: resource.wechatId || '',
+      groupClaimCode: claimCode,
+      groupModalCopy: resource.wechatId
+        ? '微信号：' + resource.wechatId + '，扫码添加微信'
+        : '扫码添加微信，邀请你进群',
+      groupModalTip: resource.description || '每日更新最新资料',
+      groupModalNote: resource.announcement || (claimCode ? '领取口令：' + claimCode : '进群有机会领取免费会员'),
+      groupResourceError: ''
+    });
+  },
+
+  previewGroupQr() {
+    if (this.data.groupQrCode && typeof wx !== 'undefined' && typeof wx.previewImage === 'function') {
+      wx.previewImage({ urls: [this.data.groupQrCode] });
+      return;
+    }
+    if (typeof wx !== 'undefined' && typeof wx.showToast === 'function') {
+      wx.showToast({ title: '二维码暂未配置', icon: 'none' });
+    }
   },
 
   closeGroupModal() {

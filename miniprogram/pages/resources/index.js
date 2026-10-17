@@ -15,7 +15,9 @@ Page({
     copyButtonText: '领取口令暂未配置',
     copiedText: '领取口令已复制'
   },
-  onLoad() { this.load(); },
+  onLoad() {},
+  onShow() { this.load(); },
+  onPullDownRefresh() { this.load(); },
   async load() {
     this.setData({ loading: true, error: '' });
     try {
@@ -42,6 +44,9 @@ Page({
       });
     }
     catch (error) { this.setData({ loading: false, error: error.message || '资料群配置暂时无法加载' }); }
+    finally {
+      if (typeof wx !== 'undefined' && typeof wx.stopPullDownRefresh === 'function') wx.stopPullDownRefresh();
+    }
   },
   copyCode() {
     const resource = this.data.resource;

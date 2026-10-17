@@ -33,10 +33,10 @@ class EntitlementServiceTests(TestCase):
     def test_seed_product_is_non_destructive_and_changed_price_invalidates_sync(self):
         call_command("seed_product", verbosity=0)
         product = Product.objects.get(scope=SCOPE)
-        self.assertEqual(product.price_fen, 1000)
+        self.assertEqual(product.price_fen, 10)
         product.platform_product_id = "bank-001"
         product.save()
-        mark_product_synced(product.pk, self.admin, price_fen=1000, platform_product_id="bank-001")
+        mark_product_synced(product.pk, self.admin, price_fen=10, platform_product_id="bank-001")
         product.refresh_from_db()
         self.assertEqual(product.platform_sync_state, "synced")
         product.price_fen = 2000

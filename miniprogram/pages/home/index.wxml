@@ -55,10 +55,16 @@
       <view class="group-modal-close" role="button" aria-label="关闭" catchtap="closeGroupModal">×</view>
       <text class="group-modal-kicker">备考资料共享</text>
       <text class="group-modal-title">山东专升本资料备考群</text>
-      <text class="group-modal-copy">扫码添加微信，邀请你进群</text>
-      <view class="group-qr"><view class="group-qr-text"><text class="group-qr-heading">微信二维码</text><text>请放入你的真实二维码</text></view></view>
-      <text class="group-modal-tip">每日更新最新资料</text>
-      <text class="group-modal-note">进群有机会领取免费会员</text>
+      <text class="group-modal-copy">{{groupModalCopy}}</text>
+      <view wx:if="{{groupQrCode}}" class="group-qr group-qr-image-box" bindtap="previewGroupQr">
+        <image class="group-qr-image" src="{{groupQrCode}}" mode="aspectFit" />
+      </view>
+      <view wx:else class="group-qr" bindtap="previewGroupQr">
+        <view class="group-qr-text"><text class="group-qr-heading">微信二维码</text><text>二维码暂未配置</text></view>
+      </view>
+      <text wx:if="{{groupResourceError}}" class="group-modal-error">{{groupResourceError}}</text>
+      <text class="group-modal-tip">{{groupModalTip}}</text>
+      <text class="group-modal-note">{{groupModalNote}}</text>
     </view>
   </view>
 
