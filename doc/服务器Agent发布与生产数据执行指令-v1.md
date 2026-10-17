@@ -5,7 +5,7 @@
 运行服务：`chinese-study.service`
 公网域名：`https://zsbzy.com`
 
-本指令使用已生成的 `wxz.tar.gz` 发布包。包外 SHA-256 文件必须一起上传；任何校验失败都停止，不覆盖当前 release。命令不会打印环境密钥，也不执行支付开关开启。
+本指令使用开发机当前工作树重新生成的 `wxz.tar.gz` 发布包。仓库来源固定为 `https://github.com/INHaiLing/wxz-.git`，分支固定为 `codex/restore-prototype-16`；若使用压缩包，必须以开发机同目录的 `wxz.tar.gz.sha256` 为唯一校验依据。包外 SHA-256 文件必须一起上传；任何校验失败都停止，不覆盖当前 release。命令不会打印环境密钥，也不执行支付开关开启。
 
 ## 一、开发机准备和上传
 
@@ -16,7 +16,7 @@ C:\Users\24429\.codex\worktrees\backend-phase-05\wx专升本语文学习小程�
 C:\Users\24429\.codex\worktrees\backend-phase-05\wx专升本语文学习小程序\wxz.tar.gz.sha256
 ```
 
-本次交付包的 Git 提交和大小由上传前交付消息提供；SHA-256 以同目录 `wxz.tar.gz.sha256` 为准。上传前先在开发机核对旁置 SHA 文件。
+上传前必须在开发机执行 `git fetch origin`，确认 `HEAD` 与 `origin/codex/restore-prototype-16` 一致，再用 `git archive HEAD` 生成包；交付消息同时记录 `git rev-parse HEAD`、包大小和旁置 SHA。不要使用目录中的 `wxz-before-*`、旧提交包或其他工作树包。
 
 上传时使用服务器 Agent 已经配置好的 SSH 私钥；聊天中提供的公钥不能代替客户端私钥。以下命令中的 `SERVER_KEY` 只在服务器 Agent 自己的终端替换，不要把私钥内容写进项目：
 
