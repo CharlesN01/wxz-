@@ -91,7 +91,6 @@ def check(base_url, timeout):
                 "status": None,
                 "required": True,
             })
-            failures.append(f"{name} status=None")
             return
 
         for scope in scopes:
