@@ -1,4 +1,5 @@
 const DEFAULT_API_BASE_URL = 'http://127.0.0.1:8000';
+const PRODUCTION_API_BASE_URL = 'https://zsbzy.com';
 let configuredBaseUrl = '';
 
 function normalizeBaseUrl(value) {
@@ -20,12 +21,20 @@ function getApiBaseUrl() {
       const extConfig = wx.getExtConfigSync() || {};
       if (extConfig.apiBaseUrl) return normalizeBaseUrl(extConfig.apiBaseUrl);
     }
-  } catch (_) { /* Use the explicit or local-development URL when no ext config exists. */ }
-  return configuredBaseUrl || DEFAULT_API_BASE_URL;
+  } catch (_) { /* Ignore unavailable or malformed optional extension config. */ }
+  if (configuredBaseUrl) return configuredBaseUrl;
+  try {
+    if (typeof wx !== 'undefined' && typeof wx.getAccountInfoSync === 'function') {
+      const account = wx.getAccountInfoSync() || {};
+      const envVersion = account.miniProgram && account.miniProgram.envVersion;
+      if (envVersion === 'trial' || envVersion === 'release') return PRODUCTION_API_BASE_URL;
+    }
+  } catch (_) { /* Use the local-development URL when environment metadata is unavailable. */ }
+  return DEFAULT_API_BASE_URL;
 }
 
 function resetApiBaseUrl() {
   configuredBaseUrl = '';
 }
 
-module.exports = { DEFAULT_API_BASE_URL, getApiBaseUrl, setApiBaseUrl, resetApiBaseUrl };
+module.exports = { DEFAULT_API_BASE_URL, PRODUCTION_API_BASE_URL, getApiBaseUrl, setApiBaseUrl, resetApiBaseUrl };

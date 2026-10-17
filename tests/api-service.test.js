@@ -1,6 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const api = require('../miniprogram/services/api');
+const apiConfig = require('../miniprogram/services/api-config');
 const session = require('../miniprogram/utils/session');
 const http = require('../miniprogram/utils/http');
 
@@ -58,6 +59,42 @@ test('app extension configuration overrides the configured API origin', async ()
   delete global.wx.getExtConfigSync;
   api.setApiBaseUrl('https://student-api.example/backend');
   assert.equal(api.getApiBaseUrl(), 'https://student-api.example/backend');
+});
+
+test('trial and release builds use the production API when no extension override exists', () => {
+  apiConfig.resetApiBaseUrl();
+  global.wx = {
+    getAccountInfoSync() { return { miniProgram: { envVersion: 'trial' } }; }
+  };
+  assert.equal(api.getApiBaseUrl(), 'https://zsbzy.com');
+  global.wx.getAccountInfoSync = () => ({ miniProgram: { envVersion: 'release' } });
+  assert.equal(api.getApiBaseUrl(), 'https://zsbzy.com');
+});
+
+test('development builds keep the local API when no extension override exists', () => {
+  apiConfig.resetApiBaseUrl();
+  global.wx = {
+    getAccountInfoSync() { return { miniProgram: { envVersion: 'develop' } }; }
+  };
+  assert.equal(api.getApiBaseUrl(), 'http://127.0.0.1:8000');
+});
+
+test('explicit API configuration overrides the environment default', () => {
+  apiConfig.resetApiBaseUrl();
+  api.setApiBaseUrl('https://qa-api.example');
+  global.wx = {
+    getAccountInfoSync() { return { miniProgram: { envVersion: 'release' } }; }
+  };
+  assert.equal(api.getApiBaseUrl(), 'https://qa-api.example');
+});
+
+test('production environment fallback still applies when extension config is unavailable', () => {
+  apiConfig.resetApiBaseUrl();
+  global.wx = {
+    getExtConfigSync() { throw new Error('extension config unavailable'); },
+    getAccountInfoSync() { return { miniProgram: { envVersion: 'release' } }; }
+  };
+  assert.equal(api.getApiBaseUrl(), 'https://zsbzy.com');
 });
 
 test('private writes preserve baseVersion and attach Bearer plus an idempotency key', async () => {
