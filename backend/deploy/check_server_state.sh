@@ -53,25 +53,50 @@ REQUIRED_KEYS
 grep -E '^(DJANGO_DEBUG|DB_ENGINE|VIRTUAL_PAYMENT_ENABLED|VIRTUAL_PAYMENT_ANDROID_ENABLED|VIRTUAL_PAYMENT_IOS_ENABLED|VIRTUAL_PAYMENT_ENV)=' "$ENV_FILE" || true
 
 echo '== HTTP =='
-curl --fail --silent --show-error --max-time 15 https://zsbzy.com/healthz
+health_body=$(mktemp)
+ready_body=$(mktemp)
+trap 'rm -f "$health_body" "$ready_body"' EXIT
+health_status=$(curl --silent --show-error --max-time 15 -o "$health_body" -w '%{http_code}' https://zsbzy.com/healthz)
+test "$health_status" = 200 || { cat "$health_body"; echo; echo "healthz_http_status=$health_status"; exit 1; }
+"$PYTHON" - "$health_body" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as stream:
+    payload = json.load(stream)
+if payload.get("status") != "ok":
+    raise SystemExit("healthz response is not ready")
+PY
+cat "$health_body"
 echo
-curl --fail --silent --show-error --max-time 15 -H 'Host: zsbzy.com' http://127.0.0.1:8000/readyz
+ready_status=$(curl --silent --show-error --max-time 15 -o "$ready_body" -w '%{http_code}' \
+  -H 'Host: zsbzy.com' -H 'X-Forwarded-Proto: https' http://127.0.0.1:8000/readyz)
+test "$ready_status" = 200 || { cat "$ready_body"; echo; echo "readyz_http_status=$ready_status"; exit 1; }
+"$PYTHON" - "$ready_body" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as stream:
+    payload = json.load(stream)
+if payload.get("status") != "ready":
+    raise SystemExit("readyz response is not ready")
+PY
+cat "$ready_body"
 echo
 
 echo '== PUBLIC API SMOKE =='
 cd "$APP"
-set -a
-. "$ENV_FILE"
-set +a
 export DJANGO_SETTINGS_MODULE=config.production_settings
 set +e
-"$PYTHON" backend/scripts/check_public_api.py --base-url https://zsbzy.com
+"$PYTHON" backend/deploy/run_with_env.py "$ENV_FILE" \
+  "$PYTHON" backend/scripts/check_public_api.py --base-url https://zsbzy.com
 smoke_status=$?
 set -e
 echo "public_api_smoke_exit=$smoke_status"
 
 echo '== DATABASE COUNTS (READ ONLY) =='
-"$PYTHON" backend/manage.py shell -c '
+"$PYTHON" backend/deploy/run_with_env.py "$ENV_FILE" \
+  "$PYTHON" backend/manage.py shell -c '
 from content.models import Article, Category
 from content.access import published_questions
 from django.db import connection

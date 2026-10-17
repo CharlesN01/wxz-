@@ -35,7 +35,10 @@ scp -i $key $pkg $sum root@152.136.62.224:/tmp/
 set -Eeuo pipefail
 tar -xOzf /tmp/wxz.tar.gz backend/deploy/check_server_state.sh \
   > /tmp/check_server_state.sh
+tar -xOzf /tmp/wxz.tar.gz backend/deploy/run_with_env.py \
+  > /tmp/run_with_env.py
 chmod 700 /tmp/check_server_state.sh
+chmod 700 /tmp/run_with_env.py
 bash /tmp/check_server_state.sh
 ```
 
@@ -55,17 +58,18 @@ BACKUP_DIR=/var/lib/chinese-study/backups
 STAMP=$(date +%Y%m%d%H%M%S)
 mkdir -p "$BACKUP_DIR"
 chmod 700 "$BACKUP_DIR"
-set -a
-. "$ENV"
-set +a
 umask 077
-export PGPASSWORD="$DB_PASSWORD"
-pg_dump --format=custom --file="$BACKUP_DIR/chinese-study-$STAMP.dump" \
-  --host="${DB_HOST:-127.0.0.1}" --port="${DB_PORT:-5432}" \
-  --username="$DB_USER" "$DB_NAME"
-unset PGPASSWORD
+/srv/chinese-study/venv/bin/python /tmp/run_with_env.py "$ENV" sh -c '
+  PGPASSWORD="$DB_PASSWORD" pg_dump --format=custom --file="$1" \
+    --host="${DB_HOST:-127.0.0.1}" --port="${DB_PORT:-5432}" \
+    --username="$DB_USER" "$DB_NAME"
+' sh "$BACKUP_DIR/chinese-study-$STAMP.dump"
 test -s "$BACKUP_DIR/chinese-study-$STAMP.dump"
 sha256sum "$BACKUP_DIR/chinese-study-$STAMP.dump"
+pg_restore --list "$BACKUP_DIR/chinese-study-$STAMP.dump" > "$BACKUP_DIR/chinese-study-$STAMP.list"
+test -s "$BACKUP_DIR/chinese-study-$STAMP.list"
+chmod 600 "$BACKUP_DIR/chinese-study-$STAMP.list"
+echo "备份目录清单已生成；必须将该 dump 恢复到隔离数据库后再进行生产写入。"
 ```
 
 ## 四、部署新 release
@@ -96,12 +100,11 @@ RELEASE=$(< /tmp/wxz-release-path)
 case "$RELEASE" in "$BASE"/releases/wxz-*) ;; *) echo 'invalid release path'; exit 2 ;; esac
 test -f "$RELEASE/backend/manage.py"
 cd "$RELEASE/backend"
-set -a
-. /etc/chinese-study/backend.env
-set +a
 export DJANGO_SETTINGS_MODULE=config.production_settings
-/srv/chinese-study/venv/bin/python manage.py check --deploy --fail-level WARNING
-/srv/chinese-study/venv/bin/python manage.py migrate --plan
+/srv/chinese-study/venv/bin/python backend/deploy/run_with_env.py /etc/chinese-study/backend.env \
+  /srv/chinese-study/venv/bin/python manage.py check --deploy --fail-level WARNING
+/srv/chinese-study/venv/bin/python backend/deploy/run_with_env.py /etc/chinese-study/backend.env \
+  /srv/chinese-study/venv/bin/python manage.py migrate --plan
 ```
 
 确认迁移计划无异常后，再执行迁移、静态文件和角色初始化。继续使用同一 `RELEASE` 目录：
@@ -112,15 +115,17 @@ RELEASE=$(< /tmp/wxz-release-path)
 case "$RELEASE" in "$BASE"/releases/wxz-*) ;; *) echo 'invalid release path'; exit 2 ;; esac
 test -f "$RELEASE/backend/manage.py"
 cd "$RELEASE/backend"
-set -a
-. /etc/chinese-study/backend.env
-set +a
 export DJANGO_SETTINGS_MODULE=config.production_settings
-/srv/chinese-study/venv/bin/python manage.py migrate
-/srv/chinese-study/venv/bin/python manage.py collectstatic --noinput
-/srv/chinese-study/venv/bin/python manage.py setup_roles
-/srv/chinese-study/venv/bin/python manage.py setup_business_roles
-/srv/chinese-study/venv/bin/python manage.py seed_product
+/srv/chinese-study/venv/bin/python backend/deploy/run_with_env.py /etc/chinese-study/backend.env \
+  /srv/chinese-study/venv/bin/python manage.py migrate
+/srv/chinese-study/venv/bin/python backend/deploy/run_with_env.py /etc/chinese-study/backend.env \
+  /srv/chinese-study/venv/bin/python manage.py collectstatic --noinput
+/srv/chinese-study/venv/bin/python backend/deploy/run_with_env.py /etc/chinese-study/backend.env \
+  /srv/chinese-study/venv/bin/python manage.py setup_roles
+/srv/chinese-study/venv/bin/python backend/deploy/run_with_env.py /etc/chinese-study/backend.env \
+  /srv/chinese-study/venv/bin/python manage.py setup_business_roles
+/srv/chinese-study/venv/bin/python backend/deploy/run_with_env.py /etc/chinese-study/backend.env \
+  /srv/chinese-study/venv/bin/python manage.py seed_product
 ```
 
 `seed_product` 只创建缺少的 `all-chinese` 商品；随后必须在 Django 后台确认：金额 10 分、启用、平台商品编号 `VIP`、平台同步状态为已同步。该命令不导入题库，不设置支付开关。
@@ -135,11 +140,9 @@ RELEASE=$(< /tmp/wxz-release-path)
 case "$RELEASE" in "$BASE"/releases/wxz-*) ;; *) echo 'invalid release path'; exit 2 ;; esac
 test -f "$RELEASE/backend/manage.py"
 cd "$RELEASE"
-set -a
-. /etc/chinese-study/backend.env
-set +a
 export DJANGO_SETTINGS_MODULE=config.production_settings
-/srv/chinese-study/venv/bin/python backend/scripts/check_public_api.py --base-url https://zsbzy.com
+/srv/chinese-study/venv/bin/python backend/deploy/run_with_env.py /etc/chinese-study/backend.env \
+  /srv/chinese-study/venv/bin/python backend/scripts/check_public_api.py --base-url https://zsbzy.com
 ```
 
 只有迁移、健康检查、商品/题库数据和服务状态均符合计划时才切换：
