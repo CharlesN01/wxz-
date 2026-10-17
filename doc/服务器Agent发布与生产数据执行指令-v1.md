@@ -29,15 +29,17 @@ scp -i $key $pkg $sum root@152.136.62.224:/tmp/
 
 ## 二、服务器只读核查
 
-先确认服务和数据库状态，不改配置、不重启：
+先上传本指令第一节中的包和 SHA 文件，再确认服务和数据库状态，不改配置、不重启。发布包已经包含只读核查脚本，因此不依赖服务器访问 GitHub：
 
 ```bash
 set -Eeuo pipefail
-curl --fail --silent --show-error \
-  https://raw.githubusercontent.com/INHaiLing/wxz-/codex/restore-prototype-16/backend/deploy/check_server_state.sh \
-  -o /tmp/check_server_state.sh
+tar -xOzf /tmp/wxz.tar.gz backend/deploy/check_server_state.sh \
+  > /tmp/check_server_state.sh
+chmod 700 /tmp/check_server_state.sh
 bash /tmp/check_server_state.sh
 ```
+
+只有在包尚未上传、且服务器能够访问 GitHub 时，才可使用仓库分支中的脚本作为临时核查来源；不能因为 GitHub 拉取失败而跳过核查。
 
 输出只应包含版本、监听、DNS、环境键 `SET/MISSING`、开关、健康接口、公开 smoke、数据库类型/版本和脱敏数量。若失败原因为服务/配置异常，先修复并复核；若只因生产内容为空，则先完成下节备份，再按第六节导入正式数据。任何情况下都不能用 `seed_demo` 填充生产。
 
