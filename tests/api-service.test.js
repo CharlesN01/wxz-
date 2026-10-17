@@ -1,6 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const api = require('../miniprogram/services/api');
+const apiConfig = require('../miniprogram/services/api-config');
 const session = require('../miniprogram/utils/session');
 const http = require('../miniprogram/utils/http');
 
@@ -49,7 +50,7 @@ test('content requests can opt into the Bearer contract for activated learners',
   assert.equal(calls[0].header.Authorization, 'Bearer activated-token');
 });
 
-test('app extension configuration overrides the local API origin', async () => {
+test('app extension configuration overrides the configured API origin', async () => {
   const calls = installWx((options) => respond(options, 200, { pageSize: 20 }));
   global.wx.getExtConfigSync = () => ({ apiBaseUrl: 'https://student-api.example' });
   await api.config.get();
@@ -58,6 +59,15 @@ test('app extension configuration overrides the local API origin', async () => {
   delete global.wx.getExtConfigSync;
   api.setApiBaseUrl('https://student-api.example/backend');
   assert.equal(api.getApiBaseUrl(), 'https://student-api.example/backend');
+});
+
+test('production HTTPS API is the default when no runtime override exists', async () => {
+  apiConfig.resetApiBaseUrl();
+  const calls = installWx((options) => respond(options, 200, { pageSize: 20 }));
+
+  assert.equal(api.getApiBaseUrl(), 'https://zsbzy.com');
+  await api.config.get();
+  assert.equal(calls[0].url, 'https://zsbzy.com/api/student/v1/config/');
 });
 
 test('private writes preserve baseVersion and attach Bearer plus an idempotency key', async () => {
