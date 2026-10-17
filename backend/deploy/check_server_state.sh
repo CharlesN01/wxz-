@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-set -Eeuo pipefail
+set -eu
+set -o pipefail 2>/dev/null || true
 
 # Read-only production checklist. Values of secrets are never printed.
 BASE="${BASE:-/srv/chinese-study}"
@@ -10,10 +11,11 @@ PYTHON="${PYTHON:-$BASE/venv/bin/python}"
 echo '== VERSION =='
 printf 'current_path='
 readlink -f "$APP" || true
-if [[ -f "$APP/backend/manage.py" ]]; then
+if [ -f "$APP/backend/manage.py" ]; then
   git -C "$APP" rev-parse --short HEAD 2>/dev/null || echo 'not-a-git-checkout'
 else
   echo 'manage.py=MISSING'
+  exit 2
 fi
 
 echo '== SERVICES =='
@@ -26,19 +28,29 @@ getent ahostsv4 zsbzy.com || true
 getent ahostsv4 www.zsbzy.com || true
 
 echo '== ENVIRONMENT KEYS (SET/MISSING ONLY) =='
-required_keys=(
-  DJANGO_SECRET_KEY STUDENT_SESSION_ENCRYPTION_KEYS WECHAT_APP_ID WECHAT_APP_SECRET
-  VIRTUAL_PAYMENT_OFFER_ID VIRTUAL_PAYMENT_APP_KEY VIRTUAL_PAYMENT_SANDBOX_APP_KEY
-  VIRTUAL_PAYMENT_CALLBACK_TOKEN VIRTUAL_PAYMENT_CALLBACK_AES_KEY
-)
-for key in "${required_keys[@]}"; do
+if [ ! -f "$ENV_FILE" ]; then
+  echo 'environment_file=MISSING'
+  exit 2
+fi
+while IFS= read -r key; do
+  [ -n "$key" ] || continue
   if grep -Eq "^${key}=[^[:space:]]" "$ENV_FILE"; then
     echo "$key=SET"
   else
     echo "$key=MISSING_OR_EMPTY"
   fi
-done
-grep -E '^(DJANGO_DEBUG|DB_ENGINE|DB_HOST|DB_PORT|VIRTUAL_PAYMENT_ENABLED|VIRTUAL_PAYMENT_ANDROID_ENABLED|VIRTUAL_PAYMENT_IOS_ENABLED|VIRTUAL_PAYMENT_ENV)=' "$ENV_FILE" || true
+done <<'REQUIRED_KEYS'
+DJANGO_SECRET_KEY
+STUDENT_SESSION_ENCRYPTION_KEYS
+WECHAT_APP_ID
+WECHAT_APP_SECRET
+VIRTUAL_PAYMENT_OFFER_ID
+VIRTUAL_PAYMENT_APP_KEY
+VIRTUAL_PAYMENT_SANDBOX_APP_KEY
+VIRTUAL_PAYMENT_CALLBACK_TOKEN
+VIRTUAL_PAYMENT_CALLBACK_AES_KEY
+REQUIRED_KEYS
+grep -E '^(DJANGO_DEBUG|DB_ENGINE|VIRTUAL_PAYMENT_ENABLED|VIRTUAL_PAYMENT_ANDROID_ENABLED|VIRTUAL_PAYMENT_IOS_ENABLED|VIRTUAL_PAYMENT_ENV)=' "$ENV_FILE" || true
 
 echo '== HTTP =='
 curl --fail --silent --show-error --max-time 15 https://zsbzy.com/healthz
@@ -62,6 +74,7 @@ echo '== DATABASE COUNTS (READ ONLY) =='
 "$PYTHON" backend/manage.py shell -c '
 from content.models import Article, Category
 from content.access import published_questions
+from django.db import connection
 from entitlements.models import Product
 from resources.models import GroupResourceConfiguration
 from writing.access import published_writings
@@ -70,6 +83,11 @@ print("active_categories=", Category.objects.filter(is_active=True).count())
 print("active_articles=", Article.objects.filter(is_active=True).count())
 print("published_questions=", published_questions().count())
 print("published_writings=", published_writings().count())
+print("database_vendor=", connection.vendor)
+if connection.vendor == "postgresql":
+    with connection.cursor() as cursor:
+        cursor.execute("SHOW server_version")
+        print("database_server_version=", cursor.fetchone()[0])
 configuration = GroupResourceConfiguration.current()
 print("resources_enabled=", bool(configuration and configuration.is_enabled), "qr_configured=", bool(configuration and configuration.group_qr_code), "claim_code_configured=", bool(configuration and configuration.claim_code))
 '
