@@ -16,7 +16,7 @@ C:\Users\24429\.codex\worktrees\backend-phase-05\wx专升本语文学习小程�
 C:\Users\24429\.codex\worktrees\backend-phase-05\wx专升本语文学习小程序\wxz.tar.gz.sha256
 ```
 
-当前精确提交、包大小与 SHA-256 以同目录 `wxz.tar.gz.sha256` 和执行计划记录为准。上传前先在开发机核对旁置 SHA 文件。
+SHA-256 以同目录 `wxz.tar.gz.sha256` 为准；开发机交付消息会同时注明 Git 提交和包大小。上传前先在开发机核对旁置 SHA 文件。
 
 上传时使用服务器 Agent 已经配置好的 SSH 私钥；聊天中提供的公钥不能代替客户端私钥。以下命令中的 `SERVER_KEY` 只在服务器 Agent 自己的终端替换，不要把私钥内容写进项目：
 
