@@ -1,4 +1,4 @@
-const DEFAULT_API_BASE_URL = 'https://zsbzy.com';
+const DEFAULT_API_BASE_URL = 'http://127.0.0.1:8000';
 let configuredBaseUrl = '';
 
 function normalizeBaseUrl(value) {
