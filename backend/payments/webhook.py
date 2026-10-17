@@ -10,7 +10,7 @@ from .synchronization import apply_callback
 
 
 @transaction.non_atomic_requests
-@csrf_exempt  # WeChat authenticates the body using msg_signature + AES, not cookies.
+@csrf_exempt  # WeChat authenticates the body using signature or msg_signature + AES.
 @require_http_methods(("GET", "POST"))
 @sensitive_variables("data", "encrypted", "key", "clear")
 def virtual_payment(request):
@@ -28,15 +28,21 @@ def virtual_payment(request):
             else:
                 verify_signature(token, request.GET)
             return HttpResponse(echo, content_type="text/plain", headers={"Cache-Control": "no-store"})
-        if request.GET.get("encrypt_type") != "aes":
-            raise invalid()
         data = parse_payload(request.read(65537))
         encrypted = data.get("Encrypt")
-        if not isinstance(encrypted, str):
-            raise invalid()
-        verify_signature(token, request.GET, encrypted)
-        clear = decrypt_message(encrypted, key, app_id)
-        outcome = apply_callback(parse_payload(clear), app_id)
+        if encrypted is not None:
+            if request.GET.get("encrypt_type") != "aes" or not isinstance(encrypted, str):
+                raise invalid()
+            verify_signature(token, request.GET, encrypted)
+            clear = decrypt_message(encrypted, key, app_id)
+            data = parse_payload(clear)
+        else:
+            # Compatibility mode sends the business payload in plaintext. It still
+            # requires the ordinary Token/timestamp/nonce signature.
+            if request.GET.get("encrypt_type") or request.GET.get("msg_signature"):
+                raise invalid()
+            verify_signature(token, request.GET)
+        outcome = apply_callback(data, app_id)
         if outcome in ("review", "uncertain"):
             return HttpResponse("platform_review_required", status=503)
         # atomic apply_callback has returned, so its transaction committed before

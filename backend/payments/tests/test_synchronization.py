@@ -1,3 +1,4 @@
+import json
 from unittest.mock import patch
 
 from django.test import override_settings
@@ -8,6 +9,7 @@ from common.models import IdempotencyRecord
 from entitlements.models import AuditEvent, EntitlementSource, OpeningReservation
 from entitlements.services import grant_entitlement, revoke_entitlement
 from payments.models import Order, PaymentEvent, PaymentTask
+from payments.protocol import message_signature
 from payments.synchronization import apply_callback, apply_query
 from .sync_fixtures import SyncFixture, envelope, goods, refund, snapshot
 from .test_preparation import PAYMENT_SETTINGS
@@ -137,6 +139,28 @@ class PaymentHTTPTests(SyncFixture):
         self.assertEqual(self.callback(refund(self.order)).content, b"success")
         self.assertEqual(self.callback(goods(self.order)).content, b"success")
         self.assertEqual(EntitlementSource.objects.get().status, "revoked")
+
+    def test_compatibility_mode_plain_json_callback_is_signature_checked(self):
+        token = PAYMENT_SETTINGS["VIRTUAL_PAYMENT_CALLBACK_TOKEN"]
+        timestamp, nonce = "1714112445", "plain-compat"
+        signature = message_signature(token, timestamp, nonce)
+        query = f"?timestamp={timestamp}&nonce={nonce}&signature={signature}"
+        response = self.client.post(
+            self.webhook + query,
+            data=json.dumps(goods(self.order)),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.content, b"success")
+        self.assertEqual(EntitlementSource.objects.count(), 1)
+        self.assertEqual(
+            self.client.post(
+                self.webhook,
+                data=json.dumps(goods(self.order)),
+                content_type="application/json",
+            ).status_code,
+            400,
+        )
 
     def test_false_signature_wrong_appid_invalid_plain_unknown_order_and_rollback_never_ack(self):
         query, body = envelope(goods(self.order))
