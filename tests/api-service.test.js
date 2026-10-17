@@ -33,6 +33,32 @@ test.afterEach(() => {
   delete global.wx;
 });
 
+test('removing a persisted session from storage clears the in-memory session', () => {
+  global.wx = {
+    session: null,
+    getStorageSync() { return this.session; },
+    setStorageSync(_key, value) { this.session = value; },
+    removeStorageSync() { this.session = null; }
+  };
+
+  session.saveSession({ token: 'stored-token', expiresAt: '' });
+  global.wx.removeStorageSync(session.STORAGE_KEY);
+
+  assert.equal(session.getSession(), null);
+  assert.equal(session.getToken(), '');
+});
+
+test('an in-memory session remains available when persistence fails', () => {
+  global.wx = {
+    getStorageSync() { return null; },
+    setStorageSync() { throw new Error('storage unavailable'); }
+  };
+
+  session.saveSession({ token: 'memory-token', expiresAt: '' });
+
+  assert.equal(session.getToken(), 'memory-token');
+});
+
 test('public content request is anonymous and uses the configured API prefix', async () => {
   session.saveSession({ token: 'stored-token', expiresAt: '' });
   const calls = installWx((options) => respond(options, 200, { results: [] }));

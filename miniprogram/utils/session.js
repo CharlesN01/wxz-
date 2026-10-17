@@ -1,5 +1,6 @@
 const STORAGE_KEY = 'student-session-v1';
 let memorySession = null;
+let memorySessionPersisted = false;
 
 function getSession() {
   try {
@@ -7,7 +8,12 @@ function getSession() {
       const stored = wx.getStorageSync(STORAGE_KEY);
       if (stored && typeof stored === 'object' && typeof stored.token === 'string') {
         memorySession = stored;
+        memorySessionPersisted = true;
         return stored;
+      }
+      if (memorySessionPersisted) {
+        memorySession = null;
+        memorySessionPersisted = false;
       }
     }
   } catch (_) { /* Keep the in-memory session when storage is unavailable. */ }
@@ -31,13 +37,15 @@ function saveSession(session) {
   try {
     if (typeof wx !== 'undefined' && typeof wx.setStorageSync === 'function') {
       wx.setStorageSync(STORAGE_KEY, memorySession);
+      memorySessionPersisted = true;
     }
-  } catch (_) { /* Session remains available for the current app process. */ }
+  } catch (_) { memorySessionPersisted = false; /* Session remains available for this process. */ }
   return memorySession;
 }
 
 function clearSession() {
   memorySession = null;
+  memorySessionPersisted = false;
   try {
     if (typeof wx !== 'undefined' && typeof wx.removeStorageSync === 'function') {
       wx.removeStorageSync(STORAGE_KEY);

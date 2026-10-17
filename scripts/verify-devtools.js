@@ -290,7 +290,8 @@ async function main() {
   fs.mkdirSync(output, { recursive: true });
   console.log('Connecting to WeChat DevTools automation...');
   await connectOrLaunch();
-  mini.on('exception', (error) => report.exceptions.push(String(error && (error.stack || error))));
+  const listenForExceptions = () => mini.on('exception', (error) => report.exceptions.push(String(error && (error.stack || error))));
+  listenForExceptions();
   const info = await withTimeout(mini.systemInfo(), '读取模拟器信息');
   report.runtime = {
     model: info.model,
@@ -308,7 +309,14 @@ async function main() {
     originalSession = await withTimeout(mini.callWxMethod('getStorageSync', SESSION_KEY), '备份模拟器会话');
     hadOriginalSession = true;
     await withTimeout(mini.callWxMethod('removeStorageSync', SESSION_KEY), '隔离模拟器会话');
-    report.sessionIsolation = 'temporary-local-storage-removal';
+    // The session module also keeps an in-memory copy. Restart the app so the
+    // route screenshots cannot accidentally use the account token after removal.
+    await withTimeout(mini.close(), '重启模拟器以隔离会话', 15000);
+    mini = null;
+    await sleep(1500);
+    await connectOrLaunch();
+    listenForExceptions();
+    report.sessionIsolation = 'temporary-local-storage-removal-and-app-restart';
   }
   hadOriginalStorage = keys.includes(STORAGE_KEY);
   if (hadOriginalStorage) {
