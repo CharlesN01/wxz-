@@ -33,12 +33,11 @@ scp -i $key $pkg $sum root@152.136.62.224:/tmp/
 
 ```bash
 set -Eeuo pipefail
+cd /tmp
+sha256sum -c wxz.tar.gz.sha256
 tar -xOzf /tmp/wxz.tar.gz backend/deploy/check_server_state.sh \
   > /tmp/check_server_state.sh
-tar -xOzf /tmp/wxz.tar.gz backend/deploy/run_with_env.py \
-  > /tmp/run_with_env.py
 chmod 700 /tmp/check_server_state.sh
-chmod 700 /tmp/run_with_env.py
 bash /tmp/check_server_state.sh
 ```
 
@@ -59,8 +58,12 @@ STAMP=$(date +%Y%m%d%H%M%S)
 mkdir -p "$BACKUP_DIR"
 chmod 700 "$BACKUP_DIR"
 umask 077
-/srv/chinese-study/venv/bin/python /tmp/run_with_env.py "$ENV" sh -c '
-  PGPASSWORD="$DB_PASSWORD" pg_dump --format=custom --file="$1" \
+systemd-run --quiet --wait --pipe --collect \
+  --property="EnvironmentFile=$ENV" \
+  /bin/sh -c '
+  set -eu
+  export PGPASSWORD="$DB_PASSWORD"
+  pg_dump --format=custom --file="$1" \
     --host="${DB_HOST:-127.0.0.1}" --port="${DB_PORT:-5432}" \
     --username="$DB_USER" "$DB_NAME"
 ' sh "$BACKUP_DIR/chinese-study-$STAMP.dump"
@@ -71,6 +74,30 @@ test -s "$BACKUP_DIR/chinese-study-$STAMP.list"
 chmod 600 "$BACKUP_DIR/chinese-study-$STAMP.list"
 echo "备份目录清单已生成；必须将该 dump 恢复到隔离数据库后再进行生产写入。"
 ```
+
+在同一 PostgreSQL 集群创建一次性隔离数据库（名称必须带本次时间戳），恢复并运行最小核验；禁止把生产数据库名作为 `--dbname`：
+
+```bash
+RESTORE_DB="chinese_study_restore_$STAMP"
+systemd-run --quiet --wait --pipe --collect \
+  --property="EnvironmentFile=$ENV" \
+  /bin/sh -c '
+  set -eu
+  export PGPASSWORD="$DB_PASSWORD"
+  cleanup() {
+    dropdb --if-exists --host="${DB_HOST:-127.0.0.1}" --port="${DB_PORT:-5432}" --username="$DB_USER" "$1" >/dev/null 2>&1 || true
+  }
+  trap "cleanup \$1" EXIT
+  createdb --template=template0 --host="${DB_HOST:-127.0.0.1}" --port="${DB_PORT:-5432}" --username="$DB_USER" "$1"
+  pg_restore --exit-on-error --single-transaction \
+    --host="${DB_HOST:-127.0.0.1}" --port="${DB_PORT:-5432}" --username="$DB_USER" \
+    --dbname="$1" "$2"
+  psql --host="${DB_HOST:-127.0.0.1}" --port="${DB_PORT:-5432}" --username="$DB_USER" \
+    --dbname="$1" --command="SELECT count(*) FROM information_schema.tables WHERE table_schema = '\''public'\'';"
+' sh "$RESTORE_DB" "$BACKUP_DIR/chinese-study-$STAMP.dump"
+```
+
+若隔离恢复失败，停止后续迁移、商品初始化和题库导入。恢复验证必须使用与生产兼容的 PostgreSQL 客户端，并记录数据库名、退出码和表/行数核验结果，不上传 dump。
 
 ## 四、部署新 release
 
@@ -100,10 +127,15 @@ RELEASE=$(< /tmp/wxz-release-path)
 case "$RELEASE" in "$BASE"/releases/wxz-*) ;; *) echo 'invalid release path'; exit 2 ;; esac
 test -f "$RELEASE/backend/manage.py"
 cd "$RELEASE/backend"
-export DJANGO_SETTINGS_MODULE=config.production_settings
-/srv/chinese-study/venv/bin/python backend/deploy/run_with_env.py /etc/chinese-study/backend.env \
+systemd-run --quiet --wait --pipe --collect \
+  --property='EnvironmentFile=/etc/chinese-study/backend.env' \
+  --property="WorkingDirectory=$RELEASE/backend" \
+  --setenv=DJANGO_SETTINGS_MODULE=config.production_settings \
   /srv/chinese-study/venv/bin/python manage.py check --deploy --fail-level WARNING
-/srv/chinese-study/venv/bin/python backend/deploy/run_with_env.py /etc/chinese-study/backend.env \
+systemd-run --quiet --wait --pipe --collect \
+  --property='EnvironmentFile=/etc/chinese-study/backend.env' \
+  --property="WorkingDirectory=$RELEASE/backend" \
+  --setenv=DJANGO_SETTINGS_MODULE=config.production_settings \
   /srv/chinese-study/venv/bin/python manage.py migrate --plan
 ```
 
@@ -115,16 +147,30 @@ RELEASE=$(< /tmp/wxz-release-path)
 case "$RELEASE" in "$BASE"/releases/wxz-*) ;; *) echo 'invalid release path'; exit 2 ;; esac
 test -f "$RELEASE/backend/manage.py"
 cd "$RELEASE/backend"
-export DJANGO_SETTINGS_MODULE=config.production_settings
-/srv/chinese-study/venv/bin/python backend/deploy/run_with_env.py /etc/chinese-study/backend.env \
+systemd-run --quiet --wait --pipe --collect \
+  --property='EnvironmentFile=/etc/chinese-study/backend.env' \
+  --property="WorkingDirectory=$RELEASE/backend" \
+  --setenv=DJANGO_SETTINGS_MODULE=config.production_settings \
   /srv/chinese-study/venv/bin/python manage.py migrate
-/srv/chinese-study/venv/bin/python backend/deploy/run_with_env.py /etc/chinese-study/backend.env \
+systemd-run --quiet --wait --pipe --collect \
+  --property='EnvironmentFile=/etc/chinese-study/backend.env' \
+  --property="WorkingDirectory=$RELEASE/backend" \
+  --setenv=DJANGO_SETTINGS_MODULE=config.production_settings \
   /srv/chinese-study/venv/bin/python manage.py collectstatic --noinput
-/srv/chinese-study/venv/bin/python backend/deploy/run_with_env.py /etc/chinese-study/backend.env \
+systemd-run --quiet --wait --pipe --collect \
+  --property='EnvironmentFile=/etc/chinese-study/backend.env' \
+  --property="WorkingDirectory=$RELEASE/backend" \
+  --setenv=DJANGO_SETTINGS_MODULE=config.production_settings \
   /srv/chinese-study/venv/bin/python manage.py setup_roles
-/srv/chinese-study/venv/bin/python backend/deploy/run_with_env.py /etc/chinese-study/backend.env \
+systemd-run --quiet --wait --pipe --collect \
+  --property='EnvironmentFile=/etc/chinese-study/backend.env' \
+  --property="WorkingDirectory=$RELEASE/backend" \
+  --setenv=DJANGO_SETTINGS_MODULE=config.production_settings \
   /srv/chinese-study/venv/bin/python manage.py setup_business_roles
-/srv/chinese-study/venv/bin/python backend/deploy/run_with_env.py /etc/chinese-study/backend.env \
+systemd-run --quiet --wait --pipe --collect \
+  --property='EnvironmentFile=/etc/chinese-study/backend.env' \
+  --property="WorkingDirectory=$RELEASE/backend" \
+  --setenv=DJANGO_SETTINGS_MODULE=config.production_settings \
   /srv/chinese-study/venv/bin/python manage.py seed_product
 ```
 
@@ -132,7 +178,7 @@ export DJANGO_SETTINGS_MODULE=config.production_settings
 
 ## 五、切换和回退
 
-先在新 release 上运行公开检查；生产内容为空时检查会返回非零，不能切换为“已验收”版本：
+候选 release 的代码检查和迁移计划必须在候选目录执行；此时公网仍指向旧 `current`，不能把提前访问公网的结果当作候选版本验收。完成备份、兼容迁移和正式数据导入后再切换，切换后立即运行健康检查和公开 API smoke；任一必需检查失败都按下一段回退：
 
 ```bash
 BASE=/srv/chinese-study
@@ -140,9 +186,6 @@ RELEASE=$(< /tmp/wxz-release-path)
 case "$RELEASE" in "$BASE"/releases/wxz-*) ;; *) echo 'invalid release path'; exit 2 ;; esac
 test -f "$RELEASE/backend/manage.py"
 cd "$RELEASE"
-export DJANGO_SETTINGS_MODULE=config.production_settings
-/srv/chinese-study/venv/bin/python backend/deploy/run_with_env.py /etc/chinese-study/backend.env \
-  /srv/chinese-study/venv/bin/python backend/scripts/check_public_api.py --base-url https://zsbzy.com
 ```
 
 只有迁移、健康检查、商品/题库数据和服务状态均符合计划时才切换：
@@ -165,9 +208,21 @@ if ! systemctl is-active --quiet chinese-study || ! curl --fail --silent --show-
   curl --fail --silent --show-error https://zsbzy.com/healthz
   exit 1
 fi
+if ! systemd-run --quiet --wait --pipe --collect \
+  --property='EnvironmentFile=/etc/chinese-study/backend.env' \
+  --property="WorkingDirectory=$RELEASE" \
+  --setenv=DJANGO_SETTINGS_MODULE=config.production_settings \
+  /srv/chinese-study/venv/bin/python backend/scripts/check_public_api.py --base-url https://zsbzy.com; then
+  ln -sfn "$OLD_RELEASE" "$BASE/current.rollback"
+  mv -Tf "$BASE/current.rollback" "$BASE/current"
+  systemctl restart chinese-study
+  systemctl is-active --quiet chinese-study
+  curl --fail --silent --show-error https://zsbzy.com/healthz
+  exit 1
+fi
 ```
 
-如果新 release 启动失败，立即切回切换前保存的旧软链接目标，重启并验证 `/healthz`。不要删除旧 release，直到生产登录和业务 smoke 完成。
+如果新 release 启动或 smoke 失败，立即切回切换前保存的旧软链接目标，重启并验证 `/healthz`。代码回退不回退数据库；所有迁移必须向后兼容（expand/contract）。无法向后兼容的迁移不得按本指令直接发布，必须另行安排维护窗口、数据库恢复或前向修复，并先在隔离恢复库演练。不要删除旧 release 或备份。
 
 ## 六、正式题库和业务数据
 

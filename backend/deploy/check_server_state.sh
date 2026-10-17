@@ -8,6 +8,14 @@ APP="${APP:-$BASE/current}"
 ENV_FILE="${ENV_FILE:-/etc/chinese-study/backend.env}"
 PYTHON="${PYTHON:-$BASE/venv/bin/python}"
 
+run_with_service_environment() {
+  systemd-run --quiet --wait --pipe --collect \
+    --property="EnvironmentFile=$ENV_FILE" \
+    --property="WorkingDirectory=$APP" \
+    --setenv=DJANGO_SETTINGS_MODULE=config.production_settings \
+    "$@"
+}
+
 echo '== VERSION =='
 printf 'current_path='
 readlink -f "$APP" || true
@@ -85,18 +93,14 @@ cat "$ready_body"
 echo
 
 echo '== PUBLIC API SMOKE =='
-cd "$APP"
-export DJANGO_SETTINGS_MODULE=config.production_settings
 set +e
-"$PYTHON" backend/deploy/run_with_env.py "$ENV_FILE" \
-  "$PYTHON" backend/scripts/check_public_api.py --base-url https://zsbzy.com
+run_with_service_environment "$PYTHON" backend/scripts/check_public_api.py --base-url https://zsbzy.com
 smoke_status=$?
 set -e
 echo "public_api_smoke_exit=$smoke_status"
 
 echo '== DATABASE COUNTS (READ ONLY) =='
-"$PYTHON" backend/deploy/run_with_env.py "$ENV_FILE" \
-  "$PYTHON" backend/manage.py shell -c '
+run_with_service_environment "$PYTHON" backend/manage.py shell -c '
 from content.models import Article, Category
 from content.access import published_questions
 from django.db import connection
