@@ -163,6 +163,10 @@ class PaymentHTTPTests(SyncFixture):
         encrypted = encrypt(b"echo-verified")
         response = self.client.get(self.webhook, {"timestamp": "1", "nonce": "2", "msg_signature": message_signature(token, "1", "2", encrypted), "echostr": encrypted})
         self.assertEqual(response.content, b"echo-verified")
+        no_slash = self.webhook.rstrip("/")
+        response = self.client.get(no_slash, {"timestamp": "1", "nonce": "2", "signature": signature, "echostr": "hello"})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.content, b"hello")
         self.assertEqual(self.client.get(self.webhook, {"timestamp": "1", "nonce": "2", "signature": "0" * 40, "echostr": "hello"}).status_code, 400)
 
     def test_ios_refund_query_is_recorded_but_no_business_recommendation(self):
