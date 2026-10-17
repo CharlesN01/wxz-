@@ -30,7 +30,9 @@ const report = {
 
 let mini;
 let originalStorage;
+let originalSession;
 let hadOriginalStorage = false;
+let hadOriginalSession = false;
 let storageSnapshotTaken = false;
 let automationProcessError = null;
 
@@ -66,7 +68,8 @@ function launchAutomation(port) {
   if (!fs.existsSync(CLI_PATH)) {
     throw new Error(`找不到微信开发者工具 CLI：${CLI_PATH}`);
   }
-  const command = `"${CLI_PATH}" auto --project "${projectRoot}" --port ${port} --trust-project --lang zh`;
+  const idePort = Number(process.env.WX_DEVTOOLS_IDE_PORT || 43599);
+  const command = `"${CLI_PATH}" auto --project "${projectRoot}" --port ${idePort} --auto-port ${port} --trust-project --lang zh`;
   const child = spawn(process.env.ComSpec || 'cmd.exe', ['/d', '/s', '/c', command], {
     cwd: projectRoot,
     detached: true,
@@ -302,7 +305,10 @@ async function main() {
   const keys = Array.isArray(storageInfo && storageInfo.keys) ? storageInfo.keys : [];
   report.accountSessionPresent = keys.includes(SESSION_KEY);
   if (report.accountSessionPresent) {
-    throw new Error(`检测到 ${SESSION_KEY} 已存在。为避免给真实账号写入学习状态或随机轮次，本次停止状态截图；请在独立游客模拟器中运行。`);
+    originalSession = await withTimeout(mini.callWxMethod('getStorageSync', SESSION_KEY), '备份模拟器会话');
+    hadOriginalSession = true;
+    await withTimeout(mini.callWxMethod('removeStorageSync', SESSION_KEY), '隔离模拟器会话');
+    report.sessionIsolation = 'temporary-local-storage-removal';
   }
   hadOriginalStorage = keys.includes(STORAGE_KEY);
   if (hadOriginalStorage) {
@@ -394,6 +400,8 @@ main().catch((error) => {
       try {
         if (hadOriginalStorage) await withTimeout(mini.callWxMethod('setStorageSync', STORAGE_KEY, originalStorage), '恢复本地学习状态');
         else await withTimeout(mini.callWxMethod('removeStorageSync', STORAGE_KEY), '清理本地测试状态');
+        if (hadOriginalSession) await withTimeout(mini.callWxMethod('setStorageSync', SESSION_KEY, originalSession), '恢复模拟器会话');
+        else await withTimeout(mini.callWxMethod('removeStorageSync', SESSION_KEY), '清理模拟器会话');
       } catch (error) { report.restoreFailure = error.message; }
     }
     mini.disconnect();
