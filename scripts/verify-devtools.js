@@ -66,7 +66,7 @@ function launchAutomation(port) {
   if (!fs.existsSync(CLI_PATH)) {
     throw new Error(`找不到微信开发者工具 CLI：${CLI_PATH}`);
   }
-  const command = `"${CLI_PATH}" auto --project "${projectRoot}" --auto-port ${port} --trust-project --lang zh`;
+  const command = `"${CLI_PATH}" auto --project "${projectRoot}" --port ${port} --trust-project --lang zh`;
   const child = spawn(process.env.ComSpec || 'cmd.exe', ['/d', '/s', '/c', command], {
     cwd: projectRoot,
     detached: true,
