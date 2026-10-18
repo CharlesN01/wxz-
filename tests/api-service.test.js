@@ -97,12 +97,12 @@ test('trial and release builds use the production API when no extension override
   assert.equal(api.getApiBaseUrl(), 'https://zsbzy.com');
 });
 
-test('development builds keep the local API when no extension override exists', () => {
+test('development builds use the public API when no extension override exists', () => {
   apiConfig.resetApiBaseUrl();
   global.wx = {
     getAccountInfoSync() { return { miniProgram: { envVersion: 'develop' } }; }
   };
-  assert.equal(api.getApiBaseUrl(), 'http://127.0.0.1:8000');
+  assert.equal(api.getApiBaseUrl(), 'https://zsbzy.com');
 });
 
 test('explicit API configuration overrides the environment default', () => {

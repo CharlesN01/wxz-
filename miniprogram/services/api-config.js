@@ -1,5 +1,7 @@
-const DEFAULT_API_BASE_URL = 'http://127.0.0.1:8000';
 const PRODUCTION_API_BASE_URL = 'https://zsbzy.com';
+// A phone cannot reach the developer computer's loopback interface. Keep the
+// public HTTPS service as the default and use extension config for local work.
+const DEFAULT_API_BASE_URL = PRODUCTION_API_BASE_URL;
 let configuredBaseUrl = '';
 
 function normalizeBaseUrl(value) {
