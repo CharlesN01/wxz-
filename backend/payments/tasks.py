@@ -70,12 +70,12 @@ def run_task(task_id, lease):
         if task.kind == "query":
             if order.status not in ("closed", "refunded"):
                 result = apply_query(order.pk, gateway.query_order(order))
-                if result["order"]["status"] in ("preparing", "paid"):
+                if result["order"]["status"] in ("preparing", "paid", "code_pending", "code_issued"):
                     error = "PLATFORM_PENDING"
                 elif result["order"]["status"] == "review":
                     error = "PAYMENT_REVIEW_REQUIRED"
         elif task.kind == "deliver":
-            if order.status == "fulfilled":
+            if order.status in ("fulfilled", "code_pending", "code_issued", "code_redeemed"):
                 gateway.notify_goods(order)
             elif order.status not in ("closed", "refunded"):
                 error = "PAYMENT_REVIEW_REQUIRED"
@@ -124,7 +124,7 @@ def schedule_reconciliation(order_id, *, cutoff):
     user = lock_user(reference.user_id)
     lock_reservation(user)
     order = Order.objects.select_for_update().get(pk=order_id)
-    if order.status not in ("preparing", "paid", "fulfilled", "review"):
+    if order.status not in ("preparing", "paid", "fulfilled", "code_pending", "code_issued", "code_redeemed", "review"):
         return False
     task = PaymentTask.objects.select_for_update().get(order=order, kind="query")
     # Failed tasks require explicit human preview/reason. Do not silently reset

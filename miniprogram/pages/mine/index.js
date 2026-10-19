@@ -1,5 +1,6 @@
 const api = require('../../services/api');
 const navigation = require('../../utils/navigation');
+const agentAttribution = require('../../utils/agent-attribution');
 
 const feedbackTypes = [
   { id: 'feature', label: '功能建议' },
@@ -23,6 +24,7 @@ Page({
     activationVisible: false, feedbackVisible: false, ordersVisible: false,
     infoVisible: false, infoTitle: '', infoText: '', infoKind: '', memberVisible: false, activationCode: '',
     selectedOrder: null, orderDetailVisible: false, orderDetailLoading: false, orderDetailError: '',
+    voucherVisible: false, voucherCode: '', voucherMask: '', voucherOrderId: '', voucherError: '',
     feedbackContent: '', feedbackContact: '', busy: false
   },
 
@@ -117,6 +119,15 @@ Page({
     }
   },
   closeOrderDetail() { this.setData({ orderDetailVisible: false, selectedOrder: null, orderDetailError: '' }); },
+  closeVoucher() { this.setData({ voucherVisible: false, voucherCode: '', voucherMask: '', voucherOrderId: '', voucherError: '' }); },
+  copyVoucher() {
+    if (!this.data.voucherCode || typeof wx.setClipboardData !== 'function') return;
+    wx.setClipboardData({ data: this.data.voucherCode, success: () => showToast('激活码已复制') });
+  },
+  redeemVoucher() {
+    if (!this.data.voucherCode) { showToast('原激活码仅展示一次，请先复制'); return; }
+    this.setData({ activationVisible: true, activationCode: this.data.voucherCode, voucherVisible: false });
+  },
   openActivation() {
     if (!this.data.loggedIn) { showToast('请先登录'); return; }
     this.setData({ activationVisible: true, activationCode: '' });
@@ -164,7 +175,7 @@ Page({
     }
     this.setData({ busy: true });
     try {
-      const created = await api.orders.create({ productId: product.id, channel });
+      const created = await api.orders.create({ productId: product.id, channel, agentScene: agentAttribution.read() });
       const order = created && created.order;
       if (!order || !order.id) throw new Error('订单创建结果无效');
       const prepared = await api.orders.preparePayment(order.id);
@@ -179,7 +190,16 @@ Page({
         success: resolve,
         fail: reject
       }));
-      await api.orders.queryPayment(order.id);
+      const queried = await api.orders.queryPayment(order.id);
+      const queriedOrder = queried && (queried.order || queried);
+      if (queriedOrder && ['code_pending', 'code_issued'].indexOf(queriedOrder.status) >= 0) {
+        if (queriedOrder.status === 'code_pending') {
+          const revealed = await api.orders.revealActivationCode(order.id);
+          this.setData({ voucherVisible: true, voucherCode: revealed.activationCode || '', voucherMask: revealed.mask || '', voucherOrderId: order.id, voucherError: '' });
+        } else {
+          this.setData({ voucherVisible: true, voucherCode: '', voucherMask: queriedOrder.activationCode && queriedOrder.activationCode.mask || '', voucherOrderId: order.id, voucherError: '激活码已展示过，服务端只保留掩码，请使用已复制的原码兑换。' });
+        }
+      }
       await this.refresh();
       showToast(this.data.entitlement && this.data.entitlement.active ? '权益已开通' : '支付已提交，正在确认');
     } catch (error) {

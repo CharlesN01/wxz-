@@ -1,4 +1,5 @@
 """One transactional state machine for trusted callbacks and cash-order queries."""
+from django.core.exceptions import ObjectDoesNotExist
 from django.db import IntegrityError, transaction
 from django.utils import timezone
 
@@ -77,6 +78,20 @@ def _paid(order, *, query=False):
     if not order.user.is_active or order.user.is_staff or order.user.is_superuser:
         _review(order, "PAID_ACCOUNT_REVIEW")
         return "review", "PAID_ACCOUNT_REVIEW"
+    from distribution.services import has_agent_order
+
+    if has_agent_order(order):
+        try:
+            existing_voucher = order.agent_voucher
+        except ObjectDoesNotExist:
+            existing_voucher = None
+        order.status = "code_pending" if existing_voucher is None else "code_issued"
+        order.paid_at = order.paid_at or timezone.now()
+        order.review_reason = ""
+        order.save(_service=True)
+        if query:
+            _task(order, "deliver")
+        return "applied", ""
     source = EntitlementSource.objects.filter(source_type="payment", source_id=order.pk).first()
     if source is None and has_active_entitlement(order.user, order.scope):
         first_review = order.review_reason != "PAID_ENTITLEMENT_CONFLICT"
@@ -101,12 +116,23 @@ def _refund(order, refund_id, amount):
     if amount != order.price_fen:
         _review(order, "REFUND_AMOUNT_REVIEW")
         return "review", "REFUND_AMOUNT_REVIEW"
+    from distribution.services import disable_voucher_for_refund
+
+    try:
+        agent_voucher = order.agent_voucher
+    except ObjectDoesNotExist:
+        agent_voucher = None
+    if agent_voucher and agent_voucher.state == "redeemed":
+        _review(order, "REFUND_AFTER_VOUCHER_REDEEMED")
+        return "review", "REFUND_AFTER_VOUCHER_REDEEMED"
     if order.status != "refunded":
         order.status = "refunded"
         order.refunded_at = timezone.now()
         order.review_reason = ""
         order.save(_service=True)
         _audit("payment_order_refunded", user=order.user, order_id=order.pk, refundId=refund_id)
+    if agent_voucher:
+        disable_voucher_for_refund(order, "平台退款：" + refund_id)
     # Irreversible order state is committed with source revoke. If refund arrives
     # before payment, no source exists and late payment cannot create one.
     source = EntitlementSource.objects.filter(source_type="payment", source_id=order.pk).first()

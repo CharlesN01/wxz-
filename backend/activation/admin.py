@@ -176,6 +176,33 @@ class ActivationCodeAdmin(ReadOnlyBusinessAdmin):
 
 @admin.register(ActivationRedemption)
 class ActivationRedemptionAdmin(ReadOnlyBusinessAdmin):
-    list_display = ("id", "code", "user", "source", "redeemed_at")
-    list_select_related = ("code", "user", "source")
-    search_fields = ("user__username", "code__mask")
+    list_display = ("id", "code_display", "agent_display", "user", "source", "redeemed_at")
+    list_select_related = ("code", "agent_voucher", "user", "source")
+    search_fields = ("user__username", "code__mask", "agent_voucher__mask", "agent_voucher__order__id")
+
+    @admin.display(description="激活码掩码")
+    def code_display(self, obj):
+        return obj.code.mask if obj.code_id else obj.agent_voucher.mask
+
+    @admin.display(description="代理")
+    def agent_display(self, obj):
+        if not obj.agent_voucher_id:
+            return "普通批次"
+        return obj.agent_voucher.order.agent_attribution.agent.display_name
+
+    def get_urls(self):
+        return [path("export-agent/", self.admin_site.admin_view(self.export_agent_view), name="activation_redemption_export_agent")] + super().get_urls()
+
+    def export_agent_view(self, request):
+        if not request.user.has_perm("distribution.export_agentperformance"):
+            raise PermissionDenied("没有导出代理业绩的权限。")
+        response = HttpResponse(content_type="text/csv; charset=utf-8")
+        response["Content-Disposition"] = 'attachment; filename="agent-redemptions.csv"'
+        writer = csv.writer(response)
+        writer.writerow(("代理", "订单号", "激活码掩码", "兑换用户", "兑换时间", "金额（分）", "支付状态"))
+        queryset = ActivationRedemption.objects.filter(agent_voucher__isnull=False).select_related("agent_voucher__order__agent_attribution__agent", "user")
+        for item in queryset.order_by("-redeemed_at"):
+            voucher = item.agent_voucher
+            order = voucher.order
+            writer.writerow((order.agent_attribution.agent.display_name, order.pk, voucher.mask, item.user.username, item.redeemed_at.isoformat(), order.price_fen, order.status))
+        return response

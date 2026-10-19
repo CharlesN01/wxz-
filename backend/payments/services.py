@@ -1,4 +1,6 @@
 import json
+from django.core.exceptions import ObjectDoesNotExist
+from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 from common import idempotency
@@ -10,14 +12,28 @@ from .models import Order, PaymentTask
 from .signing import payment_packet
 
 
+def _related(order, name):
+    try:
+        return getattr(order, name)
+    except ObjectDoesNotExist:
+        return None
+
+
 def order_payload(order):
-    return {"id":order.pk, "productId":order.product_id,"productName":order.product_name,
+    attribution = _related(order, "agent_attribution")
+    voucher = _related(order, "agent_voucher")
+    payload = {"id":order.pk, "productId":order.product_id,"productName":order.product_name,
             "priceFen":order.price_fen,"currency":"CNY","scope":order.scope,"permanent":True,
             "channel":order.channel,"status":order.status,"createdAt":order.created_at.isoformat(),
             "preparedAt":order.prepared_at.isoformat() if order.prepared_at else None,
             "paidAt":order.paid_at.isoformat() if order.paid_at else None,
             "fulfilledAt":order.fulfilled_at.isoformat() if order.fulfilled_at else None,
             "refundedAt":order.refunded_at.isoformat() if order.refunded_at else None}
+    if attribution:
+        payload["agent"] = {"code": attribution.agent.agent_code, "name": attribution.agent.display_name}
+        if voucher:
+            payload["activationCode"] = {"mask": voucher.mask, "state": voucher.state}
+    return payload
 
 
 def _session(session, user, configuration):
@@ -29,16 +45,18 @@ def _session(session, user, configuration):
 
 
 @transaction.atomic
-def create_order(user, session, product_id, channel, key):
+def create_order(user, session, product_id, channel, key, agent_scene=""):
     locked=lock_user(user); lock_reservation(locked)
     if not locked.is_active or locked.is_staff or locked.is_superuser:
         raise BusinessError("AUTH_REQUIRED","学员账户不可用。",401)
-    payload={"productId":product_id,"channel":channel}
+    payload={"productId":product_id,"channel":channel,"agentScene":agent_scene or ""}
     previous=idempotency.lookup(locked,'payment-create',key,payload)
     if previous:
         order=Order.objects.get(pk=previous.response['orderId'],user=locked)
         return {"order":order_payload(order),"entitlement":entitlement_snapshot(locked)}
     check_new_opening(locked)
+    if agent_scene and not getattr(settings, "AGENT_DISTRIBUTION_ENABLED", False):
+        raise BusinessError("AGENT_DISTRIBUTION_UNAVAILABLE", "代理购买暂未开放，请使用普通购买流程。", 503)
     configuration=channel_configuration(channel); _session(session,locked,configuration)
     try: product=Product.objects.select_for_update().get(pk=product_id)
     except Product.DoesNotExist as error: raise BusinessError("NOT_FOUND","商品不存在。",404) from error
@@ -47,6 +65,9 @@ def create_order(user, session, product_id, channel, key):
                 price_fen=product.price_fen,scope=product.scope,platform_product_id=product.platform_product_id,
                 app_id=configuration['appId'],environment=configuration['environment'],channel=channel)
     order.save(_service=True)
+    if agent_scene:
+        from distribution.services import attribute_order
+        attribute_order(order, agent_scene)
     idempotency.remember(locked,'payment-create',key,payload,{"orderId":order.pk})
     return {"order":order_payload(order),"entitlement":entitlement_snapshot(locked)}
 

@@ -145,10 +145,17 @@ def schemas():
         "Order": obj({"id": STRING, "productId": STRING, "productName": STRING, "priceFen": POSITIVE,
                     "currency": {"type": "string", "enum": ["CNY"]}, "scope": {"type": "string", "enum": ["all_chinese"]},
                     "permanent": {"type": "boolean", "const": True}, "channel": {"type": "string", "enum": ["android", "ios"]},
-                    "status": {"type": "string", "enum": ["created", "preparing", "paid", "fulfilled", "closed", "refunded", "review"]},
+                    "status": {"type": "string", "enum": ["created", "preparing", "paid", "code_pending", "code_issued", "code_redeemed", "fulfilled", "closed", "refunded", "review"]},
                     "createdAt": DATE_TIME, "preparedAt": nullable(DATE_TIME), "paidAt": nullable(DATE_TIME),
-                    "fulfilledAt": nullable(DATE_TIME), "refundedAt": nullable(DATE_TIME)}),
+                    "fulfilledAt": nullable(DATE_TIME), "refundedAt": nullable(DATE_TIME),
+                    "agent": obj({"code": STRING, "name": STRING}),
+                    "activationCode": nullable(obj({"mask": STRING, "state": {"type": "string", "enum": ["issued", "redeemed", "disabled"]}}))},
+                    required=["id", "productId", "productName", "priceFen", "currency", "scope", "permanent", "channel", "status", "createdAt", "preparedAt", "paidAt", "fulfilledAt", "refundedAt"]),
         "OrderResult": obj({"order": ref("Order"), "entitlement": ref("Entitlement")}),
+        "ActivationCodeReveal": obj({
+            "order": obj({"id": STRING, "status": {"type": "string", "enum": ["code_issued"]}}),
+            "activationCode": STRING, "mask": STRING, "redeemable": {"type": "boolean", "const": True},
+        }),
         "PaymentPacket": obj({"mode": {"type": "string", "enum": ["short_series_goods"]},
                     "signData": {"type": "string", "description": "签名覆盖的原始 JSON 字符串，严禁解析后重新序列化。"},
                     "paySig": STRING, "signature": STRING}),
@@ -203,6 +210,7 @@ BINDINGS = {
     ("student-order-detail", "get"): ("Order", 200, None, "empty", False),
     ("student-payment-prepare", "post"): ("PaymentPrepared", 200, "payments.api.StrictInput", "empty", True),
     ("student-payment-query", "post"): ("OrderResult", 200, "payments.api.StrictInput", "empty", True),
+    ("student-agent-voucher-reveal", "post"): ("ActivationCodeReveal", 200, "distribution.student_api.EmptyInput", "empty", True),
 }
 
 

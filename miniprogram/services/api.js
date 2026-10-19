@@ -92,6 +92,7 @@ const api = {
     create: (data, options) => write('POST', ROOT + '/orders/', data, options),
     preparePayment: (id, options) => write('POST', ROOT + '/orders/' + encodeId(id) + '/payment/', {}, options),
     queryPayment: (id, options) => write('POST', ROOT + '/orders/' + encodeId(id) + '/query/', {}, options)
+    ,revealActivationCode: (id, options) => write('POST', ROOT + '/orders/' + encodeId(id) + '/activation-code/reveal/', {}, options)
   },
 
   activation: {
@@ -161,6 +162,7 @@ Object.assign(api, {
   createOrder: api.orders.create,
   preparePayment: api.orders.preparePayment,
   queryPayment: api.orders.queryPayment,
+  revealActivationCode: api.orders.revealActivationCode,
   redeemActivationCode: api.activation.redeem,
   submitFeedback: api.feedback.submit,
   getGroupResources: api.resources.group

@@ -12,7 +12,7 @@ from common import idempotency
 from common.errors import BusinessError
 from entitlements.services import (
     _audit, _require_admin, check_new_opening, entitlement_snapshot,
-    grant_entitlement, lock_reservation, lock_user,
+    grant_entitlement, has_active_entitlement, lock_reservation, lock_user,
 )
 from .models import ActivationBatch, ActivationCode, ActivationRedemption
 
@@ -155,10 +155,39 @@ def redeem_code(user, code, key):
     previous = idempotency.lookup(user, "activation.redeem", key, payload)
     if previous:
         return {**previous.response, "entitlement": entitlement_snapshot(user)}
-    check_new_opening(user)
     reference = ActivationCode.objects.filter(digest=digest).first()
     if reference is None:
-        raise BusinessError("CODE_UNAVAILABLE", "激活码不可用，请核对或联系发码管理员。", 409)
+        from distribution.models import AgentVoucher
+        voucher = AgentVoucher.objects.select_for_update().select_related("order").filter(digest=digest).first()
+        if voucher is None or voucher.state != "issued" or voucher.order.status not in ("code_pending", "code_issued"):
+            raise BusinessError("CODE_UNAVAILABLE", "激活码不可用，请核对或联系发码管理员。", 409)
+        if has_active_entitlement(user):
+            raise BusinessError("ALREADY_ACTIVATED", "已激活", 409)
+        reservation = lock_reservation(user)
+        if reservation and reservation.is_active and reservation.order_id != voucher.order_id:
+            raise BusinessError("PURCHASE_IN_PROGRESS", "已有购买处理中，请等待平台确认。", 409)
+        if voucher.order.user_id != user.pk:
+            # The purchaser may pass the code to another account; the code itself
+            # is the bearer credential, so ownership is intentionally not checked.
+            pass
+        source = grant_entitlement(user, "activation", str(voucher.pk))
+        if source.status != "active":
+            raise BusinessError("CODE_UNAVAILABLE", "激活码不可用，请核对或联系发码管理员。", 409)
+        voucher.state = "redeemed"
+        voucher.redeemed_by = user
+        voucher.redeemed_at = timezone.now()
+        voucher.save(_service=True)
+        voucher.order.status = "code_redeemed"
+        voucher.order.save(_service=True)
+        from distribution.services import release_voucher_reservation
+        release_voucher_reservation(voucher)
+        redemption = ActivationRedemption(agent_voucher=voucher, user=user, source=source)
+        redemption.save(_service=True)
+        history = {"redemptionId": str(redemption.pk), "redeemedAt": redemption.redeemed_at.isoformat()}
+        idempotency.remember(user, "activation.redeem", key, payload, history)
+        _audit("activation_redeemed", user=user, source=source, order_id=voucher.order_id, voucherId=str(voucher.pk), redemptionId=str(redemption.pk))
+        return {**history, "entitlement": entitlement_snapshot(user)}
+    check_new_opening(user)
     batch = _get_batch(reference.batch_id, lock=True)
     current = ActivationCode.objects.select_for_update().get(pk=reference.pk)
     if batch.state != "enabled" or current.state != "unused":

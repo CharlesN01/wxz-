@@ -22,6 +22,7 @@ class StrictInput(serializers.Serializer):
 class CreateInput(StrictInput):
     productId=serializers.RegexField(r'^[A-Za-z0-9_-]{1,64}$')
     channel=serializers.ChoiceField(choices=('android','ios'))
+    agentScene=serializers.RegexField(r'^a=[A-Z0-9][A-Z0-9_-]{2,31}$', max_length=40, required=False, allow_blank=True, trim_whitespace=True)
 
 
 def _query(request,allow_page=False):
@@ -41,7 +42,7 @@ class OrderListView(StudentAPIView):
         _query(request)
         check_rate('order-create',str(request.user.pk),10)
         data=CreateInput(data=request.data); data.is_valid(raise_exception=True)
-        result=create_order(request.user,request.auth,data.validated_data['productId'],data.validated_data['channel'],require_key(request.headers.get('Idempotency-Key')))
+        result=create_order(request.user,request.auth,data.validated_data['productId'],data.validated_data['channel'],require_key(request.headers.get('Idempotency-Key')),data.validated_data.get('agentScene', ''))
         return Response(result,status=201,headers={'Cache-Control':'no-store, private'})
 
     def get(self,request):

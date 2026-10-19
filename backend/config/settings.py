@@ -54,6 +54,14 @@ VIRTUAL_PAYMENT_SANDBOX_APP_KEY = os.environ.get("VIRTUAL_PAYMENT_SANDBOX_APP_KE
 VIRTUAL_PAYMENT_CALLBACK_TOKEN = os.environ.get("VIRTUAL_PAYMENT_CALLBACK_TOKEN", "")
 VIRTUAL_PAYMENT_CALLBACK_AES_KEY = os.environ.get("VIRTUAL_PAYMENT_CALLBACK_AES_KEY", "")
 ACTIVATION_REDEEM_RATE_LIMIT = 10
+AGENT_DISTRIBUTION_ENABLED = env_bool("AGENT_DISTRIBUTION_ENABLED", False)
+AGENT_QRCODE_ENABLED = env_bool("AGENT_QRCODE_ENABLED", False)
+try:
+    AGENT_ATTRIBUTION_TTL_DAYS = int(os.environ.get("AGENT_ATTRIBUTION_TTL_DAYS", "30"))
+except ValueError:
+    raise ImproperlyConfigured("AGENT_ATTRIBUTION_TTL_DAYS must be an integer.") from None
+if not 1 <= AGENT_ATTRIBUTION_TTL_DAYS <= 90:
+    raise ImproperlyConfigured("AGENT_ATTRIBUTION_TTL_DAYS must be between 1 and 90.")
 
 INSTALLED_APPS = [
     "unfold",
@@ -81,6 +89,7 @@ INSTALLED_APPS = [
     "practice.apps.PracticeConfig",
     "resources.apps.ResourcesConfig",
     "feedback.apps.FeedbackConfig",
+    "distribution.apps.DistributionConfig",
 ]
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",

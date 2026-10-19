@@ -63,7 +63,8 @@ class ActivationCode(ServiceOnlyModel):
 
 class ActivationRedemption(ServiceOnlyModel):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    code = models.OneToOneField(ActivationCode, on_delete=models.PROTECT, related_name="redemption", verbose_name="已兑码")
+    code = models.OneToOneField(ActivationCode, on_delete=models.PROTECT, null=True, blank=True, related_name="redemption", verbose_name="批次已兑码")
+    agent_voucher = models.OneToOneField("distribution.AgentVoucher", on_delete=models.PROTECT, null=True, blank=True, related_name="redemption", verbose_name="订单激活码")
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="activation_redemptions", verbose_name="学员")
     source = models.OneToOneField("entitlements.EntitlementSource", on_delete=models.PROTECT, related_name="activation_redemption", verbose_name="永久权益来源")
     redeemed_at = models.DateTimeField("兑换时间", auto_now_add=True)
@@ -72,3 +73,6 @@ class ActivationRedemption(ServiceOnlyModel):
         verbose_name = "激活码兑换历史"
         verbose_name_plural = verbose_name
         ordering = ("-redeemed_at", "id")
+        constraints = (
+            models.CheckConstraint(condition=(models.Q(code__isnull=False, agent_voucher__isnull=True) | models.Q(code__isnull=True, agent_voucher__isnull=False)), name="activation_redemption_one_code_source"),
+        )

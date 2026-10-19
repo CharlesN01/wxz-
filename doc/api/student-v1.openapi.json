@@ -3513,6 +3513,11 @@
                       "android",
                       "ios"
                     ]
+                  },
+                  "agentScene": {
+                    "type": "string",
+                    "maxLength": 40,
+                    "pattern": "^a=[A-Z0-9][A-Z0-9_-]{2,31}$"
                   }
                 },
                 "required": [
@@ -3709,6 +3714,209 @@
                   "requestId": "test-only-request-id"
                 }
               }
+            }
+          }
+        }
+      }
+    },
+    "/api/student/v1/orders/{id}/activation-code/reveal/": {
+      "post": {
+        "operationId": "student_agent_voucher_reveal_post",
+        "summary": "student-agent-voucher-reveal",
+        "tags": [
+          "distribution"
+        ],
+        "security": [
+          {
+            "studentBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 8,
+              "maxLength": 128,
+              "pattern": "^[A-Za-z0-9._:-]+$"
+            },
+            "description": "同成功操作重试保留原键／载荷；同键异载荷409；新操作生成新键。"
+          }
+        ],
+        "x-backend-view": "distribution.student_api.ActivationCodeRevealView",
+        "x-request-serializer": "distribution.student_api.EmptyInput",
+        "x-query-serializer": "empty",
+        "x-query-policy": "strict",
+        "x-idempotency": true,
+        "responses": {
+          "200": {
+            "description": "成功；示例为脱敏结构示例。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActivationCodeReveal"
+                },
+                "example": {
+                  "order": {
+                    "id": "test-only-example",
+                    "status": "code_issued"
+                  },
+                  "activationCode": "test-only-example",
+                  "mask": "test-only-example",
+                  "redeemable": true
+                }
+              }
+            },
+            "headers": {
+              "X-Request-ID": {
+                "description": "服务端请求标识，用于定位联调问题。",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "统一认证／校验／业务错误结构；各方法仅返回实际触发的错误，具体 code 见联调手册。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StudentError"
+                },
+                "example": {
+                  "error": {
+                    "code": "VALIDATION_ERROR",
+                    "message": "脱敏错误示例"
+                  },
+                  "requestId": "test-only-request-id"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "统一认证／校验／业务错误结构；各方法仅返回实际触发的错误，具体 code 见联调手册。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StudentError"
+                },
+                "example": {
+                  "error": {
+                    "code": "INVALID_TOKEN",
+                    "message": "脱敏错误示例"
+                  },
+                  "requestId": "test-only-request-id"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "统一认证／校验／业务错误结构；各方法仅返回实际触发的错误，具体 code 见联调手册。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StudentError"
+                },
+                "example": {
+                  "error": {
+                    "code": "ENTITLEMENT_REQUIRED",
+                    "message": "脱敏错误示例"
+                  },
+                  "requestId": "test-only-request-id"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "统一认证／校验／业务错误结构；各方法仅返回实际触发的错误，具体 code 见联调手册。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StudentError"
+                },
+                "example": {
+                  "error": {
+                    "code": "NOT_FOUND",
+                    "message": "脱敏错误示例"
+                  },
+                  "requestId": "test-only-request-id"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "统一认证／校验／业务错误结构；各方法仅返回实际触发的错误，具体 code 见联调手册。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StudentError"
+                },
+                "example": {
+                  "error": {
+                    "code": "VERSION_CONFLICT",
+                    "message": "脱敏错误示例"
+                  },
+                  "requestId": "test-only-request-id"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "统一认证／校验／业务错误结构；各方法仅返回实际触发的错误，具体 code 见联调手册。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StudentError"
+                },
+                "example": {
+                  "error": {
+                    "code": "RATE_LIMITED",
+                    "message": "脱敏错误示例"
+                  },
+                  "requestId": "test-only-request-id"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "统一认证／校验／业务错误结构；各方法仅返回实际触发的错误，具体 code 见联调手册。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StudentError"
+                },
+                "example": {
+                  "error": {
+                    "code": "PAYMENT_CHANNEL_UNAVAILABLE",
+                    "message": "脱敏错误示例"
+                  },
+                  "requestId": "test-only-request-id"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {},
+                "required": [],
+                "additionalProperties": false
+              },
+              "example": {}
             }
           }
         }
@@ -7290,6 +7498,9 @@
               "created",
               "preparing",
               "paid",
+              "code_pending",
+              "code_issued",
+              "code_redeemed",
               "fulfilled",
               "closed",
               "refunded",
@@ -7343,6 +7554,50 @@
                 "type": "null"
               }
             ]
+          },
+          "agent": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "code",
+              "name"
+            ],
+            "additionalProperties": false
+          },
+          "activationCode": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "mask": {
+                    "type": "string"
+                  },
+                  "state": {
+                    "type": "string",
+                    "enum": [
+                      "issued",
+                      "redeemed",
+                      "disabled"
+                    ]
+                  }
+                },
+                "required": [
+                  "mask",
+                  "state"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
@@ -7376,6 +7631,47 @@
         "required": [
           "order",
           "entitlement"
+        ],
+        "additionalProperties": false
+      },
+      "ActivationCodeReveal": {
+        "type": "object",
+        "properties": {
+          "order": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "code_issued"
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "status"
+            ],
+            "additionalProperties": false
+          },
+          "activationCode": {
+            "type": "string"
+          },
+          "mask": {
+            "type": "string"
+          },
+          "redeemable": {
+            "type": "boolean",
+            "const": true
+          }
+        },
+        "required": [
+          "order",
+          "activationCode",
+          "mask",
+          "redeemable"
         ],
         "additionalProperties": false
       },

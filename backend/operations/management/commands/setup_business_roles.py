@@ -25,6 +25,8 @@ VIEW_PERMISSIONS = frozenset().union(
       ("practiceround", "rounditem", "resumeposition")),
     *(permissions("payments", model, "view_" + model) for model in
       ("order", "paymenttask", "paymentevent")),
+    *(permissions("distribution", model, "view_" + model) for model in
+      ("agentprofile", "agentorderattribution", "agentvoucher")),
     *(permissions("writing", model, "view_" + model) for model in
       ("writingcategory", "writinggenre", "writingcontent", "writingrevision")),
     permissions("resources", "groupresourceconfiguration", "view_groupresourceconfiguration"),
@@ -45,6 +47,10 @@ ROLES = {
                     | permissions("payments", "paymenttask", "view_paymenttask", "reschedule_paymenttask")
                     | permissions("payments", "paymentevent", "view_paymentevent")
                     | permissions("entitlements", "openingreservation", "view_openingreservation"),
+    "代理管理": permissions("distribution", "agentprofile", "view_agentprofile", "manage_agentprofile", "qrcode_agentprofile"),
+    "代理业绩": permissions("distribution", "agentvoucher", "view_agentvoucher", "view_agentperformance", "export_agentperformance")
+                    | permissions("distribution", "agentorderattribution", "view_agentorderattribution")
+                    | permissions("activation", "activationredemption", "view_activationredemption"),
     "资料群管理": permissions("resources", "groupresourceconfiguration", "view_groupresourceconfiguration",
                             "change_groupresourceconfiguration"),
     "应用文编辑": (

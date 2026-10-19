@@ -12,7 +12,9 @@ def order_id():
 class Order(ServiceOnlyModel):
     STATES = tuple((v, label) for v, label in (
         ("created", "本地待支付"), ("preparing", "平台处理中"), ("paid", "已付款待发权"),
-        ("fulfilled", "已开通"), ("closed", "平台确认关闭"), ("refunded", "平台已退款"), ("review", "待人工核查")))
+        ("code_pending", "已付款待领取激活码"), ("code_issued", "激活码已生成"),
+        ("code_redeemed", "激活码已兑换"), ("fulfilled", "已开通"), ("closed", "平台确认关闭"),
+        ("refunded", "平台已退款"), ("review", "待人工核查")))
     id = models.CharField(primary_key=True, max_length=32, default=order_id, editable=False)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="payment_orders")
     identity = models.ForeignKey("accounts.WeChatIdentity", on_delete=models.PROTECT)
@@ -24,7 +26,7 @@ class Order(ServiceOnlyModel):
     app_id = models.CharField(max_length=64)
     environment = models.PositiveSmallIntegerField(default=0)
     channel = models.CharField(max_length=16, choices=(("android", "Android"), ("ios", "iOS")))
-    status = models.CharField(max_length=16, choices=STATES, default="created")
+    status = models.CharField(max_length=20, choices=STATES, default="created")
     prepared_at = models.DateTimeField(null=True, blank=True)
     prepared_session = models.ForeignKey("accounts.StudentSession", on_delete=models.PROTECT, null=True, blank=True)
     sign_data = models.TextField(blank=True)
