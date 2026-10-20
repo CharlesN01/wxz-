@@ -8,7 +8,8 @@ from common.errors import BusinessError
 from entitlements.models import Product
 from entitlements.services import check_new_opening, entitlement_snapshot, has_active_entitlement, lock_user, lock_reservation, reserve_opening
 from .configuration import channel_configuration, require_channel_price, require_product_ready
-from .models import Order, PaymentTask
+from .models import PAYMENT_WINDOW_SECONDS, Order, PaymentTask
+from .expiration import expire_user_orders
 from .signing import payment_packet
 
 
@@ -24,7 +25,9 @@ def order_payload(order):
     voucher = _related(order, "agent_voucher")
     payload = {"id":order.pk, "productId":order.product_id,"productName":order.product_name,
             "priceFen":order.price_fen,"currency":"CNY","scope":order.scope,"permanent":True,
-            "channel":order.channel,"status":order.status,"createdAt":order.created_at.isoformat(),
+            "channel":order.channel,"status":order.status,"statusLabel":order.get_status_display(),
+            "expiresAt":order.payment_expires_at.isoformat(),"paymentWindowSeconds":PAYMENT_WINDOW_SECONDS,
+            "createdAt":order.created_at.isoformat(),
             "preparedAt":order.prepared_at.isoformat() if order.prepared_at else None,
             "paidAt":order.paid_at.isoformat() if order.paid_at else None,
             "fulfilledAt":order.fulfilled_at.isoformat() if order.fulfilled_at else None,
@@ -44,8 +47,13 @@ def _session(session, user, configuration):
         raise BusinessError("AUTH_REQUIRED", "学员会话不可用，请重新登录。",401)
 
 
-@transaction.atomic
 def create_order(user, session, product_id, channel, key, agent_scene=""):
+    expire_user_orders(user)
+    return _create_order(user, session, product_id, channel, key, agent_scene)
+
+
+@transaction.atomic
+def _create_order(user, session, product_id, channel, key, agent_scene=""):
     locked=lock_user(user); lock_reservation(locked)
     if not locked.is_active or locked.is_staff or locked.is_superuser:
         raise BusinessError("AUTH_REQUIRED","学员账户不可用。",401)
@@ -72,16 +80,26 @@ def create_order(user, session, product_id, channel, key, agent_scene=""):
     return {"order":order_payload(order),"entitlement":entitlement_snapshot(locked)}
 
 
-@transaction.atomic
 def prepare_payment(user, session, order_id, key):
+    # Commit expiry even when preparing this old order returns an error.
+    expire_user_orders(user)
+    return _prepare_payment(user, session, order_id, key)
+
+
+@transaction.atomic
+def _prepare_payment(user, session, order_id, key):
     locked=lock_user(user); lock_reservation(locked)
     if not locked.is_active or locked.is_staff or locked.is_superuser:
         raise BusinessError("AUTH_REQUIRED","学员账户不可用。",401)
     try: order=Order.objects.select_for_update().get(pk=order_id,user=locked)
     except Order.DoesNotExist as error: raise BusinessError("NOT_FOUND","订单不存在。",404) from error
+    expire_user_orders(locked)
+    order.refresh_from_db()
     payload={"orderId":order.pk,"sessionId":session.pk}
     previous=idempotency.lookup(locked,'payment-prepare',key,payload)
     if previous and (order.status!='preparing' or has_active_entitlement(locked)):
+        return {"order":order_payload(order),"payment":None,"entitlement":entitlement_snapshot(locked)}
+    if order.status == 'expired':
         return {"order":order_payload(order),"payment":None,"entitlement":entitlement_snapshot(locked)}
     if not previous and has_active_entitlement(locked):
         raise BusinessError("ALREADY_ACTIVATED","已激活",409)

@@ -11,6 +11,7 @@ from entitlements.services import _audit, _require_admin, lock_reservation, lock
 from . import gateway
 from .models import Order, PaymentTask
 from .synchronization import apply_query
+from .expiration import expire_user_orders
 
 MAX_ATTEMPTS = 8
 LEASE_SECONDS = 60
@@ -62,13 +63,16 @@ def finish_task(task_id, lease, *, error=""):
 
 def run_task(task_id, lease):
     task = PaymentTask.objects.get(pk=task_id)
+    order = Order.objects.select_related("identity").get(pk=task.order_id)
+    expire_user_orders(order.user_id)
+    task.refresh_from_db()
+    order.refresh_from_db()
     if task.status != "running" or task.lease_token != lease or not task.lease_until or task.lease_until <= timezone.now():
         return False
-    order = Order.objects.select_related("identity").get(pk=task.order_id)
     error = ""
     try:
         if task.kind == "query":
-            if order.status not in ("closed", "refunded"):
+            if order.status not in ("closed", "expired", "refunded"):
                 result = apply_query(order.pk, gateway.query_order(order))
                 if result["order"]["status"] in ("preparing", "paid", "code_pending", "code_issued"):
                     error = "PLATFORM_PENDING"
@@ -77,7 +81,7 @@ def run_task(task_id, lease):
         elif task.kind == "deliver":
             if order.status in ("fulfilled", "code_pending", "code_issued", "code_redeemed"):
                 gateway.notify_goods(order)
-            elif order.status not in ("closed", "refunded"):
+            elif order.status not in ("closed", "expired", "refunded"):
                 error = "PAYMENT_REVIEW_REQUIRED"
         else:
             error = "INVALID_TASK_KIND"

@@ -1,4 +1,5 @@
 import uuid
+from datetime import timedelta
 from django.conf import settings
 from django.db import models
 from django.utils import timezone
@@ -9,12 +10,15 @@ def order_id():
     return uuid.uuid4().hex
 
 
+PAYMENT_WINDOW_SECONDS = 120
+
+
 class Order(ServiceOnlyModel):
     STATES = tuple((v, label) for v, label in (
         ("created", "本地待支付"), ("preparing", "平台处理中"), ("paid", "已付款待发权"),
         ("code_pending", "已付款待领取激活码"), ("code_issued", "激活码已生成"),
         ("code_redeemed", "激活码已兑换"), ("fulfilled", "已开通"), ("closed", "平台确认关闭"),
-        ("refunded", "平台已退款"), ("review", "待人工核查")))
+        ("expired", "超时已取消"), ("refunded", "平台已退款"), ("review", "待人工核查")))
     id = models.CharField("订单编号", primary_key=True, max_length=32, default=order_id, editable=False)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="payment_orders", verbose_name="学员")
     identity = models.ForeignKey("accounts.WeChatIdentity", on_delete=models.PROTECT, verbose_name="微信身份")
@@ -43,6 +47,10 @@ class Order(ServiceOnlyModel):
 
     def __str__(self):
         return f"订单 {self.pk}"
+
+    @property
+    def payment_expires_at(self):
+        return self.created_at + timedelta(seconds=PAYMENT_WINDOW_SECONDS)
 
     class Meta:
         verbose_name = "付款订单"

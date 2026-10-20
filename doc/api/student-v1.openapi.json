@@ -7999,9 +7999,21 @@
               "code_redeemed",
               "fulfilled",
               "closed",
+              "expired",
               "refunded",
               "review"
             ]
+          },
+          "statusLabel": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "paymentWindowSeconds": {
+            "type": "integer",
+            "const": 120
           },
           "createdAt": {
             "type": "string",

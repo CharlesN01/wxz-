@@ -71,7 +71,11 @@ def _check_new_opening(locked_user, reservation):
     if has_active_entitlement(locked_user):
         raise BusinessError("ALREADY_ACTIVATED", "已激活", 409)
     if reservation and reservation.is_active:
-        raise BusinessError("PURCHASE_IN_PROGRESS", "购买处理中，请等待平台确认。", 409)
+        from payments.expiration import expire_user_orders
+        expire_user_orders(locked_user)
+        reservation.refresh_from_db()
+        if reservation.is_active:
+            raise BusinessError("PURCHASE_IN_PROGRESS", "订单待支付，创建后 2 分钟超时自动取消。", 409)
 
 
 @transaction.atomic
@@ -88,6 +92,10 @@ def reserve_opening(user, order_id, scope=SCOPE):
     order_id = _business_id(order_id)
     locked = lock_user(user)
     reservation = lock_reservation(locked, scope)
+    if reservation and reservation.is_active:
+        from payments.expiration import expire_user_orders
+        expire_user_orders(locked)
+        reservation.refresh_from_db()
     if not locked.is_active:
         raise BusinessError("AUTH_REQUIRED", "账户已停用。", 401)
     if has_active_entitlement(locked):
@@ -95,7 +103,7 @@ def reserve_opening(user, order_id, scope=SCOPE):
     if reservation and reservation.is_active:
         if reservation.order_id == order_id:
             return reservation
-        raise BusinessError("PURCHASE_IN_PROGRESS", "购买处理中，请等待平台确认。", 409)
+        raise BusinessError("PURCHASE_IN_PROGRESS", "订单待支付，创建后 2 分钟超时自动取消。", 409)
     reservation = reservation or OpeningReservation(user=locked, scope=scope)
     reservation.order_id = order_id
     reservation.reserved_at = timezone.now()

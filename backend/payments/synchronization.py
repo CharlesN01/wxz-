@@ -15,6 +15,7 @@ from .models import Order, PaymentEvent, PaymentTask
 from .protocol import invalid, number_field, parse_payload, text_field
 from .refund_queries import record_refund_query
 from .services import order_payload
+from .expiration import expire_user_orders
 
 
 def _reference(order_id):
@@ -288,6 +289,7 @@ def apply_query(order_id, snapshot):
 
 
 def query_payment(user, order_id, key):
+    expire_user_orders(user)
     # Reserve the idempotency identity under the same User mutex, but do not keep
     # the transaction open while waiting on the external platform.
     with transaction.atomic():
@@ -300,6 +302,8 @@ def query_payment(user, order_id, key):
             raise BusinessError("NOT_FOUND", "订单不存在。", 404)
         previous = idempotency.lookup(locked, "payment-query", key, {"orderId": order.pk})
         if previous:
+            return {"order": order_payload(order), "entitlement": entitlement_snapshot(locked)}
+        if order.status in ('expired', 'closed', 'refunded'):
             return {"order": order_payload(order), "entitlement": entitlement_snapshot(locked)}
         if order.status == "created":
             raise BusinessError("PAYMENT_NOT_PREPARED", "订单尚未进入支付，请先获取支付参数。", 409)

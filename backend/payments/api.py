@@ -7,6 +7,7 @@ from common.idempotency import require_key
 from common.limits import check_rate
 from content.models import LearningConfiguration
 from .models import Order
+from .expiration import expire_user_orders
 from .services import create_order, order_payload, prepare_payment
 from .synchronization import query_payment
 from .protocol import MAX_BYTES, invalid, parse_payload
@@ -47,6 +48,7 @@ class OrderListView(StudentAPIView):
 
     def get(self,request):
         page=_query(request,True); capacity=LearningConfiguration.current().page_size
+        expire_user_orders(request.user)
         queryset=Order.objects.filter(user=request.user).order_by('-created_at','id')
         count=queryset.count(); offset=(page-1)*capacity
         if page>1 and offset>=count: raise BusinessError('NOT_FOUND','页码不存在。',404)
@@ -59,6 +61,8 @@ class OrderDetailView(StudentAPIView):
         _query(request)
         try: order=Order.objects.get(pk=order_id,user=request.user)
         except Order.DoesNotExist as error: raise BusinessError('NOT_FOUND','订单不存在。',404) from error
+        expire_user_orders(request.user)
+        order.refresh_from_db()
         return Response(order_payload(order),headers={'Cache-Control':'no-store, private'})
 
 

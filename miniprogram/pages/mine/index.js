@@ -1,6 +1,7 @@
 const api = require('../../services/api');
 const navigation = require('../../utils/navigation');
 const agentAttribution = require('../../utils/agent-attribution');
+const { orderView } = require('../../utils/order-view');
 
 const feedbackTypes = [
   { id: 'feature', label: '功能建议' },
@@ -13,7 +14,7 @@ const feedbackTypes = [
 function showToast(title) { wx.showToast({ title: String(title || '操作未完成').slice(0, 28), icon: 'none' }); }
 function apiMessage(error, fallback) {
   if (error && error.code === 'ALREADY_ACTIVATED') return '已激活';
-  if (error && error.code === 'PURCHASE_IN_PROGRESS') return '购买处理中，请查看原订单';
+  if (error && error.code === 'PURCHASE_IN_PROGRESS') return '订单待支付，2分钟超时自动取消';
   return error && error.message ? error.message : fallback;
 }
 
@@ -29,6 +30,25 @@ Page({
   },
 
   onShow() { this.refresh(); },
+  onHide() { this.clearOrderExpiryTimer(); },
+  onUnload() { this.clearOrderExpiryTimer(); },
+
+  clearOrderExpiryTimer() {
+    if (this._orderExpiryTimer && typeof clearTimeout === 'function') clearTimeout(this._orderExpiryTimer);
+    this._orderExpiryTimer = null;
+  },
+
+  scheduleOrderExpiry() {
+    this.clearOrderExpiryTimer();
+    if (typeof setTimeout !== 'function') return;
+    const deadlines = this.data.orders.filter(order => ['created', 'preparing'].includes(order.status))
+      .map(order => Date.parse(order.expiresAt)).filter(Number.isFinite);
+    if (!deadlines.length) return;
+    this._orderExpiryTimer = setTimeout(() => {
+      this._orderExpiryTimer = null;
+      this.refresh();
+    }, Math.max(1000, Math.min(...deadlines) - Date.now() + 250));
+  },
 
   async loadOrders() {
     let response = await api.orders.list({ page: 1 });
@@ -49,6 +69,7 @@ Page({
     this.setData({ loggedIn: Boolean(session && session.token), userId: session && session.user ? String(session.user.id || '') : '', loading: true, error: '' });
     const productTask = api.products.list().catch(() => null);
     if (!session || !session.token) {
+      this.clearOrderExpiryTimer();
       const products = await productTask;
       this.setData({ product: products && products.results && products.results[0] || null, loading: false });
       return;
@@ -61,6 +82,7 @@ Page({
     const failed = results.filter((result) => result.status === 'rejected');
     const authFailure = failed.some((result) => result.reason && (result.reason.status === 401 || result.reason.code === 'INVALID_TOKEN'));
     if (authFailure) {
+      this.clearOrderExpiryTimer();
       this.setData({ loggedIn: false, userId: '', entitlement: null, stats: null, preferences: null, orders: [], product, loading: false, error: '登录状态已失效，请重新登录' });
       return;
     }
@@ -68,9 +90,14 @@ Page({
       entitlement: results[0].status === 'fulfilled' ? results[0].value : null,
       stats: results[1].status === 'fulfilled' ? results[1].value : null,
       preferences: results[2].status === 'fulfilled' ? results[2].value : null,
-      orders: results[3].status === 'fulfilled' && Array.isArray(results[3].value) ? results[3].value : [],
+      orders: results[3].status === 'fulfilled' && Array.isArray(results[3].value) ? results[3].value.map(orderView) : [],
       product, loading: false, error: failed.length ? '部分账户数据暂时无法加载' : ''
     });
+    if (this.data.selectedOrder) {
+      const currentOrder = this.data.orders.find(order => order.id === this.data.selectedOrder.id);
+      if (currentOrder) this.setData({ selectedOrder: currentOrder });
+    }
+    this.scheduleOrderExpiry();
   },
 
   async login() {
@@ -112,7 +139,7 @@ Page({
     this.setData({ selectedOrder: this.data.orders.find((order) => String(order.id) === String(id)) || null, ordersVisible: false, orderDetailVisible: true, orderDetailLoading: true, orderDetailError: '' });
     try {
       const detail = await api.orders.detail(id);
-      this.setData({ selectedOrder: detail && (detail.order || detail) || this.data.selectedOrder, orderDetailLoading: false });
+      this.setData({ selectedOrder: orderView(detail && (detail.order || detail) || this.data.selectedOrder), orderDetailLoading: false });
     } catch (error) {
       this.setData({ orderDetailLoading: false, orderDetailError: error && error.message ? error.message : '订单详情暂时无法加载' });
     }
@@ -186,7 +213,8 @@ Page({
       const prepared = await api.orders.preparePayment(order.id);
       if (!prepared || !prepared.payment) {
         await this.refresh();
-        showToast('订单处理中，请查看订单状态');
+        showToast(prepared && prepared.order && prepared.order.status === 'expired'
+          ? '订单已超时取消，请重新下单' : '请查看订单状态');
         return;
       }
       if (typeof wx.requestVirtualPayment !== 'function') throw new Error('当前微信环境不支持虚拟支付');
@@ -206,10 +234,12 @@ Page({
         }
       }
       await this.refresh();
-      showToast(this.data.entitlement && this.data.entitlement.active ? '权益已开通' : '支付已提交，正在确认');
+      showToast(this.data.entitlement && this.data.entitlement.active ? '权益已开通'
+        : queriedOrder && queriedOrder.status === 'expired' ? '订单已超时取消，扣款结果将自动同步' : '支付已提交，正在确认');
     } catch (error) {
       await this.refresh();
-      showToast(apiMessage(error, '购买未完成，可在订单中查看状态'));
+      const cancelled = error && /cancel/i.test(error.errMsg || '');
+      showToast(cancelled ? '已取消支付，订单2分钟超时自动取消' : apiMessage(error, '购买未完成，可在订单中查看状态'));
     } finally { this.setData({ busy: false }); }
   },
 

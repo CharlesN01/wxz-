@@ -1,0 +1,24 @@
+[Unit]
+Description=Cancel unpaid Chinese study orders after two minutes
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=chinese-study
+Group=chinese-study
+WorkingDirectory=/srv/chinese-study/current/backend
+EnvironmentFile=/etc/chinese-study/backend.env
+Environment=DJANGO_SETTINGS_MODULE=config.production_settings
+ExecStart=/srv/chinese-study/venv/bin/python manage.py expire_payment_orders --watch --interval 1 --limit 200
+Restart=always
+RestartSec=5
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/chinese-study
+
+[Install]
+WantedBy=multi-user.target

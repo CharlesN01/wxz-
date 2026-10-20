@@ -7,7 +7,7 @@ const { createRequire } = require('node:module');
 
 const root = path.join(__dirname, '..');
 
-function load(relativePath, api, navigation = {}) {
+function load(relativePath, api, navigation = {}, runtime = {}) {
   const filename = path.join(root, 'miniprogram', relativePath);
   const localRequire = createRequire(filename);
   let definition;
@@ -20,7 +20,8 @@ function load(relativePath, api, navigation = {}) {
     },
     Page(value) { definition = value; },
     wx: { showToast() {}, getSystemInfoSync() { return { platform: 'devtools' }; } },
-    getCurrentPages() { return []; }
+    getCurrentPages() { return []; },
+    ...runtime
   }, { filename });
   return { ...definition, data: JSON.parse(JSON.stringify(definition.data)), setData(value) { Object.assign(this.data, value); } };
 }
@@ -49,6 +50,65 @@ test('我的页面提供登录入口并按订单 ID 请求详情', async () => {
   const template = fs.readFileSync(path.join(root, 'miniprogram/pages/mine/index.wxml'), 'utf8');
   assert.match(template, /bindtap="login"/);
   assert.match(template, /bindtap="openOrder"/);
+});
+
+test('超时订单不再弹起支付，显示重新下单提示', async () => {
+  const messages = [];
+  let paymentCalls = 0;
+  const page = load('pages/mine/index.js', {
+    orders: {
+      create: async () => ({ order: { id: 'expired-order' } }),
+      preparePayment: async () => ({ order: { id: 'expired-order', status: 'expired' }, payment: null })
+    }
+  }, {}, { wx: { showToast: ({ title }) => messages.push(title), requestVirtualPayment: () => { paymentCalls += 1; } } });
+  page.data.loggedIn = true;
+  page.data.product = { id: 'all-chinese', purchaseAvailable: true, paymentChannels: { android: true } };
+  page.channelForDevice = () => 'android';
+  page.refresh = async () => {};
+  await page.purchase();
+  assert.equal(paymentCalls, 0);
+  assert.match(messages.at(-1), /超时取消.*重新下单/);
+});
+
+test('取消支付只提示两分钟自动取消，不发起平台查单', async () => {
+  const messages = [];
+  let queries = 0;
+  const page = load('pages/mine/index.js', {
+    orders: {
+      create: async () => ({ order: { id: 'cancelled-order' } }),
+      preparePayment: async () => ({ payment: {} }),
+      queryPayment: async () => { queries += 1; }
+    }, payment: { toVirtualPaymentArgs: () => ({}) }
+  }, {}, { wx: { showToast: ({ title }) => messages.push(title), requestVirtualPayment: ({ fail }) => fail({ errMsg: 'requestVirtualPayment:fail cancel' }) } });
+  page.data.loggedIn = true;
+  page.data.product = { id: 'all-chinese', purchaseAvailable: true, paymentChannels: { android: true } };
+  page.channelForDevice = () => 'android';
+  page.refresh = async () => {};
+  await page.purchase();
+  assert.equal(queries, 0);
+  assert.match(messages.at(-1), /已取消支付.*2分钟/);
+  assert.equal(page.data.busy, false);
+});
+
+test('订单到期自动刷新，隐藏页面时清理计时器', async () => {
+  let callback;
+  let delay;
+  let cleared;
+  let refreshed = 0;
+  const page = load('pages/mine/index.js', {}, {}, {
+    setTimeout(fn, ms) { callback = fn; delay = ms; return 7; },
+    clearTimeout(id) { cleared = id; }
+  });
+  page.data.orders = [{ id: 'pending-order', status: 'preparing', expiresAt: new Date(Date.now() + 120000).toISOString() }];
+  page.refresh = async () => { refreshed += 1; };
+  page.scheduleOrderExpiry();
+  assert.ok(delay > 119000 && delay < 121000);
+  callback();
+  assert.equal(refreshed, 1);
+  page.scheduleOrderExpiry();
+  page.onHide();
+  assert.equal(cleared, 7);
+  assert.equal(page._orderExpiryTimer, null);
 });
 
 test('激活码兑换失败保留输入并显示完整原因，重试成功后清除原码', async () => {
