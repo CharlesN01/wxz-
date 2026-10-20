@@ -1,5 +1,5 @@
 <view class="classical-page">
-  <study-navbar title="文言文背诵" theme="paper" centered="{{true}}" back="{{true}}" more="{{true}}" bind:more="moreSettings" />
+  <study-navbar title="文言文背诵" theme="paper" centered="{{true}}" back="{{true}}" />
   <view class="classical-main">
     <view wx:if="{{loading}}" class="remote-state remote-loading"><view class="state-spinner"></view><text>正在同步文言目录...</text></view>
     <view wx:elif="{{hasError}}" class="remote-state remote-error"><text class="state-title">文言目录暂不可用</text><text class="state-message">{{errorMessage}}</text><view class="state-retry" bindtap="onRetry" role="button">重新加载</view></view>

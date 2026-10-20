@@ -1,0 +1,56 @@
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const drafts = require('../miniprogram/utils/answer-drafts');
+
+function makeStore(id) {
+  let userId = id;
+  let token = 'token-a';
+  const saved = new Map();
+  const auth = { getSession: () => userId == null ? null : ({ user: { id: userId } }), getToken: () => token };
+  const storage = { getStorageSync: key => saved.get(key), setStorageSync: (key, value) => saved.set(key, value) };
+  return { store: drafts.createStore(auth, storage), saved, setUser: id => { userId = id; }, setToken: value => { token = value; }, auth };
+}
+
+test('输入草稿按账号和题目隔离，同账号换Token保留且不持久化Bearer', () => {
+  const fixture = makeStore('draft-user-one');
+  const question = { id: 'account-isolation', stem: '{{1}}后{{0}}', answers: ['甲', '乙'] };
+  fixture.store.save(question, ['甲', '乙']);
+  fixture.setToken('refreshed-token');
+  assert.deepEqual(fixture.store.read(question), ['甲', '乙']);
+  fixture.setUser('draft-user-two');
+  assert.deepEqual(fixture.store.read(question), ['', '']);
+  fixture.store.save(question, ['丙', '丁']);
+  fixture.setUser('draft-user-one');
+  assert.deepEqual(fixture.store.read(question), ['甲', '乙']);
+  assert.doesNotMatch(JSON.stringify([...fixture.saved.entries()]), /token-a|refreshed-token/);
+});
+
+test('只按真实空位计算完整已答题数，空白输入和mastered均不计入', () => {
+  const rows = [
+    { id: 'multi', stem: '{{1}}与{{0}}再{{1}}', answers: ['一', '二'], draftAnswers: ['一', '  '] },
+    { id: 'translation', type: 'translation', stem: '原文', answers: ['译文'], draftAnswers: ['我的译文'] },
+    { id: 'mastered-only', stem: '{{0}}', answers: ['答案'], mastered: true, draftAnswers: [''] }
+  ];
+  assert.deepEqual(drafts.progress(rows), { answeredCount: 1, answerProgressPercent: 33, pageQuestionCount: 3 });
+  rows[0].draftAnswers[1] = '二';
+  assert.equal(drafts.progress(rows).answeredCount, 2);
+});
+
+test('页面只接受当前可访问题目输入，背诵、未知和权限题事件不污染进度', () => {
+  const { store } = makeStore('validation-user');
+  const page = { data: { mode: 'writing', questions: [{ id: 'valid', stem: '{{0}}', answers: ['答'] }, { id: 'restricted', unavailable: true, stem: '{{0}}' }] } };
+  assert.equal(drafts.acceptInput(page, { detail: { id: 'unknown', values: ['答'] } }, store), null);
+  assert.equal(drafts.acceptInput(page, { detail: { id: 'restricted', values: ['答'] } }, store), null);
+  const update = drafts.acceptInput(page, { detail: { id: 'valid', values: ['自填'], completed: false } }, store);
+  assert.equal(update.answeredCount, 1);
+  assert.deepEqual(update.questions[0].draftAnswers, ['自填']);
+  page.data.mode = 'reciting';
+  assert.equal(drafts.acceptInput(page, { detail: { id: 'valid', values: ['答案泄露'] } }, store), null);
+});
+
+test('缓存组题目中的他人draftAnswers不会被当成当前账号的答案恢复', () => {
+  const { store } = makeStore('cache-user');
+  const rows = drafts.decorate([{ id: 'cache-question', stem: '{{0}}', answers: ['答'], draftAnswers: ['其他账号答案'] }], store);
+  assert.deepEqual(rows[0].draftAnswers, ['']);
+  assert.equal(drafts.progress(rows).answeredCount, 0);
+});

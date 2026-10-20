@@ -23,7 +23,7 @@
 .translation-recall { margin-top: 22rpx; padding: 20rpx 24rpx 22rpx; border-radius: 12rpx; background: #F5FAFE; }
 .answer-toggle { display: inline-flex; margin-top: 18rpx; padding: 10rpx 16rpx; border-radius: 12rpx; color: #1B5E91; background: #EAF4FB; font-size: 23rpx; }
 .answer-box { margin-top: 14rpx; padding: 16rpx 20rpx; border-radius: 12rpx; color: #1B5E91; background: #F0F7FC; font-size: 27rpx; line-height: 1.6; }
-.answer-text { word-break: break-all; }
+.answer-text { display: block; max-width: 100%; white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-all; }
 .recall-line { height: 28rpx; border-bottom: 1px solid #C5CEC3; }
 .recall-line.short { width: 72%; margin-top: 12rpx; }
 .card.variant-random, .card.variant-practice-word, .card.variant-practice-translation { padding: 18rpx 20rpx 4rpx; border-color: #EDF1F6; border-radius: 20rpx; box-shadow: 0 4rpx 14rpx rgba(45,91,155,.045); }
@@ -50,7 +50,7 @@
 .variant-random .answer-blank { display: inline; width: auto; max-width: none; height: auto; margin: 0; border: 0; border-radius: 0; background: transparent; color: #237BEA; font-weight: 700; line-height: inherit; }
 .variant-random .answer { padding: 0 3rpx 2rpx; border: 0; border-bottom: 1px solid #86B8F4; border-radius: 0; background: transparent; color: #237BEA; font-weight: 700; }
 .variant-practice-word .stem, .variant-practice-translation .stem { margin-top: 10rpx; font-size: 26rpx; }
-.word-stem { display: flex !important; align-items: baseline; flex-wrap: wrap; }
+.word-stem { display: block; }
 .blank { display: inline-block; flex: 0 0 140rpx; width: 140rpx; height: 34rpx; min-height: 0; margin-left: 8rpx; padding: 0 4rpx; border: 0; border-bottom: 1px solid #86B8F4; border-radius: 0; background: #F4F8FF; color: #237BEA; font-size: 22rpx; line-height: 32rpx; text-align: center; }
 .write-hint { margin: 12rpx 0 8rpx; color: #8995A8; font-size: 20rpx; line-height: 1.45; }
 .write-line { height: 40rpx; border-bottom: 1px solid #9BBDE8; }
@@ -68,3 +68,6 @@
 .classical-random-card .answer-toggle { font-size: 18rpx; }
 .classical-random-card .answer-box { padding: 12rpx 14rpx; font-size: 18rpx; }
 .classical-random-card .answer-box .answer-label { font-size: 18rpx; }
+.inline-blank { display: inline-block; width: 140rpx; max-width: 100%; min-width: 80rpx; margin: 0 6rpx; height: 42rpx; line-height: 40rpx; vertical-align: baseline; font-size: inherit; box-sizing: border-box; }
+.explanation-input { display: block; width: 100%; margin: 0; height: 52rpx; line-height: 50rpx; text-align: left; box-sizing: border-box; }
+.translation-input { display: block; width: 100%; min-height: 92rpx; margin: 0; padding: 12rpx 14rpx; border: 1px solid #B9D4F5; border-radius: 10rpx; background: #F4F8FF; color: #237BEA; font-size: 26rpx; line-height: 1.65; white-space: pre-wrap; word-break: break-all; box-sizing: border-box; }

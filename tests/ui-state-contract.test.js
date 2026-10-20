@@ -56,10 +56,10 @@ test('本地降级状态在练习、随机和收藏页面显式标识', () => {
   }
 });
 
-test('文常随机使用原型底栏，文言随机保留顶部自定义导航', () => {
+test('文常随机使用原型底栏，两类随机均保留顶部自定义导航', () => {
   const template = fs.readFileSync(path.join(root, 'miniprogram/pages/random/index.wxml'), 'utf8');
   const script = fs.readFileSync(path.join(root, 'miniprogram/pages/random/index.js'), 'utf8');
-  assert.match(template, /study-navbar wx:if="\{\{source === 'classical'\}\}"/);
+  assert.match(template, /study-navbar title="\{\{source === 'classical' \? '文言文随机测试' : '文常随机测试'\}\}"/);
   assert.match(template, /wx:if="\{\{source === 'literature'\}\}" class="bottom-nav"/);
   assert.match(script, /openHome\(\)/);
   assert.match(script, /openFavorites\(\)/);
@@ -92,10 +92,8 @@ test('首页入口固定进入自测；随机续学保留上下文；资料群�
   assert.equal(page.data.groupModalVisible, true);
   page.openModule({ currentTarget: { dataset: { page: 'random', source: 'literature' } } });
   assert.deepEqual(routes.pop(), { path: '/pages/random/index', params: { source: 'literature', mode: 'writing' } });
-  page.moreSettings();
-  assert.equal(toasts[0].title, '更多设置');
   const homeTemplate = fs.readFileSync(path.join(root, 'miniprogram/pages/home/index.wxml'), 'utf8');
-  assert.match(homeTemplate, /study-navbar[^>]*bind:more="moreSettings"/);
+  assert.doesNotMatch(homeTemplate, /study-navbar[^>]*bind:more=/);
 });
 
 test('首页内容顺序与原型保持一致，学习趋势排在资料群之后', () => {
@@ -143,10 +141,8 @@ test('文言目录接收首页续学模式和篇目，并保留 questionId 进�
       mode: 'reciting', questionId: 'question-4', resume: 1
     }
   });
-  page.moreSettings();
-  assert.equal(toasts[0].title, '更多设置');
   const classicalTemplate = fs.readFileSync(path.join(root, 'miniprogram/pages/classical/index.wxml'), 'utf8');
-  assert.match(classicalTemplate, /study-navbar[^>]*bind:more="moreSettings"/);
+  assert.doesNotMatch(classicalTemplate, /study-navbar[^>]*bind:more=/);
 });
 
 test('随机练习保存并恢复 source/type/articleId/mode 上下文', () => {

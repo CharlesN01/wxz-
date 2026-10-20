@@ -1,5 +1,15 @@
 const utils = require('../../utils/question-utils');
 
+function translationPrompt(stem) {
+  // Remove only the answer placeholder and its trailing instruction. A quote
+  // inside the passage is part of the text, never the end of the passage.
+  return stem
+    .replace(/(?:翻译为|译为|翻译)[：:\s]*(?:\{\{\d+\}\}\s*)+[。.!！]?\s*$/, '')
+    .replace(/\{\{\d+\}\}/g, '')
+    .replace(/(?:翻译为|译为|翻译)[：:\s]*$/, '')
+    .trim();
+}
+
 Component({
   properties: {
     question: { type: Object, value: {} },
@@ -8,49 +18,60 @@ Component({
     variant: { type: String, value: 'green' },
     showTag: { type: Boolean, value: false }
   },
-  data: { segments: [], isTranslation: false, translationStem: '', translationAnswer: '', wordStem: '', answerVisible: false, answerText: '', draftAnswer: '' },
+  data: { segments: [], isTranslation: false, translationStem: '', translationAnswer: '', wordStem: '', isWordExplanation: false, standaloneAnswer: false, answerVisible: false, answerText: '', draftAnswers: [] },
   observers: {
     'question, mode'(question, mode) {
       const item = question || {};
       const stem = String(item.stem || '');
-      const isTranslation = item.type === 'translation';
-      const quoted = /^[“「『"]([\s\S]+?)[”」』"]/.exec(stem);
-      const translationStem = isTranslation
-        ? (quoted ? quoted[1] : stem.split(/\{\{\d+\}\}/)[0].replace(/(?:翻译为|译为|翻译)[：:\s]*$/, ''))
-        : '';
       const answers = Array.isArray(item.answers) ? item.answers : [];
-      const context = [item.id || stem, mode, this.data.variant || 'green'].join('|');
-      const sameContext = this._renderedContext === context;
-      this._renderedContext = context;
-      // 字词专项和文言随机把含义放到独立答案行，题干保留原句与考点。
-      const wordQuestion = /^[“「『"]([\s\S]+?)[”」』"]\s*中[，,]?\s*[“「『"](.+?)[”」』"]/.exec(stem);
-      const wordStem = item.type === 'word'
-        ? (wordQuestion ? '“' + wordQuestion[1].replace(wordQuestion[2], '（' + wordQuestion[2] + '）') + '”' : stem.replace(/\{\{\d+\}\}/g, '____'))
-        : '';
-      this.setData({
-        segments: utils.segments(stem, answers, mode).map((part) => {
-          const text = part.isAnswer ? part.text.slice(1, -1) : part.text;
-          return { ...part, text, isBlank: text === '____', compactAnswer: (part.isAnswer && text.length <= 8) || text === '____' };
-        }),
-        isTranslation,
-        translationStem,
-        wordStem,
-        translationAnswer: isTranslation && mode === 'reciting' ? answers.filter(Boolean).join('；') : '',
-        answerVisible: sameContext ? this.data.answerVisible : Boolean(item.answerVisible),
-        draftAnswer: sameContext ? this.data.draftAnswer : '',
-        answerText: answers.filter(Boolean).join('；')
-      });
+      const questionKey = String(item.id || stem);
+      const sameQuestion = this._questionKey === questionKey;
+      const providedDraft = Array.isArray(item.draftAnswers) ? item.draftAnswers : null;
+      const providedKey = providedDraft ? JSON.stringify(providedDraft) : null;
+      const sourceDraft = !sameQuestion || providedDraft && providedKey !== this._providedDraftKey
+        ? providedDraft
+        : this.data.draftAnswers;
+      const draftAnswers = utils.normalizeDraftAnswers(item, sourceDraft);
+      const renderKey = JSON.stringify([questionKey, stem, answers, item.type, mode]);
+      const update = {};
+
+      // Favorite/mastered changes replace question objects. Keep the existing
+      // input nodes and values when their content has not changed.
+      if (this._renderKey !== renderKey) {
+        const isTranslation = item.type === 'translation';
+        const wordQuestion = /^[“「『"]([\s\S]+?)[”」』"]\s*中[，,]?\s*[“「『"](.+?)[”」』"]\s*的?(?:意思|含义|意义|解释)(?:是|为)?[：:\s]*\{\{0\}\}[。.!！]?\s*$/.exec(stem);
+        const isWordExplanation = item.type === 'word' && Boolean(wordQuestion);
+        const parts = utils.segments(stem, answers, mode).map((part) => ({ ...part, text: part.isAnswer ? part.text.slice(1, -1) : part.text }));
+        Object.assign(update, {
+          segments: parts,
+          isTranslation,
+          translationStem: isTranslation ? translationPrompt(stem) : '',
+          translationAnswer: isTranslation && mode === 'reciting' ? answers.filter((answer) => answer !== undefined && answer !== null).join('；') : '',
+          isWordExplanation,
+          wordStem: isWordExplanation ? '“' + wordQuestion[1].replace(wordQuestion[2], '（' + wordQuestion[2] + '）') + '”' : '',
+          standaloneAnswer: !isTranslation && !isWordExplanation && !/\{\{\d+\}\}/.test(stem) && utils.requiredAnswerIndices(item).length > 0,
+          answerText: answers.filter((answer) => answer !== undefined && answer !== null).join('；')
+        });
+      }
+      if (!sameQuestion) update.answerVisible = Boolean(item.answerVisible);
+      if (JSON.stringify(draftAnswers) !== JSON.stringify(this.data.draftAnswers)) update.draftAnswers = draftAnswers;
+      this._questionKey = questionKey;
+      this._renderKey = renderKey;
+      this._providedDraftKey = providedKey;
+      if (Object.keys(update).length) this.setData(update);
     }
   },
   methods: {
     favorite() { this.triggerEvent('favorite', { id: this.data.question.id }); },
     master() { this.triggerEvent('master', { id: this.data.question.id }); },
-    onDraftInput(event) { this.setData({ draftAnswer: event.detail.value }); },
-    toggleAnswer() {
-      const reveal = !this.data.answerVisible;
-      const update = { answerVisible: reveal };
-      if (this.data.variant === 'practice-word') update.draftAnswer = reveal ? this.data.answerText : '';
-      this.setData(update);
-    }
+    onDraftInput(event) {
+      const index = Number(event.currentTarget.dataset.answerIndex);
+      if (!utils.requiredAnswerIndices(this.data.question).includes(index)) return;
+      const values = this.data.draftAnswers.slice();
+      values[index] = String(event.detail.value || '');
+      this.setData({ [`draftAnswers[${index}]`]: values[index] });
+      this.triggerEvent('answerinput', { id: this.data.question.id, values, ...utils.answerProgress(this.data.question, values) });
+    },
+    toggleAnswer() { this.setData({ answerVisible: !this.data.answerVisible }); }
   }
 });

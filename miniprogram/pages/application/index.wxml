@@ -1,5 +1,5 @@
 <view class="application-page">
-  <study-navbar title="应用文" subtitle="格式掌握 · 规范表达 · 真题训练" theme="paper" back="{{true}}" />
+  <study-navbar title="应用文" subtitle="格式掌握 · 规范表达 · 真题训练" theme="paper" back="{{true}}" class="page-navbar" />
   <view class="application-body">
     <view class="hero"><text class="eyebrow">山东专升本语文</text><text class="hero-title">应用文写作</text><text class="hero-copy">先记格式，再练表达。把常考文种拆开学，写作更稳。</text></view>
     <view class="section-title">学习内容</view>
@@ -9,7 +9,7 @@
   </view>
   <view class="bottom"><button bindtap="openStudy">开始学习</button></view>
   <view wx:if="{{detailVisible}}" class="detail-page">
-    <view class="detail-top"><view class="detail-back" bindtap="closeDetail">‹</view><text>应用文</text></view>
+    <study-navbar title="应用文" theme="paper" back="{{true}}" custom-back="{{true}}" bind:back="closeDetail" class="detail-navbar" />
     <view class="detail-main">
       <view class="detail-hero"><text class="detail-tag">山东专升本语文</text><text class="detail-heading">{{selectedKindLabel || '应用文'}}</text><text class="detail-intro">{{detailIntro}}</text></view>
       <view wx:if="{{detailItems.length}}" class="detail-list"><view wx:for="{{detailItems}}" wx:key="id" class="detail-item" data-id="{{item.id}}" bindtap="openItem"><text class="detail-tag">{{item.genreName || item.categoryName || '应用文'}}</text><text class="detail-item-title">{{item.title}}</text><text class="detail-item-copy">{{item.body || item.referenceAnswer || '点击查看该模块内容。'}}</text></view></view>

@@ -40,6 +40,7 @@ function createPage(resume, questionPayload) {
       if (name === '../../utils/study-store') return studyStore;
       if (name === '../../utils/navigation') return { openPage: (url) => routes.push(url) };
       if (name === '../../services/api') return api;
+      if (name === '../../utils/answer-drafts') return require('../miniprogram/utils/answer-drafts');
       throw new Error('Unexpected module: ' + name);
     },
     Page(value) { definition = value; },
@@ -68,6 +69,34 @@ test('专项练习按 API 约定只用 questionId 恢复顺序题组', async () 
   await page.restoreResume();
 
   assert.equal(page.data.groupIndex, 1);
+});
+
+test('专项已答进度与掌握统计独立，末页实际两题输入后能达到100%', () => {
+  const { page, api } = createPage(null);
+  page.allQuestions = Array.from({ length: 8 }, (_value, index) => ({ id: 'draft-practice-' + index, stem: '{{0}}与{{1}}', answers: ['甲', '乙'] }));
+  page._stateMap['draft-practice-6'] = { mastered: true, version: 1 };
+  page.data.groupIndex = 1;
+  page.savePosition = () => { throw new Error('input must not save remote resume'); };
+  // Initial page rendering may save a position; input itself must not.
+  const savePosition = page.savePosition;
+  page.savePosition = () => {};
+  page.refreshQuestions();
+  page.savePosition = savePosition;
+  api.learning.setQuestionState = () => { throw new Error('input must not write mastered'); };
+  assert.equal(page.data.pageQuestionCount, 2);
+  assert.equal(page.data.completed, 1);
+  assert.equal(page.data.pageCompleted, 0);
+  page.onAnswerInput({ detail: { id: 'draft-practice-6', values: ['甲', ''] } });
+  assert.equal(page.data.pageCompleted, 0);
+  page.onAnswerInput({ detail: { id: 'draft-practice-6', values: ['甲', '乙'] } });
+  assert.equal(page.data.pageCompleted, 1);
+  assert.equal(page.data.pageProgressPercent, 50);
+  page.onAnswerInput({ detail: { id: 'draft-practice-7', values: ['丙', '丁'] } });
+  assert.equal(page.data.pageProgressPercent, 100);
+  assert.equal(page.data.completed, 1);
+  page.data.mode = 'reciting';
+  page.onAnswerInput({ detail: { id: 'draft-practice-7', values: ['', ''] } });
+  assert.equal(page.data.pageCompleted, 2);
 });
 
 test('专项练习续学请求不向非随机位置提交 groupIndex', async () => {

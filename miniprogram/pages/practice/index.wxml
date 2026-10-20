@@ -1,5 +1,5 @@
 <view class="practice-page">
-  <study-navbar title="{{typeLabel + ' · ' + (mode === 'writing' ? '默写自测' : '背诵全览')}}" theme="paper" centered="{{true}}" back="{{true}}" more="{{true}}" />
+  <study-navbar title="{{typeLabel}}" theme="paper" back="{{true}}" class="page-navbar" />
 
   <view class="practice-main">
     <view wx:if="{{personalError && dataSource !== 'local'}}" class="notice-card notice-error">
@@ -15,7 +15,7 @@
         <text class="info-title">{{articleTitle ? '《' + articleTitle + '》' : '文言文'}}</text>
         <text class="info-subtitle">文言文 · {{typeLabel}}</text>
       </view>
-      <view class="info-score"><text>{{pageCompleted || 0}}</text><text> / 6</text></view>
+      <view class="info-score"><text>{{pageCompleted || 0}}</text><text> / {{pageQuestionCount || 0}}</text></view>
     </view>
 
     <view class="practice-switch-row">
@@ -33,7 +33,7 @@
     </view>
     <view wx:elif="{{total}}" class="question-list">
       <view wx:for="{{questions}}" wx:key="id" class="question-item">
-        <question-card question="{{item}}" mode="{{mode}}" number="{{groupIndex * 6 + index + 1}}" variant="{{isWord ? 'practice-word' : 'practice-translation'}}" show-tag="{{true}}" bindfavorite="onFavorite" bindmaster="onMaster" />
+        <question-card class="study-question-card" question="{{item}}" mode="{{mode}}" number="{{groupIndex * 6 + index + 1}}" variant="{{isWord ? 'practice-word' : 'practice-translation'}}" show-tag="{{true}}" bindfavorite="onFavorite" bindmaster="onMaster" bindanswerinput="onAnswerInput" />
       </view>
     </view>
     <view wx:elif="{{requiresEntitlement}}" class="practice-empty">

@@ -1,5 +1,5 @@
 <view class="mine-page">
-  <study-navbar title="我的" theme="paper" centered="{{true}}" more="{{true}}" more-plain="{{true}}" back="{{true}}" bind:more="moreSettings" />
+  <study-navbar title="我的" theme="paper" centered="{{true}}" back="{{true}}" />
   <view class="mine-body">
     <view wx:if="{{loading}}" class="state loading-state">正在同步账户信息...</view>
     <view wx:if="{{!loggedIn && !loading}}" class="login-card"><text class="login-title">登录后同步学习进度</text><text class="login-copy">收藏、掌握、订单和权益会与账号保持一致。</text><button class="primary login-button" bindtap="login" loading="{{busy}}">微信登录</button></view>

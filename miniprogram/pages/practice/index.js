@@ -2,6 +2,7 @@ const dataService = require('../../services/data-service');
 const studyStore = require('../../utils/study-store');
 const navigation = require('../../utils/navigation');
 const api = require('../../services/api');
+const answerDrafts = require('../../utils/answer-drafts');
 
 const GROUP_SIZE = 6;
 function canRequest() { return typeof wx !== 'undefined' && typeof wx.request === 'function'; }
@@ -31,13 +32,14 @@ function localQuestionState(id) {
 }
 
 Page({
-  data: { loading: true, hasError: false, errorMessage: '', dataSource: 'local', personalError: '', requiresEntitlement: false, restrictedCount: 0, title: '重点字词专项', typeLabel: '重点字词', isWord: true, mode: 'writing', questions: [], total: 0, completed: 0, progressPercent: 0, groupIndex: 0, groupCount: 0, nextLabel: '下一组' },
+  data: { loading: true, hasError: false, errorMessage: '', dataSource: 'local', personalError: '', requiresEntitlement: false, restrictedCount: 0, title: '重点字词专项', typeLabel: '重点字词', isWord: true, mode: 'writing', questions: [], total: 0, completed: 0, progressPercent: 0, answeredCount: 0, answerProgressPercent: 0, pageCompleted: 0, pageProgressPercent: 0, pageQuestionCount: 0, groupIndex: 0, groupCount: 0, nextLabel: '下一组' },
   onLoad(options) {
     options = options || {};
     this.articleId = options.articleId || '';
     this._requestedQuestionId = options.questionId || '';
     const localArticle = dataService.getArticles().find((article) => article.id === this.articleId);
-    this.articleTitle = options.articleTitle || (localArticle && localArticle.title) || '';
+    const requestedTitle = navigation.decodeQueryValue ? navigation.decodeQueryValue(options.articleTitle) : options.articleTitle;
+    this.articleTitle = requestedTitle || (localArticle && localArticle.title) || '';
     this.questionType = options.type === 'translation' ? 'translation' : 'word';
     this.allQuestions = [];
     this._stateMap = {};
@@ -270,14 +272,14 @@ Page({
     const rows = this._remotePaging
       ? Array.from({ length: Math.min(GROUP_SIZE, total - groupIndex * GROUP_SIZE) }, (_value, index) => this._remoteRows[groupIndex * GROUP_SIZE + index]).filter(Boolean)
       : (this.allQuestions || []).slice(groupIndex * GROUP_SIZE, groupIndex * GROUP_SIZE + GROUP_SIZE);
-    const questions = rows.map(question => Object.assign({}, question, states[question.id] || (!hasToken() ? localQuestionState(question.id) : normalizeState(null))));
+    const questions = answerDrafts.decorate(rows.map(question => Object.assign({}, question, states[question.id] || (!hasToken() ? localQuestionState(question.id) : normalizeState(null)))), this.draftStore());
     const completed = this._remotePaging
       ? this._scopes.reduce((sum, scope) => sum + (scope.mastered !== null ? scope.mastered
         : Object.keys(this._remoteRows).filter(key => Number(key) >= scope.start && Number(key) < scope.start + scope.count
           && hasToken() && normalizeState(states[this._remoteRows[key].id]).mastered).length), 0)
       : (this.allQuestions || []).filter(question => (states[question.id] || (!hasToken() ? localQuestionState(question.id) : normalizeState(null))).mastered).length;
-    const pageCompleted = questions.filter(question => question.mastered).length;
-    this.setData({ questions, total, completed, pageCompleted, pageProgressPercent: Math.round(pageCompleted / GROUP_SIZE * 100), progressPercent: total ? Math.round(completed / total * 100) : 0, groupIndex, groupCount, nextLabel: '下一页' });
+    const answerProgress = answerDrafts.progress(questions);
+    this.setData(Object.assign({ questions, total, completed, pageCompleted: answerProgress.answeredCount, pageProgressPercent: answerProgress.answerProgressPercent, progressPercent: total ? Math.round(completed / total * 100) : 0, groupIndex, groupCount, nextLabel: '下一页' }, answerProgress));
     if (questions.length) {
       this._groupCache = this._groupCache || {};
       this._groupCache[String(groupIndex + 1)] = cloneRows(questions);
@@ -342,6 +344,14 @@ Page({
     return true;
   },
   onRetry() { this.loadRemote(false); },
+  draftStore() {
+    if (!this._draftStore) this._draftStore = answerDrafts.createStore(api.auth, typeof wx === 'undefined' ? null : wx);
+    return this._draftStore;
+  },
+  onAnswerInput(event) {
+    const update = answerDrafts.acceptInput(this, event, this.draftStore());
+    if (update) this.setData(Object.assign(update, { pageCompleted: update.answeredCount, pageProgressPercent: update.answerProgressPercent }));
+  },
   onModeChange(event) { const mode = event.detail.mode; if (mode !== 'writing' && mode !== 'reciting') return; studyStore.setMode(mode); this.setData({ mode }); this.refreshQuestions(); },
   acceptQuestionState(id, value) {
     const next = normalizeState(value);

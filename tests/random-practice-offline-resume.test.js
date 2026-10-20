@@ -12,6 +12,7 @@ function loadPage(relativePath, overrides, globals = {}) {
   vm.runInNewContext(fs.readFileSync(filename, 'utf8'), {
     require(name) {
       if (Object.prototype.hasOwnProperty.call(overrides, name)) return overrides[name];
+      if (name === '../../utils/answer-drafts') return require('../miniprogram/utils/answer-drafts');
       throw new Error('Unexpected module: ' + name);
     },
     Page(value) { definition = value; },
@@ -38,6 +39,39 @@ function baseStore(resume) {
     saveResume() {}
   };
 }
+
+test('真实随机轮次按题源规范化旧路由参数，文常不会提交word或文言articleId', async () => {
+  for (const [source, requestedType, expectedType] of [
+    ['literature', 'word', null],
+    ['literature', 'translation', null],
+    ['literature', 'fact', 'fact'],
+    ['classical', 'word', 'word'],
+    ['classical', 'translation', 'translation'],
+    ['classical', 'fact', 'word']
+  ]) {
+    let request;
+    const api = {
+      auth: { getToken: () => 'random-contract-user' },
+      practice: {
+        createRound: async body => { request = body; return { id: 'contract-round', groupCount: 1, totalCount: 1, pageSize: 6 }; },
+        group: async () => ({ groupIndex: 1, groupCount: 1, totalCount: 1, pageSize: 6, results: [{ ...question('contract-q', source, expectedType || 'fact'), state: {} }] })
+      },
+      learning: { saveResume: async () => ({ version: 1 }) }
+    };
+    const page = loadPage('pages/random/index.js', {
+      '../../services/api': api, '../../utils/study-store': baseStore(null),
+      '../../services/data-service': {}, '../../utils/safe-top': {}, '../../utils/navigation': {}
+    }, { wx: { request() {} } });
+    page.onLoad({ source, type: requestedType, articleId: 'classical-leftover', mode: 'writing' });
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(request.source, source);
+    assert.equal(request.type, expectedType);
+    assert.equal(request.articleId, source === 'classical' ? 'classical-leftover' : null);
+    assert.equal(page.data.hasError, false);
+    assert.equal(page.data.questions.length, 1);
+    assert.equal(page.data.dataSource, 'remote');
+  }
+});
 
 test('随机组使用后端附带状态，20题只发一次题组请求且保留收藏版本', async () => {
   let reads = 0;

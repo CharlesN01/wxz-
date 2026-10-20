@@ -1,5 +1,5 @@
 <view class="home-page">
-  <study-navbar title="专升本语文" subtitle="山东专升本文学与文言文" more="{{true}}" theme="paper" back="{{false}}" bind:more="moreSettings" />
+  <study-navbar title="专升本语文" subtitle="山东专升本文学与文言文" theme="paper" back="{{false}}" />
   <view wx:if="{{loading}}" class="home-loading"><view class="loading-spinner"></view><text>正在加载学习内容...</text></view>
   <view wx:elif="{{hasError}}" class="home-error">
     <view class="error-icon">!</view>

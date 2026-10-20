@@ -30,6 +30,7 @@ function createPage() {
     '../../utils/study-store': studyStore,
     '../../utils/safe-top': require('../miniprogram/utils/safe-top'),
     '../../utils/navigation': { openPage() {} },
+    '../../utils/answer-drafts': require('../miniprogram/utils/answer-drafts'),
     '../../services/api': { auth: { getToken() { return null; } } }
   };
   vm.runInNewContext(fs.readFileSync(pageFile, 'utf8'), {
@@ -59,13 +60,40 @@ test('随机页按实际轮次数动态更新进度，不固定使用原型示�
   assert.equal(page.data.progressPercent, 100);
 });
 
+test('文常和文言随机输入独立更新本页已答，末组分母用实际题数且切模式不虚增', async () => {
+  for (const source of ['literature', 'classical']) {
+    const page = createPage();
+    page.onLoad({ source, type: source === 'classical' ? 'word' : 'fact', mode: 'writing' });
+    page.saveResume = () => { throw new Error('typing must not write resume'); };
+    const firstId = page.data.questions[0].id;
+    page.onAnswerInput({ detail: { id: firstId, values: ['已填写'] } });
+    assert.equal(page.data.answeredCount, 1);
+    assert.equal(page.data.answerProgressPercent, 17);
+    assert.equal(page.data.questions[0].mastered, false);
+    page.saveResume = () => {};
+    page.onNextGroup();
+    assert.equal(page.data.answeredCount, 0);
+    page.onPreviousGroup();
+    assert.equal(page.data.questions[0].draftAnswers[0], '已填写');
+    assert.equal(page.data.answeredCount, 1);
+    await page.onModeChange({ detail: { mode: 'reciting' } });
+    assert.equal(page.data.answeredCount, 1);
+    await page.onModeChange({ detail: { mode: 'writing' } });
+    while (page.data.groupNumber < page.data.groupCount) page.onNextGroup();
+    const lastRows = page.data.questions;
+    assert.equal(page.data.pageQuestionCount, lastRows.length);
+    for (const row of lastRows) page.onAnswerInput({ detail: { id: row.id, values: ['答案'] } });
+    assert.equal(page.data.answerProgressPercent, 100);
+  }
+});
+
 test('文常自测与背诵概览、二级标题、进度条和页码符合原型状态', () => {
   const template = fs.readFileSync(templateFile, 'utf8');
   const styles = fs.readFileSync(styleFile, 'utf8');
   assert.match(template, /mode === 'reciting' \? '文常答案背诵' : '文常随机测试'/);
   assert.match(template, /mode === 'reciting' \? '答案版' : \(mode === 'reciting' \? '背诵版' : '自测版'\)/);
   assert.match(template, /mode === 'reciting' \? '答案核对' : '全库混合'/);
-  assert.match(template, /class="page-progress-fill" style="width: \{\{progressPercent\}\}%;"/);
+  assert.match(template, /class="page-progress-fill" style="width: \{\{answerProgressPercent\}\}%;"/);
   assert.match(template, /第 \{\{groupNumber \|\| 1\}\} \/ \{\{groupCount \|\| 1\}\} 页/);
   assert.doesNotMatch(styles, /width:\s*34%/);
 });

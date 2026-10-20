@@ -1,6 +1,8 @@
 const api = require('../../services/api');
 const navigation = require('../../utils/navigation');
 const safeTop = require('../../utils/safe-top');
+const questionUtils = require('../../utils/question-utils');
+const answerDrafts = require('../../utils/answer-drafts');
 
 const UI_PAGE_SIZE = 6;
 const SOURCE = 'literature';
@@ -48,17 +50,8 @@ function displayCategoryName(category) {
 }
 
 function buildParts(question, mode) {
-  const stem = String((question && question.stem) || '');
-  const answers = Array.isArray(question && question.answers) ? question.answers : [];
-  return stem.split(/(\{\{\d+\}\})/g).filter(Boolean).map((part, index) => {
-    const match = /^\{\{(\d+)\}\}$/.exec(part);
-    if (!match) return { key: index, text: part, isBlank: false, isFilled: false };
-    const answer = answers[Number(match[1])] || '';
-    if (mode === 'reciting' && answer) {
-      return { key: index, text: answer, isBlank: false, isFilled: true };
-    }
-    return { key: index, text: '____', isBlank: true, isFilled: false };
-  });
+  return questionUtils.segments(question.stem, question.answers || [], mode).map(part =>
+    Object.assign({}, part, { text: part.isAnswer ? part.text.slice(1, -1) : part.text, isFilled: Boolean(part.isAnswer) }));
 }
 
 function normalizeState(value) {
@@ -94,6 +87,9 @@ Page({
     totalQuestions: 0,
     pageCount: 0,
     progressPercent: 0,
+    answeredCount: 0,
+    answerProgressPercent: 0,
+    pageQuestionCount: 0,
     restrictedCount: 0,
     categoryScrollLeft: 0,
     safeTop: 0,
@@ -115,6 +111,7 @@ Page({
     this._pendingState = {};
     this._answerVisible = {};
     this._questionRows = [];
+    this._draftStore = answerDrafts.createStore(api.auth, typeof wx === 'undefined' ? null : wx);
     this._resumeQuestionId = this._options.questionId || '';
     this._resumeVersion = 0;
     this._preferenceVersion = 0;
@@ -327,10 +324,11 @@ Page({
     await this.loadStates(rows, requestId);
     if (requestId !== this._questionRequest) return;
     this._questionRows = rows;
-    this.setData({
+    const questions = this.renderRows(rows);
+    this.setData(Object.assign({
       loading: false,
       hasError: false,
-      questions: this.renderRows(rows),
+      questions,
       page: targetPage,
       pageSize: UI_PAGE_SIZE,
       questionProgressLabel: formatQuestionProgress(startIndex, count),
@@ -341,7 +339,7 @@ Page({
       canPrevious: targetPage > 1,
       canNext: targetPage < pageCount,
       personalError: this.data.personalError
-    });
+    }, answerDrafts.progress(questions)));
     this.queueResume();
   },
 
@@ -371,14 +369,37 @@ Page({
 
   renderRows(rows) {
     const mode = this.data.mode;
-    return rows.map((item) => {
+    const questions = rows.map((item) => {
       const state = this._stateMap[item.id] || normalizeState(null);
       return Object.assign({}, item, state, {
         parts: buildParts(item, mode),
+        hasInlineBlanks: /\{\{\d+\}\}/.test(item.stem || ''),
+        hasAnswerInput: questionUtils.requiredAnswerIndices(item).length > 0,
         answerText: Array.isArray(item.answers) ? item.answers.join('；') : '',
         answerVisible: Boolean(this._answerVisible[item.id])
       });
     });
+    return answerDrafts.decorate(questions, this.draftStore());
+  },
+
+  draftStore() {
+    if (!this._draftStore) this._draftStore = answerDrafts.createStore(api.auth, typeof wx === 'undefined' ? null : wx);
+    return this._draftStore;
+  },
+
+  onAnswerInput(event) {
+    const update = answerDrafts.acceptInput(this, event, this.draftStore());
+    if (update) this.setData(update);
+  },
+
+  onBlankInput(event) {
+    const dataset = event && event.currentTarget && event.currentTarget.dataset || {};
+    const question = this.data.questions.find(item => String(item.id) === String(dataset.id));
+    const index = Number(dataset.index);
+    if (!question || !Number.isInteger(index) || index < 0) return;
+    const values = (question.draftAnswers || []).slice();
+    values[index] = event.detail.value;
+    this.onAnswerInput({ detail: { id: question.id, values } });
   },
 
   async ensureLogin() {
@@ -420,7 +441,9 @@ Page({
     const mode = isMode(event.detail && event.detail.mode);
     if (mode === this.data.mode) return;
     this._answerVisible = {};
-    this.setData({ mode, questions: this.renderRows(this._questionRows) });
+    this.setData({ mode });
+    const questions = this.renderRows(this._questionRows);
+    this.setData(Object.assign({ questions }, answerDrafts.progress(questions)));
     if (!await this.ensureLogin()) return;
     this.queueResume();
     let baseVersion = this._preferenceVersion;

@@ -22,6 +22,7 @@ function createPage(mode = 'writing', apiOverrides = {}) {
       if (name === '../../utils/question-utils') return questionUtils;
       if (name === '../../services/api') return api;
       if (name === '../../utils/navigation') return navigation;
+      if (name === '../../utils/answer-drafts') return require('../miniprogram/utils/answer-drafts');
       throw new Error('Unexpected module: ' + name);
     },
     Page(value) { definition = value; },
@@ -72,6 +73,24 @@ test('收藏页远端列表超过 5 条时在无分页控件的原型布局中�
   page._renderRemote({ count: 7 });
   assert.equal(page.data.questions.length, 7);
   assert.equal(page.data.hasQuestions, true);
+});
+
+test('收藏翻译题即使带placeholder也用独立多行输入，保留完整原句和长答案', () => {
+  const { page } = createPage();
+  const answer = '这是需要完整展示的译文。'.repeat(35);
+  page._categoryId = '';
+  page._sourceFilter = 'classical';
+  page._remoteRows = [{ id: 'translation-draft-favorite', source: 'classical', type: 'translation', stem: '青，取之于蓝，而青于蓝。{{0}}', answers: [answer] }];
+  page._renderRemote({ count: 1 });
+  assert.equal(page.data.questions[0].hasInlineBlanks, false);
+  assert.equal(page.data.questions[0].parts.map(part => part.text).join(''), '青，取之于蓝，而青于蓝。');
+  assert.equal(page.data.questions[0].answerText, '译文：' + answer);
+  page.onBlankInput({ currentTarget: { dataset: { id: 'translation-draft-favorite', index: 0 } }, detail: { value: '我的长译文'.repeat(100) } });
+  assert.equal(page.data.answeredCount, 1);
+  assert.equal(page.data.questions[0].draftAnswers[0].length, 500);
+  const template = fs.readFileSync(templatePath, 'utf8');
+  assert.match(template, /<textarea[^>]*auto-height="\{\{true\}\}"/);
+  assert.match(template, /mode === 'reciting' && item\.type === 'translation'/);
 });
 
 test('收藏页 hasQuestions 与远端和本地列表是否为空保持同步', () => {

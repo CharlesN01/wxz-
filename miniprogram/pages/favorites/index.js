@@ -3,6 +3,7 @@ const studyStore = require('../../utils/study-store');
 const questionUtils = require('../../utils/question-utils');
 const api = require('../../services/api');
 const navigation = require('../../utils/navigation');
+const answerDrafts = require('../../utils/answer-drafts');
 
 function settle(promise) { return Promise.resolve(promise).then((value) => ({ ok: true, value }), (error) => ({ ok: false, error })); }
 function hasToken() { try { return Boolean(api.auth && api.auth.getToken && api.auth.getToken()); } catch (_) { return false; } }
@@ -30,11 +31,12 @@ function decorateFavorite(question) {
   const prefix = item.source === 'classical' && item.type === 'translation' ? '译文：' : '答案：';
   const answerText = answers.filter(Boolean).join('；');
   const stem = String(item.stem || item.title || '收藏考点');
-  const parts = questionUtils.segments(stem, answers, studyStore.getMode()).map((part) => {
+  const displayStem = item.type === 'translation' ? stem.replace(/\{\{\d+\}\}/g, '').trim() : stem;
+  const parts = questionUtils.segments(displayStem, answers, studyStore.getMode()).map((part) => {
     const text = part.isAnswer ? part.text.slice(1, -1) : part.text;
-    return Object.assign({}, part, { text, isBlank: text === '____', isFilled: Boolean(part.isAnswer) });
+    return Object.assign({}, part, { text, isFilled: Boolean(part.isAnswer) });
   });
-  return Object.assign({}, item, { parts, answerText: answerText ? prefix + answerText : '', answerVisible: false, title: item.title || item.stem || '收藏考点' });
+  return Object.assign({}, item, { parts, hasInlineBlanks: item.type !== 'translation' && /\{\{\d+\}\}/.test(stem), hasAnswerInput: questionUtils.requiredAnswerIndices(item).length > 0, answerText: answerText ? prefix + answerText : '', answerVisible: false, title: item.title || item.stem || '收藏考点' });
 }
 
 Page({
@@ -76,10 +78,10 @@ Page({
   },
   _extractRows(payload) { const rows = payload && Array.isArray(payload.results) ? payload.results : (Array.isArray(payload) ? payload : []); return rows.map(normalizeFavoriteRow).filter((item) => item.id); },
   _renderRemote(payload) {
-    const filtered = this._remoteRows.filter((item) => this._matchesCategory(item)).map(decorateFavorite);
+    const filtered = answerDrafts.decorate(this._remoteRows.filter((item) => this._matchesCategory(item)).map(decorateFavorite), this.draftStore());
     // 原型在来源筛选下展示该分类的完整收藏列表，页面没有分页控件；不要截断超过 5 条的收藏。
     this._pageIndex = 0;
-    this.setData({ loading: false, hasError: false, errorMessage: '', dataSource: 'remote', personalError: '', mode: studyStore.getMode(), questions: filtered, hasQuestions: filtered.length > 0, pageNumber: filtered.length ? 1 : 0, pageCount: filtered.length ? 1 : 0, totalFavorites: Number(payload && payload.count) || this._remoteRows.length, todayAdded: 0, nextLabel: '下一页' });
+    this.setData(Object.assign({ loading: false, hasError: false, errorMessage: '', dataSource: 'remote', personalError: '', mode: studyStore.getMode(), questions: filtered, hasQuestions: filtered.length > 0, pageNumber: filtered.length ? 1 : 0, pageCount: filtered.length ? 1 : 0, totalFavorites: Number(payload && payload.count) || this._remoteRows.length, todayAdded: 0, nextLabel: '下一页' }, answerDrafts.progress(filtered)));
   },
   _matchesCategory(question) {
     if (question.source && question.source !== this._sourceFilter) return false;
@@ -92,15 +94,38 @@ Page({
   _renderLocal(error) {
     const state = studyStore.getState(); const favoriteIds = new Set(state.favorites); const items = dataService.getQuestions({ source: this._sourceFilter }).filter((question) => favoriteIds.has(question.id)); const questions = dataService.decorateQuestions(items);
     this._pageIndex = 0;
-    this.setData({ loading: false, dataSource: 'local', personalError: error ? errorText(error) : '', hasError: false, errorMessage: '', categoryId: this._categoryId, sourceFilter: this._sourceFilter, mode: state.mode, questions: questions.map(decorateFavorite), hasQuestions: questions.length > 0, pageNumber: questions.length ? 1 : 0, pageCount: questions.length ? 1 : 0, totalFavorites: favoriteIds.size, todayAdded: 0, nextLabel: '下一页' });
+    const decorated = answerDrafts.decorate(questions.map(decorateFavorite), this.draftStore());
+    this.setData(Object.assign({ loading: false, dataSource: 'local', personalError: error ? errorText(error) : '', hasError: false, errorMessage: '', categoryId: this._categoryId, sourceFilter: this._sourceFilter, mode: state.mode, questions: decorated, hasQuestions: questions.length > 0, pageNumber: questions.length ? 1 : 0, pageCount: questions.length ? 1 : 0, totalFavorites: favoriteIds.size, todayAdded: 0, nextLabel: '下一页' }, answerDrafts.progress(decorated)));
   },
   onRetry() { this._refreshFavorites(); },
+  draftStore() {
+    if (!this._draftStore) this._draftStore = answerDrafts.createStore(api.auth, typeof wx === 'undefined' ? null : wx);
+    return this._draftStore;
+  },
+  onAnswerInput(event) {
+    const update = answerDrafts.acceptInput(this, event, this.draftStore());
+    if (update) this.setData(update);
+  },
+  onBlankInput(event) {
+    const dataset = event && event.currentTarget && event.currentTarget.dataset || {};
+    const question = this.data.questions.find(item => String(item.id) === String(dataset.id));
+    const index = Number(dataset.index);
+    if (!question || !Number.isInteger(index) || index < 0) return;
+    const values = (question.draftAnswers || []).slice();
+    values[index] = event.detail.value;
+    this.onAnswerInput({ detail: { id: question.id, values } });
+  },
   onLogin() { if (api.auth && api.auth.login) api.auth.login().then(() => this._refreshFavorites()).catch((error) => this.setData({ personalError: errorText(error) })); },
   onCategoryChange(event) { const categoryId = event.currentTarget.dataset.id; if (categoryId === this._categoryId) return; this._categoryId = categoryId; this._pageIndex = 0; this.setData({ categoryId, activeCategoryElement: `category-${categoryId}`, activeCategoryRow: categoryId.indexOf('classical-') === 0 ? 'classical' : 'literature' }); this._refreshFavorites(); },
-  onModeChange(event) { const mode = event.detail.mode; if (mode !== 'writing' && mode !== 'reciting') return; studyStore.setMode(mode); this.setData({ mode }); },
+  onModeChange(event) {
+    const mode = event.detail.mode;
+    if (mode !== 'writing' && mode !== 'reciting') return;
+    studyStore.setMode(mode);
+    const questions = answerDrafts.decorate(this.data.questions.map(decorateFavorite), this.draftStore());
+    this.setData(Object.assign({ mode, questions }, answerDrafts.progress(questions)));
+  },
   onSourceChange(event) { const source = event.currentTarget.dataset.source; if (source !== 'literature' && source !== 'classical') return; this._sourceFilter = source; this._categoryId = ''; this._pageIndex = 0; this.setData({ sourceFilter: source, categoryId: '', activeCategoryElement: '', activeCategoryRow: source }); this._refreshFavorites(); },
   onToggleAnswer(event) { const id = event.currentTarget.dataset.id; const questions = this.data.questions.map((item) => item.id === id ? Object.assign({}, item, { answerVisible: !item.answerVisible }) : item); this.setData({ questions, hasQuestions: questions.length > 0 }); },
-  onManage() { if (typeof wx !== 'undefined' && wx.showToast) wx.showToast({ title: '点击星标可取消收藏', icon: 'none' }); },
   onTab(event) { const page = event.currentTarget.dataset.page; if (page === 'home') navigation.openPage('/pages/home/index'); if (page === 'mine') navigation.openPage('/pages/mine/index'); },
   async _updateState(id, field) {
     if (!id) return;

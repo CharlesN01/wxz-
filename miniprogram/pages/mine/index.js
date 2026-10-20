@@ -95,7 +95,6 @@ Page({
     if (pages.length > 1) wx.navigateBack();
     else wx.reLaunch({ url: '/pages/home/index' });
   },
-  moreSettings() { showToast('更多设置'); },
   openFavorites() { navigation.openPage('/pages/favorites/index'); },
   openTab(event) {
     const page = event.currentTarget.dataset.page;

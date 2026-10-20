@@ -38,6 +38,8 @@ function createPage(questionCount, apiPageSize) {
       if (name === '../../services/api') return api;
       if (name === '../../utils/navigation') return navigation;
       if (name === '../../utils/safe-top') return { getSafeTop: () => 0 };
+      if (name === '../../utils/question-utils') return require('../miniprogram/utils/question-utils');
+      if (name === '../../utils/answer-drafts') return require('../miniprogram/utils/answer-drafts');
       throw new Error('Unexpected module: ' + name);
     },
     Page(value) { definition = value; },
@@ -84,6 +86,56 @@ test('文学常识首次加载完成后退出 loading 并显示首组题目', as
   assert.equal(page.data.categoryId, 'pre-qin');
   assert.equal(page.data.questions.length, 6);
   assert.equal(page.data.questionProgressLabel, '01 / 08');
+});
+
+test('文学本页答题进度随真实输入和清空变化，翻页与查看答案不增加已答', async () => {
+  const { page } = createPage(8, 20);
+  await page.loadPage(1);
+  assert.equal(page.data.answeredCount, 0);
+  assert.equal(page.data.answerProgressPercent, 0);
+  page.toggleAnswer({ currentTarget: { dataset: { id: 'q1' } } });
+  assert.equal(page.data.answeredCount, 0);
+  page.onBlankInput({ currentTarget: { dataset: { id: 'q1', index: 0 } }, detail: { value: '自填答案' } });
+  assert.equal(page.data.answeredCount, 1);
+  assert.equal(page.data.answerProgressPercent, 17);
+  assert.equal(page.data.questions[0].mastered, false);
+  await page.loadPage(2);
+  assert.equal(page.data.pageQuestionCount, 2);
+  assert.equal(page.data.answeredCount, 0);
+  page.onAnswerInput({ detail: { id: 'q7', values: ['回答'] } });
+  assert.equal(page.data.answerProgressPercent, 50);
+  await page.loadPage(1);
+  assert.equal(page.data.questions[0].draftAnswers[0], '自填答案');
+  assert.equal(page.data.answeredCount, 1);
+  page.onBlankInput({ currentTarget: { dataset: { id: 'q1', index: 0 } }, detail: { value: '  ' } });
+  assert.equal(page.data.answeredCount, 0);
+});
+
+test('文学乱序多空严格按placeholder索引展示input，不用答案数追加无关输入', async () => {
+  const { page, api } = createPage(1, 20);
+  api.content.questions = async () => ({ count: 1, results: [{ id: 'ordered-blank', stem: '先{{1}}后{{0}}再{{1}}', answers: ['甲', '乙', '额外说明'] }], access: { pageSize: 20 } });
+  await page.loadPage(1);
+  assert.deepEqual(Array.from(page.data.questions[0].parts.filter(part => part.isBlank), part => part.answerIndex), [1, 0, 1]);
+  page.onAnswerInput({ detail: { id: 'ordered-blank', values: ['甲', ''] } });
+  assert.equal(page.data.answeredCount, 0);
+  page.onAnswerInput({ detail: { id: 'ordered-blank', values: ['甲', '乙'] } });
+  assert.equal(page.data.answeredCount, 1);
+  assert.equal(page.data.answerProgressPercent, 100);
+});
+
+test('文学切换背诵立即显示答案，切回自测保留草稿且不把答案算作输入', async () => {
+  const { page } = createPage(2, 20);
+  await page.loadPage(1);
+  page.ensureLogin = async () => false;
+  page.onAnswerInput({ detail: { id: 'q1', values: ['我的答案'] } });
+  await page.changeMode({ detail: { mode: 'reciting' } });
+  assert.equal(page.data.questions[0].parts.some(part => part.isFilled), true);
+  assert.equal(page.data.questions[0].parts.some(part => part.isBlank), false);
+  assert.equal(page.data.answeredCount, 1);
+  await page.changeMode({ detail: { mode: 'writing' } });
+  assert.equal(page.data.questions[0].parts.some(part => part.isBlank), true);
+  assert.equal(page.data.questions[0].draftAnswers[0], '我的答案');
+  assert.equal(page.data.answeredCount, 1);
 });
 
 test('已登录文学首屏使用题目附带的状态，不再逐题请求状态接口', async () => {

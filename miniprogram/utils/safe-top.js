@@ -33,6 +33,26 @@ function readMenuButtonBottom(api) {
   }
 }
 
+function getNavigationMetrics(api) {
+  const runtime = api || (typeof wx !== 'undefined' ? wx : null);
+  let info = null;
+  if (runtime) {
+    try { info = typeof runtime.getWindowInfo === 'function' ? runtime.getWindowInfo() : null; } catch (_) { /* Older base library. */ }
+    if (!info) {
+      try { info = typeof runtime.getSystemInfoSync === 'function' ? runtime.getSystemInfoSync() : null; } catch (_) { /* Preview fallback. */ }
+    }
+  }
+  const width = Number(info && info.windowWidth) || 375;
+  const statusHeight = readStatusBarHeight(runtime) || 24;
+  let menu = null;
+  try { menu = runtime && typeof runtime.getMenuButtonBoundingClientRect === 'function' ? runtime.getMenuButtonBoundingClientRect() : null; } catch (_) { /* Preview fallback. */ }
+  const validMenu = menu && Number(menu.height) > 0 && Number(menu.top) >= statusHeight && Number(menu.left) > 0 && Number(menu.left) < width;
+  const barHeight = Math.ceil(Math.max(58, validMenu ? (Number(menu.top) - statusHeight) * 2 + Number(menu.height) : 44));
+  // Content and the native capsule share a row; reserve its entire right-hand area.
+  const rightSpace = Math.ceil(validMenu ? width - Number(menu.left) + 12 : 100);
+  return { statusHeight: Math.ceil(statusHeight), barHeight, rightSpace };
+}
+
 function getSafeTop(api, contentInset) {
   const runtime = api || (typeof wx !== 'undefined' ? wx : null);
   if (!runtime) return 0;
@@ -47,4 +67,4 @@ function getSafeTop(api, contentInset) {
   return Math.max(0, contentTop - existingInset);
 }
 
-module.exports = { getSafeTop };
+module.exports = { getSafeTop, getNavigationMetrics };

@@ -281,12 +281,6 @@ Page({
 
   noop() {},
 
-  moreSettings() {
-    if (typeof wx !== 'undefined' && typeof wx.showToast === 'function') {
-      wx.showToast({ title: '更多设置', icon: 'none' });
-    }
-  },
-
   openModule(event) {
     const dataset = event.currentTarget.dataset || {};
     if (!dataset.page) return;

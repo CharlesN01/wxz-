@@ -346,11 +346,5 @@ Page({
     const articleQuestions = questions.filter((question) => question.articleId === article.id);
     const nextQuestion = articleQuestions.find((question) => !question.mastered) || articleQuestions[0];
     navigation.openPage('/pages/practice/index', { articleId: article.id, articleTitle: article.title, type: nextQuestion.type, mode: this.data.mode || undefined });
-  },
-
-  moreSettings() {
-    if (typeof wx !== 'undefined' && typeof wx.showToast === 'function') {
-      wx.showToast({ title: '更多设置', icon: 'none' });
-    }
   }
 });

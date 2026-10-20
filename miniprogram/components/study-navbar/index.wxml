@@ -1,15 +1,10 @@
 <view class="navbar theme-{{theme}}" style="padding-top: {{statusHeight}}px;">
   <view class="bar" style="height: {{barHeight}}px;">
     <view wx:if="{{back}}" class="back-hit" role="button" aria-label="返回" bindtap="goBack"><view class="chevron"></view></view>
-    <view wx:if="{{theme === 'paper' && subtitle}}" class="home-brand home-brand-with-subtitle {{back && !centered ? 'home-brand-has-back' : ''}}" style="padding-right: {{rightSpace}}px;">
-      <view class="home-brand-copy"><text class="brand-title">{{title}}</text><text class="brand-subtitle">{{subtitle}}</text></view>
-      <view wx:if="{{more}}" class="more-button {{morePlain ? 'more-button-plain' : ''}}" role="button" aria-label="更多" bindtap="onMore">•••</view>
-    </view>
-    <view wx:elif="{{theme === 'paper' && centered}}" class="centered-title-wrap" style="padding-left: {{rightSpace}}px; padding-right: {{rightSpace}}px;"><text class="centered-title">{{title}}</text><view wx:if="{{more}}" class="more-button centered-more {{morePlain ? 'more-button-plain' : ''}}" style="right: {{rightSpace}}px;" role="button" aria-label="更多" bindtap="onMore">•••</view></view>
-    <view wx:elif="{{theme === 'paper'}}" class="home-brand {{back && !centered ? 'home-brand-has-back' : ''}}" style="padding-right: {{rightSpace}}px;">
+    <view class="header-copy {{centered ? 'header-copy-centered' : ''}}" style="padding-left: {{centered ? rightSpace : (back ? 56 : 17)}}px; padding-right: {{rightSpace}}px;">
       <text class="brand-title">{{title}}</text>
-      <text wx:if="{{region}}" class="region">{{region}}</text>
+      <text wx:if="{{subtitle}}" class="brand-subtitle">{{subtitle}}</text>
+      <text wx:elif="{{region}}" class="brand-subtitle region">{{region}}</text>
     </view>
-    <view wx:else class="title-wrap" style="padding-left: {{rightSpace}}px; padding-right: {{rightSpace}}px;"><text class="title">{{title}}</text></view>
   </view>
 </view>

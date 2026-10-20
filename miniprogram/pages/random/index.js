@@ -3,6 +3,7 @@ const studyStore = require('../../utils/study-store');
 const safeTop = require('../../utils/safe-top');
 const navigation = require('../../utils/navigation');
 const api = require('../../services/api');
+const answerDrafts = require('../../utils/answer-drafts');
 
 const GROUP_SIZE = 6;
 const PAGE_PATH = '/pages/random/index';
@@ -30,17 +31,20 @@ function normalizeState(value) {
 function cloneRows(rows) {
   try { return JSON.parse(JSON.stringify(Array.isArray(rows) ? rows : [])); } catch (_) { return []; }
 }
+function compatibleType(source, type) {
+  return type == null || (source === 'literature' ? type === 'fact' : type === 'word' || type === 'translation');
+}
 
 Page({
-  data: { loading: true, hasError: false, errorMessage: '', dataSource: 'local', personalError: '', source: 'literature', safeTop: 0, typeFilter: 'word', mode: 'writing', sourceName: '文学常识', subtitle: '8 类混合随机 · 每页 6 题', questions: [], groupNumber: 0, groupCount: 0, roundQuestionCount: 0, groupPageSize: GROUP_SIZE, progressPercent: 0, nextLabel: '下一组' },
+  data: { loading: true, hasError: false, errorMessage: '', dataSource: 'local', personalError: '', source: 'literature', safeTop: 0, typeFilter: 'word', mode: 'writing', sourceName: '文学常识', subtitle: '8 类混合随机 · 每页 6 题', questions: [], groupNumber: 0, groupCount: 0, roundQuestionCount: 0, groupPageSize: GROUP_SIZE, progressPercent: 0, answeredCount: 0, answerProgressPercent: 0, pageQuestionCount: 0, nextLabel: '下一组' },
 
   onLoad(options = {}) {
     this._source = options.source === 'classical' ? 'classical' : 'literature';
-    this._typeExplicit = options.type === 'word' || options.type === 'translation' || options.type === 'fact';
-    this._type = options.type === 'word' || options.type === 'translation' || options.type === 'fact'
-      ? options.type
-      : (this._source === 'classical' ? 'word' : null);
-    this._articleId = options.articleId || null;
+    this._typeExplicit = Boolean(options.type) && compatibleType(this._source, options.type);
+    this._type = this._typeExplicit ? options.type : (this._source === 'classical' ? 'word' : null);
+    // Shared navigation parameters may retain a classical type/article. A
+    // literature round accepts only fact or null and never an article scope.
+    this._articleId = this._source === 'classical' ? options.articleId || null : null;
     this._requestedRoundId = options.roundId || '';
     this._requestedGroupIndex = Number(options.groupIndex) > 0 ? Number(options.groupIndex) : 0;
     this._modeExplicit = options.mode === 'reciting' || options.mode === 'writing';
@@ -95,6 +99,8 @@ Page({
     const resume = restore ? studyStore.getResume() : null;
     const resumeOptions = resume && resume.options || {};
     const matchesContext = resumeOptions.source === this._source
+      && compatibleType(this._source, resumeOptions.type)
+      && (this._source === 'classical' || !resumeOptions.articleId)
       && (!this._typeExplicit || resumeOptions.type === this._type)
       && (!this._articleId || String(resumeOptions.articleId || '') === String(this._articleId));
     if (resume && resume.path === PAGE_PATH && matchesContext && Array.isArray(resume.groupIds) && resume.groupIds.length) {
@@ -130,7 +136,8 @@ Page({
     const questions = (Array.isArray(cached) ? cached : ids.map((id) => dataService.getQuestion(id)).filter(Boolean))
       .map((item) => Object.assign({}, item, normalizeState(this._stateMap[item.id])));
     const count = this._groups ? this._groups.length : 0;
-    this.setData({ loading: false, dataSource: this.data.dataSource || 'local', questions: dataService.decorateQuestions(questions), groupNumber: count ? this._groupIndex : 0, groupCount: count, roundQuestionCount: this._roundIds.length, groupPageSize: GROUP_SIZE, progressPercent: count ? Math.round(this._groupIndex / count * 100) : 0, nextLabel: this._groupIndex >= count ? '再练一轮' : '下一组' });
+    const decorated = this.decorateDrafts(dataService.decorateQuestions(questions));
+    this.setData(Object.assign({ loading: false, dataSource: this.data.dataSource || 'local', questions: decorated, groupNumber: count ? this._groupIndex : 0, groupCount: count, roundQuestionCount: this._roundIds.length, groupPageSize: GROUP_SIZE, progressPercent: count ? Math.round(this._groupIndex / count * 100) : 0, nextLabel: this._groupIndex >= count ? '再练一轮' : '下一组' }, answerDrafts.progress(decorated)));
     if (count) this.saveResume();
   },
 
@@ -161,8 +168,10 @@ Page({
       if (!savedResult.ok) { this.setData({ loading: false, hasError: true, errorMessage: errorText(savedResult.error), questions: [] }); return; }
       const snapshot = savedResult.value || {};
       const saved = snapshot.valid && snapshot.resume ? snapshot.resume : null;
-      const matchesType = this._typeExplicit ? saved && saved.type === this._type : Boolean(saved);
-      const matchesArticle = this._articleId ? saved && String(saved.articleId || '') === String(this._articleId) : Boolean(saved);
+      const matchesType = saved && compatibleType(this._source, saved.type)
+        && (this._typeExplicit ? saved.type === this._type : true);
+      const matchesArticle = saved && (this._source === 'classical' || !saved.articleId)
+        && (this._articleId ? String(saved.articleId || '') === String(this._articleId) : true);
       if (saved && saved.source === this._source && matchesArticle && matchesType && saved.roundId && Number(saved.groupIndex) > 0) {
         if (!this._typeExplicit && (saved.type === 'word' || saved.type === 'translation' || saved.type === 'fact')) {
           this._type = saved.type;
@@ -220,10 +229,10 @@ Page({
     await this.loadStates(rows);
     const seenIds = new Set(this._roundIds);
     rows.forEach((item) => { if (item.id && !seenIds.has(item.id)) { seenIds.add(item.id); this._roundIds.push(item.id); } });
-    const questions = rows.map((item) => Object.assign({}, item, this._stateMap[item.id] || normalizeState(null)));
+    const questions = this.decorateDrafts(rows.map((item) => Object.assign({}, item, this._stateMap[item.id] || normalizeState(null))));
     const restricted = !rows.length && Array.isArray(payload.skipped)
       && payload.skipped.some((item) => item && item.reason === 'ENTITLEMENT_REQUIRED');
-    this.setData({ loading: false, dataSource: 'remote', questions, groupNumber: this._groupIndex, groupCount: this._roundCount, roundQuestionCount: this._roundTotal, groupPageSize: this._groupPageSize, progressPercent: this._roundCount ? Math.round(this._groupIndex / this._roundCount * 100) : 0, nextLabel: this._groupIndex >= this._roundCount ? '再练一轮' : '下一组', personalError: restricted ? errorText({ code: 'ENTITLEMENT_REQUIRED' }) : '' });
+    this.setData(Object.assign({ loading: false, dataSource: 'remote', questions, groupNumber: this._groupIndex, groupCount: this._roundCount, roundQuestionCount: this._roundTotal, groupPageSize: this._groupPageSize, progressPercent: this._roundCount ? Math.round(this._groupIndex / this._roundCount * 100) : 0, nextLabel: this._groupIndex >= this._roundCount ? '再练一轮' : '下一组', personalError: restricted ? errorText({ code: 'ENTITLEMENT_REQUIRED' }) : '' }, answerDrafts.progress(questions)));
     this.saveResume();
     return true;
   },
@@ -276,7 +285,8 @@ Page({
   hydrateLocalResume(record) {
     if (!record || record.path !== PAGE_PATH) return false;
     const options = record.options || {};
-    if (options.source !== this._source || (this._typeExplicit && options.type !== this._type)
+    if (options.source !== this._source || !compatibleType(this._source, options.type)
+      || this._source === 'literature' && options.articleId || (this._typeExplicit && options.type !== this._type)
       || (this._articleId && String(options.articleId || '') !== String(this._articleId))) return false;
     this._roundId = record.roundId || this._roundId || '';
     this._roundIds = Array.isArray(record.groupIds) ? record.groupIds.slice() : this._roundIds;
@@ -295,17 +305,26 @@ Page({
     if (!Array.isArray(rows) || !rows.length) return false;
     this._groupIndex = Number(index) || this._groupIndex || 1;
     const states = this._stateMap || {};
-    const questions = rows.map((item) => Object.assign({}, item, normalizeState(states[item.id])));
+    const questions = this.decorateDrafts(rows.map((item) => Object.assign({}, item, normalizeState(states[item.id]))));
     const count = this._roundCount || Math.max(this._groupIndex, Math.ceil(this._roundIds.length / GROUP_SIZE));
-    this.setData({
+    this.setData(Object.assign({
       loading: false, hasError: false, errorMessage: '', dataSource: 'local', personalError: message || '网络暂不可用，当前显示已缓存题组',
       questions, groupNumber: this._groupIndex, groupCount: count, roundQuestionCount: this._roundTotal || this._roundIds.length,
       groupPageSize: this._groupPageSize || GROUP_SIZE, progressPercent: count ? Math.round(this._groupIndex / count * 100) : 0,
       nextLabel: this._groupIndex >= count ? '再练一轮' : '下一组'
-    });
+    }, answerDrafts.progress(questions)));
     return true;
   },
 
+  draftStore() {
+    if (!this._draftStore) this._draftStore = answerDrafts.createStore(api.auth, typeof wx === 'undefined' ? null : wx);
+    return this._draftStore;
+  },
+  decorateDrafts(questions) { return answerDrafts.decorate(questions, this.draftStore()); },
+  onAnswerInput(event) {
+    const update = answerDrafts.acceptInput(this, event, this.draftStore());
+    if (update) this.setData(update);
+  },
   onRetry() { if (hasToken()) this.startRemoteRound(false); else { this.startLocalRound(false); this.refreshLocalGroup(); } },
   async onModeChange(event) { const mode = event.detail.mode; if (mode !== 'writing' && mode !== 'reciting' || mode === this.data.mode) return; studyStore.setMode(mode); this.setData({ mode }); if (this.data.dataSource === 'remote') { await this.loadRemoteGroup(this._groupIndex); this.saveResume(); } else this.refreshLocalGroup(); },
   async updateState(id, field, desiredValue) {
