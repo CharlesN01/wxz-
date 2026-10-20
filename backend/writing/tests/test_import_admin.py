@@ -84,7 +84,11 @@ class WritingImportAdminTests(TestCase):
         self.assertIn("no-store", response["Cache-Control"])
         workbook = load_workbook(BytesIO(response.content))
         self.assertEqual(set(workbook.sheetnames), {"应用文", "分类", "文种", "填写说明"})
-        self.assertEqual(workbook["应用文"].max_row, 1)
+        for name in ("应用文", "分类", "文种"):
+            self.assertFalse(any(
+                any(value is not None for value in row)
+                for row in workbook[name].iter_rows(min_row=2, values_only=True)
+            ), f"{name}表应只有空白填写行，不含示例业务数据")
         self.assertIn("daily", str(list(workbook["填写说明"].values)))
 
     def test_preview_is_read_only_and_escapes_text(self):
@@ -191,7 +195,7 @@ class WritingImportAdminTests(TestCase):
         response = self.client.post(self.confirm_url, {
             "preview_id": preview["previewId"], "confirmation_token": preview["confirmationToken"] + "tampered",
         })
-        self.assertIn(response.status_code, (400, 403))
+        self.assertEqual(response.status_code, 409)
         self.assertFalse(WritingContent.objects.exists())
 
     def test_conflict_expired_and_missing_preview_statuses(self):
