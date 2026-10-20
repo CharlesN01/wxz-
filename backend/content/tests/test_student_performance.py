@@ -223,4 +223,3 @@ class StudentLoadingPerformanceTests(StudentContentFixture):
         revoke_entitlement(source.pk, operator, "检查续学定位撤权")
         self.assertEqual(self.client.get(f"/api/student/v1/questions/{paid_word.pk}/").status_code, 403)
         self.assertEqual(self.client.get(f"/api/student/v1/questions/{self.first.pk}/").data["scopeIndex"], 0)
-
