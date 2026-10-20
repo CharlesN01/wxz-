@@ -1,0 +1,80 @@
+{% extends "admin/base_site.html" %}
+
+{% block content %}
+<div class="flex flex-col gap-6">
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <div>
+      <h1 class="text-2xl font-semibold">{{ title }}</h1>
+      <p class="text-sm text-base-500">账号编号：{{ student.pk }} · 创建时间：{{ student.date_joined|date:"Y-m-d H:i" }}</p>
+    </div>
+    <a class="button" href="{{ changelist_url }}">返回学员列表</a>
+  </div>
+
+  <section class="border border-base-200 bg-white p-4 dark:bg-base-900">
+    <h2 class="text-lg font-semibold">账号与微信身份</h2>
+    <dl class="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <div><dt class="text-sm text-base-500">账号</dt><dd>{{ student.username }}</dd></div>
+      <div><dt class="text-sm text-base-500">状态</dt><dd>{% if student.is_active %}启用{% else %}停用{% endif %}</dd></div>
+      <div><dt class="text-sm text-base-500">有效会话</dt><dd>{{ active_session_count }}</dd></div>
+      <div><dt class="text-sm text-base-500">微信身份（脱敏）</dt><dd>{{ masked_openid }}</dd></div>
+      <div><dt class="text-sm text-base-500">小程序 AppID</dt><dd>{{ wechat_app_id|default:"—" }}</dd></div>
+    </dl>
+  </section>
+
+  <section class="border border-base-200 bg-white p-4 dark:bg-base-900">
+    <h2 class="text-lg font-semibold">学习概况</h2>
+    <dl class="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div><dt class="text-sm text-base-500">有学习状态的题目</dt><dd>{{ state_counts.total }}</dd></div>
+      <div><dt class="text-sm text-base-500">收藏</dt><dd>{{ state_counts.favorites }}</dd></div>
+      <div><dt class="text-sm text-base-500">已掌握</dt><dd>{{ state_counts.mastered }}</dd></div>
+      <div><dt class="text-sm text-base-500">模式 / 每日目标</dt><dd>{% if preference %}{{ preference.get_mode_display }} / {{ preference.daily_target }}{% else %}未设置{% endif %}</dd></div>
+    </dl>
+    <p class="mt-3"><a href="{{ states_url }}">查看该学员全部收藏与掌握状态</a></p>
+  </section>
+
+  <section class="border border-base-200 bg-white p-4 dark:bg-base-900">
+    <div class="flex flex-wrap items-center justify-between gap-2">
+      <h2 class="text-lg font-semibold">最近学习活动</h2>
+      <a href="{{ activities_url }}">查看全部</a>
+    </div>
+    {% if activities %}
+      <div class="mt-3 overflow-x-auto">
+        <table class="min-w-full text-sm">
+          <thead><tr><th class="p-2 text-left">题目编号</th><th class="p-2 text-left">学习日期</th><th class="p-2 text-left">记录时间</th></tr></thead>
+          <tbody>{% for item in activities %}<tr class="border-t border-base-200"><td class="p-2">{{ item.question_id }}</td><td class="p-2">{{ item.study_date }}</td><td class="p-2">{{ item.created_at|date:"Y-m-d H:i" }}</td></tr>{% endfor %}</tbody>
+        </table>
+      </div>
+    {% else %}<p class="mt-3 text-sm text-base-500">暂无学习活动</p>{% endif %}
+  </section>
+
+  <section class="border border-base-200 bg-white p-4 dark:bg-base-900">
+    <div class="flex flex-wrap items-center justify-between gap-2">
+      <h2 class="text-lg font-semibold">最近权益来源</h2>
+      <a href="{{ sources_url }}">查看该学员全部权益来源</a>
+    </div>
+    {% if sources %}
+      <div class="mt-3 overflow-x-auto">
+        <table class="min-w-full text-sm">
+          <thead><tr><th class="p-2 text-left">来源</th><th class="p-2 text-left">业务编号</th><th class="p-2 text-left">状态</th><th class="p-2 text-left">发放时间</th><th class="p-2 text-left">撤销时间</th></tr></thead>
+          <tbody>{% for item in sources %}<tr class="border-t border-base-200"><td class="p-2">{% if item.source_type == "activation" %}激活码{% else %}付款{% endif %}</td><td class="p-2">{{ item.source_id }}</td><td class="p-2">{% if item.status == "active" %}有效{% else %}已撤销{% endif %}</td><td class="p-2">{{ item.created_at|date:"Y-m-d H:i" }}</td><td class="p-2">{{ item.revoked_at|date:"Y-m-d H:i"|default:"—" }}</td></tr>{% endfor %}</tbody>
+        </table>
+      </div>
+    {% else %}<p class="mt-3 text-sm text-base-500">暂无权益来源</p>{% endif %}
+  </section>
+
+  <section class="border border-base-200 bg-white p-4 dark:bg-base-900">
+    <div class="flex flex-wrap items-center justify-between gap-2">
+      <h2 class="text-lg font-semibold">最近订单</h2>
+      <a href="{{ orders_url }}">查看该学员全部订单</a>
+    </div>
+    {% if orders %}
+      <div class="mt-3 overflow-x-auto">
+        <table class="min-w-full text-sm">
+          <thead><tr><th class="p-2 text-left">订单号</th><th class="p-2 text-left">商品</th><th class="p-2 text-left">金额</th><th class="p-2 text-left">渠道</th><th class="p-2 text-left">状态</th><th class="p-2 text-left">创建时间</th></tr></thead>
+          <tbody>{% for item in orders %}<tr class="border-t border-base-200"><td class="p-2">{{ item.id }}</td><td class="p-2">{{ item.product_name }}</td><td class="p-2">{{ item.price_fen }} 分</td><td class="p-2">{{ item.channel }}</td><td class="p-2">{{ item.status }}</td><td class="p-2">{{ item.created_at|date:"Y-m-d H:i" }}</td></tr>{% endfor %}</tbody>
+        </table>
+      </div>
+    {% else %}<p class="mt-3 text-sm text-base-500">暂无订单</p>{% endif %}
+  </section>
+</div>
+{% endblock %}

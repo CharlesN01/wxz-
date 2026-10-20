@@ -140,3 +140,27 @@ class PaymentTaskAdminTests(SyncFixture):
         response = self.post(token)
         self.assertEqual(response.status_code, 409)
         self.assertNotContains(response, 'name="confirmation_token"', status_code=409)
+
+    def test_order_detail_links_related_tasks_and_events_without_rendering_sign_data(self):
+        PaymentEvent(key='safe-event-key', order=self.order, kind='xpay_goods_deliver_notify',
+                     external_id='external-safe-id', request_digest='safe-digest', outcome='applied',
+                     details={'private': 'must not appear'}).save(_service=True)
+        response = self.client.get(reverse('admin:payments_order_change', args=(self.order.pk,)))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, '支付任务（1）')
+        self.assertContains(response, '支付事件（1）')
+        self.assertContains(response, reverse('admin:payments_paymenttask_changelist') + '?q=' + self.order.pk)
+        self.assertContains(response, reverse('admin:payments_paymentevent_changelist') + '?q=' + self.order.pk)
+        self.assertNotContains(response, self.order.sign_data)
+        self.assertNotContains(response, 'sign_data')
+        self.assertNotContains(response, 'must not appear')
+        event_response = self.client.get(reverse('admin:payments_paymentevent_change', args=('safe-event-key',)))
+        self.assertEqual(event_response.status_code, 200)
+        self.assertNotContains(event_response, 'private')
+        self.assertNotContains(event_response, 'must not appear')
+
+    def test_task_reschedule_still_requires_existing_permission_and_confirmation(self):
+        viewer = get_user_model().objects.create_user(username='task-viewer-no-retry', is_staff=True)
+        viewer.user_permissions.add(Permission.objects.get(content_type__app_label='payments', codename='view_paymenttask'))
+        self.client.force_login(viewer)
+        self.assertEqual(self.client.get(self.url).status_code, 403)

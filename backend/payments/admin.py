@@ -5,6 +5,7 @@ from django.http import HttpResponseRedirect
 from django.shortcuts import get_object_or_404
 from django.template.response import TemplateResponse
 from django.urls import path, reverse
+from django.utils.http import urlencode
 from django.utils.html import format_html
 from common.errors import BusinessError
 from unfold.admin import ModelAdmin
@@ -21,17 +22,38 @@ class ReadOnlyAdmin(ModelAdmin):
 
 @admin.register(Order)
 class OrderAdmin(ReadOnlyAdmin):
-    list_display=('id','user','price_fen','channel','status','created_at')
-    list_filter=('status','channel','environment')
-    search_fields=('id','user__username','platform_order_id')
-    fields=('id','user','product','product_name','scope','price_fen','platform_product_id','environment','channel',
-            'status','prepared_at','platform_order_id','transaction_id','last_platform_status','paid_at','fulfilled_at','refunded_at','review_reason','created_at','updated_at')
+    list_display = ('id', 'user', 'price_fen', 'channel', 'status', 'created_at')
+    list_filter = ('status', 'channel', 'environment')
+    search_fields = ('id', 'user__username', 'platform_order_id')
+    fields = ('id', 'user', 'product', 'product_name', 'scope', 'price_fen', 'platform_product_id', 'environment', 'channel',
+              'status', 'prepared_at', 'platform_order_id', 'transaction_id', 'last_platform_status', 'paid_at', 'fulfilled_at',
+              'refunded_at', 'review_reason', 'created_at', 'updated_at', 'payment_records')
+
+    def get_readonly_fields(self, request, obj=None):
+        return (*super().get_readonly_fields(request, obj), 'payment_records')
+
+    @admin.display(description='支付处理记录')
+    def payment_records(self, obj):
+        task_count = obj.tasks.count()
+        event_count = obj.events.count()
+        parts = []
+        if task_count:
+            url = reverse('admin:payments_paymenttask_changelist') + '?' + urlencode({'q': obj.pk})
+            parts.append(format_html('<a href="{}">支付任务（{}）</a>', url, task_count))
+        if event_count:
+            url = reverse('admin:payments_paymentevent_changelist') + '?' + urlencode({'q': obj.pk})
+            parts.append(format_html('<a href="{}">支付事件（{}）</a>', url, event_count))
+        if not parts:
+            return '暂无支付任务或事件'
+        from django.utils.html import format_html_join
+        return format_html_join(' · ', '{}', ((part,) for part in parts))
 
 
 @admin.register(PaymentTask)
 class PaymentTaskAdmin(ReadOnlyAdmin):
     list_display=('order','kind','status','attempts','next_run_at','last_error_code','retry_link')
     list_filter=('kind','status')
+    search_fields=('order__id',)
     fields=('order','kind','status','attempts','next_run_at','lease_until','last_error_code','created_at','updated_at','retry_link')
 
     def get_readonly_fields(self, request, obj=None):
@@ -79,3 +101,4 @@ class PaymentEventAdmin(ReadOnlyAdmin):
     list_display = ('key', 'order', 'kind', 'outcome', 'error_code', 'created_at')
     list_filter = ('kind', 'outcome')
     search_fields = ('order__id', 'external_id')
+    fields = ('key', 'order', 'kind', 'external_id', 'outcome', 'error_code', 'created_at')
