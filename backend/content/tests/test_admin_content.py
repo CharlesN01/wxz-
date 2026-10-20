@@ -61,6 +61,37 @@ class ContentAdminTests(TestCase):
         self.assertIn(response.status_code, (200, 302))
         self.assertTrue(Question.objects.get(pk=self.question.pk).is_published)
 
+    def test_publication_action_keeps_all_results_below_post_field_limit(self):
+        Question.objects.bulk_create([
+            Question(
+                id=f"bulk-{index:04d}", source="literature", type="fact", category=self.category,
+                stem=f"批量题目 {index} 的答案是{{{{0}}}}。", answers=[str(index)],
+            )
+            for index in range(1001)
+        ])
+        self.client.force_login(self.publisher)
+        data = {
+            "action": "publish_selected",
+            "_selected_action": [self.question.pk],
+            "select_across": "1",
+        }
+        preview = self.client.post(self.list_url, data)
+        self.assertEqual(preview.status_code, 200)
+        self.assertEqual(len(preview.context["questions"]), 1002)
+        self.assertEqual(preview.context["select_across"], True)
+        self.assertEqual(preview.content.decode().count('name="_selected_action"'), 1)
+
+        data = {
+            "action": "publish_selected",
+            "_selected_action": ["__publication_token__"],
+            "select_across": "1",
+            "confirm_publication": "publish_selected",
+            "confirmation_token": preview.context["confirmation_token"],
+        }
+        result = self.client.post(self.list_url, data)
+        self.assertEqual(result.status_code, 302)
+        self.assertEqual(Question.objects.filter(is_published=True).count(), 1002)
+
     def test_preview_requires_view_permission_and_escapes_content(self):
         self.assertEqual(self.client.get(self.preview_url).status_code, 302)
         self.client.force_login(self.no_permissions)

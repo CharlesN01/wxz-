@@ -179,11 +179,10 @@ class QuestionAdmin(QuestionImportMixin, ImportExportModelAdmin, RetainedContent
         questions = list(queryset.order_by("pk"))
         if request.POST.get("confirm_publication") != action:
             return self._publication_response(request, questions, action, publish,
+                select_across=request.POST.get("select_across", "0") == "1",
                 confirmation_token=make_publication_token(questions, request.user, action))
         service = publish_questions if publish else unpublish_questions
         try:
-            if request.POST.get("select_across", "0") != "0":
-                raise ContentConflict("确认时不能扩展所选集合，请重新确认本批题目。")
             count = service(queryset, request.user, confirmation_token=request.POST.get("confirmation_token", ""))
         except ContentConflict as error:
             return self._publication_response(request, questions, action, publish,
