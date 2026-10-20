@@ -14,6 +14,7 @@ from django.views.decorators.debug import sensitive_variables
 from unfold.admin import ModelAdmin
 
 from common.errors import BusinessError
+from distribution.admin_access import scope_to_agent_user
 from entitlements.admin import ReadOnlyBusinessAdmin
 from .forms import GenerateBatchForm
 from .models import ActivationBatch, ActivationCode, ActivationRedemption
@@ -180,6 +181,13 @@ class ActivationRedemptionAdmin(ReadOnlyBusinessAdmin):
     list_select_related = ("code", "agent_voucher", "user", "source")
     search_fields = ("user__username", "code__mask", "agent_voucher__mask", "agent_voucher__order__id")
 
+    def get_queryset(self, request):
+        return scope_to_agent_user(
+            request,
+            super().get_queryset(request),
+            "agent_voucher__order__agent_attribution__agent_id",
+        )
+
     @admin.display(description="激活码掩码")
     def code_display(self, obj):
         return obj.code.mask if obj.code_id else obj.agent_voucher.mask
@@ -201,6 +209,11 @@ class ActivationRedemptionAdmin(ReadOnlyBusinessAdmin):
         writer = csv.writer(response)
         writer.writerow(("代理", "订单号", "激活码掩码", "兑换用户", "兑换时间", "金额（分）", "支付状态"))
         queryset = ActivationRedemption.objects.filter(agent_voucher__isnull=False).select_related("agent_voucher__order__agent_attribution__agent", "user")
+        queryset = scope_to_agent_user(
+            request,
+            queryset,
+            "agent_voucher__order__agent_attribution__agent_id",
+        )
         for item in queryset.order_by("-redeemed_at"):
             voucher = item.agent_voucher
             order = voucher.order

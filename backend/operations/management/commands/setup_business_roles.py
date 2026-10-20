@@ -51,6 +51,10 @@ ROLES = {
     "代理业绩": permissions("distribution", "agentvoucher", "view_agentvoucher", "view_agentperformance", "export_agentperformance")
                     | permissions("distribution", "agentorderattribution", "view_agentorderattribution")
                     | permissions("activation", "activationredemption", "view_activationredemption"),
+    "代理本人": permissions("distribution", "agentprofile", "view_agentprofile")
+                    | permissions("distribution", "agentorderattribution", "view_agentorderattribution")
+                    | permissions("distribution", "agentvoucher", "view_agentvoucher", "view_agentperformance", "export_agentperformance")
+                    | permissions("activation", "activationredemption", "view_activationredemption"),
     "资料群管理": permissions("resources", "groupresourceconfiguration", "view_groupresourceconfiguration",
                             "change_groupresourceconfiguration"),
     "应用文编辑": (
