@@ -1,9 +1,11 @@
+import re
 from datetime import timedelta
 from io import BytesIO
 from tempfile import TemporaryDirectory
 from unittest.mock import patch
 from uuid import uuid4
 
+from django.contrib import admin
 from django.contrib.admin.models import LogEntry
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission
@@ -12,6 +14,7 @@ from django.test import Client, RequestFactory, TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
+from django.utils.html import strip_tags
 from openpyxl import Workbook, load_workbook
 
 from config.admin_navigation import navigation
@@ -71,12 +74,35 @@ class WritingImportAdminTests(TestCase):
         response = self.client.get(self.import_url)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context["form"].fields["mode"].initial, "create_only")
+        heading = re.search(r"<h1\b[^>]*>(.*?)</h1>", response.content.decode(), re.DOTALL)
+        self.assertIsNotNone(heading)
+        self.assertEqual(" ".join(strip_tags(heading.group(1)).split()), "应用文批量导入")
         self.assertContains(response, 'enctype="multipart/form-data"')
         self.assertContains(response, "共享首屏免费集合")
         request = RequestFactory().get("/admin/")
         request.user = self.user
         links = dashboard_callback(request, {})["workbench_links"]
         self.assertIn({"title": "导入应用文", "url": self.import_url}, links)
+
+    def test_import_sidebar_does_not_highlight_parent_content_link(self):
+        paths = (
+            (self.import_url, False, True),
+            (self.confirm_url, False, True),
+            (self.template_url, False, True),
+            (reverse("admin:writing_writingcontent_import_report", args=(uuid4(),)), False, True),
+            (self.list_url, True, False),
+            (reverse("admin:writing_writingcontent_change", args=("notice-001",)), True, False),
+        )
+        for path, content_active, import_active in paths:
+            with self.subTest(path=path):
+                request = RequestFactory().get(path)
+                request.user = self.user
+                entries = {
+                    item["title"]: item
+                    for group in admin.site.get_sidebar_list(request) for item in group["items"]
+                }
+                self.assertEqual(entries["应用文内容"]["active"], content_active)
+                self.assertEqual(entries["应用文导入"]["active"], import_active)
 
     def test_template_is_a_real_xlsx_with_empty_business_sheets(self):
         response = self.client.get(self.template_url)

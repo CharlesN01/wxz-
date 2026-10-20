@@ -102,7 +102,12 @@ def navigation(request):
             ):
                 if not agent_bound:
                     continue
-            items.append({"title": label, "link": reverse_lazy(route)})
+            item = {"title": label, "link": reverse_lazy(route)}
+            if route == "admin:writing_writingcontent_changelist" and request.path.startswith(
+                str(reverse_lazy("admin:writing_writingcontent_import"))
+            ):
+                item["active"] = False
+            items.append(item)
 
         if items:
             groups.append({

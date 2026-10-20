@@ -1,6 +1,12 @@
 {% extends "admin/base_site.html" %}
 {% load i18n %}
 
+{% block header %}
+  {% with opts=None content_title=title %}
+    {{ block.super }}
+  {% endwith %}
+{% endblock %}
+
 {% block extrastyle %}
   {{ block.super }}
   <style>
