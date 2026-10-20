@@ -36,6 +36,9 @@
         <question-card question="{{item}}" mode="{{mode}}" number="{{groupIndex * 6 + index + 1}}" variant="{{isWord ? 'practice-word' : 'practice-translation'}}" show-tag="{{true}}" bindfavorite="onFavorite" bindmaster="onMaster" />
       </view>
     </view>
+    <view wx:elif="{{requiresEntitlement}}" class="practice-empty">
+      <empty-state title="当前专项需要学习权益" description="{{'该专项已有 ' + restrictedCount + ' 道已发布题目，当前暂无免费题。请登录并开通学习权益后查看。'}}" action-text="前往登录 / 开通" bindaction="onEmptyAction" />
+    </view>
     <view wx:elif="{{!loading && !hasError}}" class="practice-empty">
       <empty-state title="暂无专项题目" description="该篇目或专项暂无已发布内容" action-text="返回目录" bindaction="onEmptyAction" />
     </view>

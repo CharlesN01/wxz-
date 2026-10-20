@@ -27,7 +27,7 @@ function localQuestionState(id) {
 }
 
 Page({
-  data: { loading: true, hasError: false, errorMessage: '', dataSource: 'local', personalError: '', title: '重点字词专项', typeLabel: '重点字词', isWord: true, mode: 'writing', questions: [], total: 0, completed: 0, progressPercent: 0, groupIndex: 0, groupCount: 0, nextLabel: '下一组' },
+  data: { loading: true, hasError: false, errorMessage: '', dataSource: 'local', personalError: '', requiresEntitlement: false, restrictedCount: 0, title: '重点字词专项', typeLabel: '重点字词', isWord: true, mode: 'writing', questions: [], total: 0, completed: 0, progressPercent: 0, groupIndex: 0, groupCount: 0, nextLabel: '下一组' },
   onLoad(options) {
     options = options || {};
     this.articleId = options.articleId || '';
@@ -51,9 +51,13 @@ Page({
       this.refreshQuestions();
     }
   },
-  onShow() { if (this._remoteLoaded) this.refreshQuestions(); },
+  onShow() {
+    if (!this._remoteLoaded) return;
+    if (this.data.requiresEntitlement && hasToken()) this.loadRemote(false);
+    else this.refreshQuestions();
+  },
   async loadRemote(restore) {
-    this.setData({ loading: true, hasError: false, errorMessage: '' });
+    this.setData({ loading: true, hasError: false, errorMessage: '', requiresEntitlement: false, restrictedCount: 0 });
     const response = this.articleId
       ? await settle(api.content.questions(
         { source: 'classical', articleId: this.articleId, type: this.questionType, page: 1 },
@@ -90,7 +94,9 @@ Page({
       next = page.next || null;
     }
     this._remoteLoaded = true;
-    if (!this.allQuestions.length) { this.setData({ loading: false, dataSource: 'remote', total: 0, questions: [] }); return; }
+    const restrictedCount = Math.max(0, Number(payload.access && payload.access.restrictedCount) || 0);
+    this.setData({ restrictedCount });
+    if (!this.allQuestions.length) { this.setData({ loading: false, dataSource: 'remote', requiresEntitlement: restrictedCount > 0, total: 0, questions: [] }); return; }
     const stateError = await this.loadStates(this.allQuestions);
     if (restore) await this.restoreResume();
     this.setData({ loading: false, dataSource: 'remote', personalError: stateError ? errorText(stateError) : '' });
@@ -112,6 +118,7 @@ Page({
       next = page.next || null;
     }
     const rows = [];
+    const access = { restrictedCount: 0 };
     for (const article of articles) {
       const result = await settle(api.content.questions(
         { source: 'classical', articleId: article.id, type: this.questionType, page: 1 },
@@ -119,6 +126,7 @@ Page({
       ));
       if (!result.ok) return result;
       const payload = result.value || {};
+      access.restrictedCount += Math.max(0, Number(payload.access && payload.access.restrictedCount) || 0);
       if (Array.isArray(payload.results)) rows.push(...payload.results);
       let questionNext = payload.next || null;
       const seenQuestions = new Set();
@@ -131,7 +139,7 @@ Page({
         questionNext = page.next || null;
       }
     }
-    return { ok: true, value: { results: rows, next: null } };
+    return { ok: true, value: { results: rows, next: null, access } };
   },
   async loadStates(rows) {
     if (!hasToken()) return;
@@ -262,5 +270,8 @@ Page({
   onMaster(event) { return this.updateState(event.detail.id, 'mastered', event.detail.mastered); },
   onPreviousGroup() { if (!this.data.total || this.data.groupIndex <= 0) return; this.setData({ groupIndex: this.data.groupIndex - 1 }); this.refreshQuestions(); if (wx.pageScrollTo) wx.pageScrollTo({ scrollTop: 0, duration: 180 }); },
   onNextGroup() { if (!this.data.total || this.data.groupIndex >= this.data.groupCount - 1) return; this.setData({ groupIndex: this.data.groupIndex + 1 }); this.refreshQuestions(); if (wx.pageScrollTo) wx.pageScrollTo({ scrollTop: 0, duration: 180 }); },
-  onEmptyAction() { if (getCurrentPages().length > 1) wx.navigateBack({ delta: 1 }); else navigation.openPage('/pages/classical/index'); }
+  onEmptyAction() {
+    if (this.data.requiresEntitlement) { navigation.openPage('/pages/mine/index'); return; }
+    if (getCurrentPages().length > 1) wx.navigateBack({ delta: 1 }); else navigation.openPage('/pages/classical/index');
+  }
 });
