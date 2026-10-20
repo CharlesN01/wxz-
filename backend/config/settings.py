@@ -185,4 +185,9 @@ UNFOLD = {
         "600": "rgb(13 148 136)", "700": "rgb(15 118 110)", "800": "rgb(17 94 89)",
         "900": "rgb(19 78 74)", "950": "rgb(4 47 46)",
     }},
+    "SIDEBAR": {
+        "show_search": True,
+        "show_all_applications": False,
+        "navigation": "config.admin_navigation.navigation",
+    },
 }
