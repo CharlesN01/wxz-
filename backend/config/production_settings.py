@@ -35,6 +35,7 @@ SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
 STATIC_ROOT = Path(os.environ.get("DJANGO_STATIC_ROOT", "/srv/chinese-study/static"))
 MEDIA_ROOT = Path(os.environ.get("DJANGO_MEDIA_ROOT", "/var/lib/chinese-study/media"))
+WRITING_IMPORT_TMP_DIR = Path(os.environ.get("WRITING_IMPORT_TMP_DIR", "/var/lib/chinese-study/writing-imports"))
 DATABASES["default"]["OPTIONS"] = {"connect_timeout": 10, "options": "-c statement_timeout=120000"}
 MIDDLEWARE = ["operations.logging.RequestLoggingMiddleware", *MIDDLEWARE]
 LOGGING = {

@@ -150,6 +150,8 @@ STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 MEDIA_ROOT = BASE_DIR / ".local" / "media"
 MEDIA_URL = "/media/"
+# Uploaded source files and preview plans are private and never served as media.
+WRITING_IMPORT_TMP_DIR = Path(os.environ.get("WRITING_IMPORT_TMP_DIR", BASE_DIR / ".local" / "writing-imports"))
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = "Lax"
 SESSION_COOKIE_SECURE = not DEBUG

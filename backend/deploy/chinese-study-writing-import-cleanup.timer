@@ -1,0 +1,11 @@
+[Unit]
+Description=Hourly cleanup of private writing import files
+
+[Timer]
+OnCalendar=hourly
+Persistent=true
+RandomizedDelaySec=60
+Unit=chinese-study-writing-import-cleanup.service
+
+[Install]
+WantedBy=timers.target
