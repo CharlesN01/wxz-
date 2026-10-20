@@ -1,4 +1,5 @@
 {% extends "admin/writing/writingcontent/import_base.html" %}
+{% load tz %}
 
 {% block content %}
 <div class="writing-import">
@@ -33,7 +34,7 @@
     <section class="panel" aria-labelledby="preview-title">
       <h2 id="preview-title">核对导入预览</h2>
       <p>当前为只读预览，尚未保存业务数据。导入模式：<strong>{% if preview.mode == 'upsert_draft' %}新增及更新草稿{% else %}仅新增{% endif %}</strong>。</p>
-      <p class="muted">有效期至 {{ preview.expiresAt }}；超过 30 分钟或内容、发布状态及字典发生变化，需要重新上传预览。</p>
+      <p class="muted">有效期至 {% timezone "Asia/Shanghai" %}{{ preview_expires_at|date:"Y年m月d日 H:i:s" }}{% endtimezone %}（北京时间）；超过 30 分钟或内容、发布状态及字典发生变化，需要重新上传预览。</p>
       <div class="counts">
         <div class="count">新增 <strong>{{ preview.counts.create }}</strong></div>
         <div class="count">修改 <strong>{{ preview.counts.update }}</strong></div>

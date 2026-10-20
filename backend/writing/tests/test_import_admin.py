@@ -11,6 +11,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client, RequestFactory, TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.dateparse import parse_datetime
 from openpyxl import Workbook, load_workbook
 
 from config.admin_navigation import navigation
@@ -103,6 +104,14 @@ class WritingImportAdminTests(TestCase):
         self.assertNotContains(response, "<script>alert(1)</script>")
         self.assertEqual(preview["rows"][0]["values"]["body"], "通知\n  保留缩进\n<script>alert(1)</script>")
         self.assertFalse(WritingContent.objects.exists())
+
+    def test_preview_expiry_uses_chinese_beijing_time_without_changing_signed_value(self):
+        response = self.preview()
+        expires_at = response.context_data["preview"]["expiresAt"]
+        expected = timezone.localtime(parse_datetime(expires_at)).strftime("%Y年%m月%d日 %H:%M:%S")
+        self.assertContains(response, expected + "（北京时间）")
+        self.assertNotContains(response, "有效期至 " + expires_at)
+        self.assertEqual(response.context_data["preview_expires_at"].isoformat(), expires_at)
 
     def test_confirm_redirects_to_refreshable_result_and_scoped_list(self):
         other = WritingContent.objects.create(id="outside", category=self.category, kind="template", title="其他内容", body="其他正文")

@@ -7,6 +7,7 @@ from django.db import DatabaseError
 from django.http import HttpResponse, HttpResponseNotAllowed, HttpResponseRedirect
 from django.template.response import TemplateResponse
 from django.urls import path, reverse
+from django.utils.dateparse import parse_datetime
 
 from .import_files import make_error_report, make_template, parse_workbook
 from .import_services import (
@@ -114,7 +115,10 @@ class WritingImportAdminMixin:
 
     def _render_preview(self, request, preview):
         result = preview.get("result")
-        context = self._import_context(request, preview=preview, result=result)
+        context = self._import_context(
+            request, preview=preview, result=result,
+            preview_expires_at=parse_datetime(preview["expiresAt"]),
+        )
         context["report_url"] = reverse("admin:writing_writingcontent_import_report", args=(preview["previewId"],))
         if result:
             context["batch_list_url"] = context["changelist_url"] + "?" + urlencode({"import_batch": preview["previewId"]})
