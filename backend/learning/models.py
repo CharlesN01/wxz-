@@ -4,8 +4,11 @@ from django.db import models
 
 
 class QuestionState(models.Model):
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
-    question = models.ForeignKey("content.Question", on_delete=models.PROTECT)
+    def __str__(self):
+        return f"{self._meta.verbose_name} #{self.pk}"
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, verbose_name="学员")
+    question = models.ForeignKey("content.Question", on_delete=models.PROTECT, verbose_name="题目")
     favorite = models.BooleanField("收藏", default=False)
     mastered = models.BooleanField("掌握", default=False)
     version = models.PositiveBigIntegerField("版本", default=0)
@@ -18,8 +21,11 @@ class QuestionState(models.Model):
 
 
 class LearningActivity(models.Model):
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
-    question = models.ForeignKey("content.Question", on_delete=models.PROTECT)
+    def __str__(self):
+        return f"{self._meta.verbose_name} #{self.pk}"
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, verbose_name="学员")
+    question = models.ForeignKey("content.Question", on_delete=models.PROTECT, verbose_name="题目")
     study_date = models.DateField("上海学习日期", db_index=True)
     created_at = models.DateTimeField("创建时间", auto_now_add=True)
 
@@ -30,7 +36,10 @@ class LearningActivity(models.Model):
 
 
 class LearningPreference(models.Model):
-    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    def __str__(self):
+        return f"{self._meta.verbose_name} #{self.pk}"
+
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, verbose_name="学员")
     mode = models.CharField("学习模式", max_length=10, choices=(("writing", "默写"), ("reciting", "背诵")), default="writing")
     daily_target = models.PositiveSmallIntegerField("每日目标", default=20, validators=(MinValueValidator(1), MaxValueValidator(1000)))
     version = models.PositiveBigIntegerField("版本", default=0)
@@ -46,7 +55,7 @@ class LearningPreference(models.Model):
 
 
 class StudyTimeSession(models.Model):
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, verbose_name="学员")
     session_id = models.UUIDField("客户端学习会话")
     last_sequence = models.PositiveIntegerField("最近心跳序号", default=0)
     last_received_at = models.DateTimeField("服务端心跳时间")
@@ -60,7 +69,7 @@ class StudyTimeSession(models.Model):
 
 
 class StudyTimeHeartbeat(models.Model):
-    session = models.ForeignKey(StudyTimeSession, on_delete=models.PROTECT, related_name="heartbeats")
+    session = models.ForeignKey(StudyTimeSession, on_delete=models.PROTECT, related_name="heartbeats", verbose_name="学习计时会话")
     sequence = models.PositiveIntegerField("心跳序号")
     elapsed_seconds = models.PositiveSmallIntegerField("客户端活跃秒数")
     credited_seconds = models.PositiveSmallIntegerField("确认计时秒数", default=0)
@@ -78,7 +87,7 @@ class StudyTimeHeartbeat(models.Model):
 
 
 class StudyTimeDaily(models.Model):
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, verbose_name="学员")
     study_date = models.DateField("上海学习日期", db_index=True)
     study_seconds = models.PositiveIntegerField("有效学习秒数", default=0)
     updated_at = models.DateTimeField("更新时间", auto_now=True)

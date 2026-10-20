@@ -17,7 +17,7 @@ AGENT_CODE_VALIDATOR = RegexValidator(
 
 class AgentProfile(ServiceOnlyModel):
     STATUS_CHOICES = (("active", "启用"), ("disabled", "停用"))
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    id = models.UUIDField("代理记录编号", primary_key=True, default=uuid.uuid4, editable=False)
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="agent_profile", verbose_name="后台账号")
     agent_code = models.CharField("代理编号", max_length=32, unique=True, validators=(AGENT_CODE_VALIDATOR,))
     display_name = models.CharField("代理名称", max_length=120)
@@ -60,7 +60,7 @@ class AgentProfile(ServiceOnlyModel):
 
 
 class AgentOrderAttribution(ServiceOnlyModel):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    id = models.UUIDField("归因记录编号", primary_key=True, default=uuid.uuid4, editable=False)
     order = models.OneToOneField("payments.Order", on_delete=models.PROTECT, related_name="agent_attribution", verbose_name="订单")
     agent = models.ForeignKey(AgentProfile, on_delete=models.PROTECT, related_name="attributions", verbose_name="代理")
     scene = models.CharField("归因标识", max_length=40)
@@ -75,7 +75,7 @@ class AgentOrderAttribution(ServiceOnlyModel):
 
 class AgentVoucher(ServiceOnlyModel):
     STATE_CHOICES = (("issued", "已生成待兑换"), ("redeemed", "已兑换"), ("disabled", "已禁用"))
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    id = models.UUIDField("订单激活码编号", primary_key=True, default=uuid.uuid4, editable=False)
     order = models.OneToOneField("payments.Order", on_delete=models.PROTECT, related_name="agent_voucher", verbose_name="订单")
     digest = models.CharField("激活码摘要", max_length=64, unique=True)
     mask = models.CharField("激活码掩码", max_length=32)

@@ -36,5 +36,8 @@ class LearningPersistenceTests(TestCase):
             self.assertFalse(admin.has_change_permission(request))
             self.assertFalse(admin.has_delete_permission(request))
         state_admin = QuestionStateAdmin(QuestionState, AdminSite())
-        self.assertIn("question_id", state_admin.readonly_fields)
+        self.assertIn("question_identifier", state_admin.readonly_fields)
         self.assertNotIn("question", state_admin.readonly_fields)
+        state = QuestionState(user=self.student, question_id=self.draft.pk)
+        with self.assertNumQueries(0):
+            self.assertEqual(state_admin.question_identifier(state), self.draft.pk)

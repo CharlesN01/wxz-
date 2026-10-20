@@ -12,7 +12,7 @@ class User(AbstractUser):
 
 
 class WeChatIdentity(models.Model):
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="wechat_identities")
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="wechat_identities", verbose_name="学员")
     app_id = models.CharField("小程序 AppID", max_length=64)
     openid = models.CharField("微信身份", max_length=128)
     encrypted_session_key = models.TextField("加密微信会话密钥")
@@ -38,8 +38,8 @@ class StudentAccount(User):
 
 
 class StudentSession(models.Model):
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="student_sessions")
-    identity = models.ForeignKey(WeChatIdentity, on_delete=models.PROTECT, null=True, blank=True, related_name="sessions")
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="student_sessions", verbose_name="学员")
+    identity = models.ForeignKey(WeChatIdentity, on_delete=models.PROTECT, null=True, blank=True, related_name="sessions", verbose_name="微信身份")
     token_digest = models.CharField("会话摘要", max_length=64, unique=True)
     encrypted_session_key = models.TextField("本次登录加密微信会话密钥")
     created_at = models.DateTimeField("创建时间", auto_now_add=True)

@@ -28,6 +28,9 @@ class PracticeQuerySet(models.QuerySet):
 
 
 class PracticeRecord(models.Model):
+    def __str__(self):
+        return f"{self._meta.verbose_name} {self.pk}"
+
     objects = PracticeQuerySet.as_manager()
 
     class Meta:
@@ -62,7 +65,7 @@ class ScopeRecord(PracticeRecord):
 
 
 class PracticeRound(ScopeRecord):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    id = models.UUIDField("轮次编号", primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, verbose_name="学员")
     group_size = models.PositiveSmallIntegerField("固定每组题数")
     item_count = models.PositiveIntegerField("固定题量")

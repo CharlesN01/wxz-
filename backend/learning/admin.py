@@ -5,6 +5,10 @@ from .models import LearningActivity, LearningPreference, QuestionState
 
 
 class ReadonlyLearningAdmin(ModelAdmin):
+    @admin.display(description="题目编号", ordering="question_id")
+    def question_identifier(self, obj):
+        return obj.question_id
+
     def has_add_permission(self, request):
         return False
 
@@ -17,17 +21,17 @@ class ReadonlyLearningAdmin(ModelAdmin):
 
 @admin.register(QuestionState)
 class QuestionStateAdmin(ReadonlyLearningAdmin):
-    list_display = ("user", "question_id", "favorite", "mastered", "version", "updated_at")
+    list_display = ("user", "question_identifier", "favorite", "mastered", "version", "updated_at")
     list_filter = ("favorite", "mastered")
-    readonly_fields = ("user", "question_id", "favorite", "mastered", "version", "updated_at")
+    readonly_fields = ("user", "question_identifier", "favorite", "mastered", "version", "updated_at")
     fields = readonly_fields
 
 
 @admin.register(LearningActivity)
 class LearningActivityAdmin(ReadonlyLearningAdmin):
-    list_display = ("user", "question_id", "study_date", "created_at")
+    list_display = ("user", "question_identifier", "study_date", "created_at")
     date_hierarchy = "study_date"
-    readonly_fields = ("user", "question_id", "study_date", "created_at")
+    readonly_fields = ("user", "question_identifier", "study_date", "created_at")
     fields = readonly_fields
 
 

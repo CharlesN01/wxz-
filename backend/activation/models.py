@@ -7,7 +7,7 @@ from entitlements.models import ServiceOnlyModel
 
 
 class ActivationBatch(ServiceOnlyModel):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    id = models.UUIDField("批次编号", primary_key=True, default=uuid.uuid4, editable=False)
     quantity = models.PositiveIntegerField("数量")
     label = models.CharField("用途说明", max_length=120, blank=True)
     state = models.CharField("批次状态", max_length=24, choices=(("awaiting_receipt", "待领取确认"), ("received", "已领取待启用"), ("enabled", "已启用"), ("disabled", "已禁用"), ("void", "已作废")), default="awaiting_receipt")
@@ -39,7 +39,7 @@ class ActivationBatch(ServiceOnlyModel):
 
 
 class ActivationCode(ServiceOnlyModel):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    id = models.UUIDField("激活码编号", primary_key=True, default=uuid.uuid4, editable=False)
     batch = models.ForeignKey(ActivationBatch, on_delete=models.PROTECT, related_name="codes", verbose_name="批次")
     digest = models.CharField("激活码摘要", max_length=64, unique=True)
     mask = models.CharField("掩码", max_length=32)
@@ -62,7 +62,7 @@ class ActivationCode(ServiceOnlyModel):
 
 
 class ActivationRedemption(ServiceOnlyModel):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    id = models.UUIDField("兑换记录编号", primary_key=True, default=uuid.uuid4, editable=False)
     code = models.OneToOneField(ActivationCode, on_delete=models.PROTECT, null=True, blank=True, related_name="redemption", verbose_name="批次已兑码")
     agent_voucher = models.OneToOneField("distribution.AgentVoucher", on_delete=models.PROTECT, null=True, blank=True, related_name="redemption", verbose_name="订单激活码")
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="activation_redemptions", verbose_name="学员")

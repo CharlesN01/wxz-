@@ -28,6 +28,9 @@ class ServiceOnlyQuerySet(models.QuerySet):
 
 
 class ServiceOnlyModel(models.Model):
+    def __str__(self):
+        return f"{self._meta.verbose_name} {self.pk}"
+
     objects = ServiceOnlyQuerySet.as_manager()
 
     class Meta:
@@ -91,7 +94,7 @@ class Product(models.Model):
 
 
 class EntitlementSource(ServiceOnlyModel):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    id = models.UUIDField("权益来源编号", primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="entitlement_sources", verbose_name="学员")
     scope = models.CharField("权益范围", max_length=32, choices=SCOPE_CHOICES, default=SCOPE)
     source_type = models.CharField("来源类型", max_length=16, choices=(("activation", "激活码"), ("payment", "付款")))
@@ -146,7 +149,7 @@ class OpeningReservation(ServiceOnlyModel):
 
 
 class AuditEvent(ServiceOnlyModel):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    id = models.UUIDField("审计记录编号", primary_key=True, default=uuid.uuid4, editable=False)
     kind = models.CharField("操作", max_length=32)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, null=True, blank=True, related_name="entitlement_events", verbose_name="学员")
     actor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, null=True, blank=True, related_name="performed_entitlement_events", verbose_name="操作者")

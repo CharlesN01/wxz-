@@ -1,0 +1,203 @@
+# Chinese translations for the administration interface.
+# Compile after editing: python manage.py compilemessages -l zh_Hans
+
+msgid ""
+msgstr "Project-Id-Version: Chinese Study Admin\nLanguage: zh_Hans\nMIME-Version: 1.0\nContent-Type: text/plain; charset=UTF-8\nContent-Transfer-Encoding: 8bit\nPlural-Forms: nplurals=1; plural=0;\n"
+
+msgid " By %(filter_title)s "
+msgstr " 按%(filter_title)s筛选 "
+
+msgid "Add row"
+msgstr "添加一行"
+
+msgid "After you"
+msgstr "稍后"
+
+msgid "All applications"
+msgstr "全部模块"
+
+msgid "Apply Filters"
+msgstr "应用筛选"
+
+msgid "Available shortcuts"
+msgstr "可用快捷键"
+
+msgid "Cancel"
+msgstr "取消"
+
+msgid "Changelist shortcuts"
+msgstr "列表快捷键"
+
+msgid "Choose file to upload"
+msgstr "选择上传文件"
+
+msgid "Click to cancel"
+msgstr "点击取消"
+
+msgid "Click to download"
+msgstr "点击下载"
+
+msgid "Command tool shortcuts"
+msgstr "命令面板快捷键"
+
+msgid "Create new record"
+msgstr "新增记录"
+
+msgid "Dark"
+msgstr "深色"
+
+msgid "Dataset not found. No action performed."
+msgstr "未找到数据集，未执行任何操作。"
+
+msgid "Date"
+msgstr "日期"
+
+msgid "Date from"
+msgstr "开始日期"
+
+msgid "Date to"
+msgstr "结束日期"
+
+msgid "False"
+msgstr "否"
+
+msgid "Field <strong class=\"font-semibold\">{field_name}</strong> is not an autocomplete field. Please add it to the `autocomplete_fields` list."
+msgstr "字段 <strong class=\"font-semibold\">{field_name}</strong> 未配置为自动补全字段，请将其加入 autocomplete_fields。"
+
+msgid "From"
+msgstr "开始"
+
+msgid "General"
+msgstr "基本信息"
+
+msgid "Global shortcuts"
+msgstr "全局快捷键"
+
+msgid "Go back"
+msgstr "返回"
+
+msgid "Image preview"
+msgstr "图片预览"
+
+msgid "Light"
+msgstr "浅色"
+
+msgid "Navigate"
+msgstr "跳转"
+
+msgid "Next"
+msgstr "下一项"
+
+msgid "No data"
+msgstr "暂无数据"
+
+msgid "No results found"
+msgstr "未找到结果"
+
+msgid "Nothing matched your search"
+msgstr "没有符合搜索条件的结果"
+
+msgid "Open command tool"
+msgstr "打开命令面板"
+
+msgid "Open selection"
+msgstr "打开所选项"
+
+msgid "Open selection in new tab"
+msgstr "在新标签页打开所选项"
+
+msgid "Open shortcuts list"
+msgstr "打开快捷键列表"
+
+msgid "Previous"
+msgstr "上一项"
+
+msgid "Raw passwords are not stored, so there is no way to see this user’s password, but you can change the password using <a href=\"{}\" class=\"text-primary-600 dark:text-primary-500\">this form</a>."
+msgstr "系统不保存原始密码，因此无法查看；您可以使用<a href=\"{}\" class=\"text-primary-600 dark:text-primary-500\">密码修改表单</a>修改密码。"
+
+msgid "Recent searches"
+msgstr "最近搜索"
+
+msgid "Record picture"
+msgstr "记录图片"
+
+msgid "Reset filters"
+msgstr "重置筛选"
+
+msgid "Return to site"
+msgstr "返回网站"
+
+msgid "Run"
+msgstr "执行"
+
+msgid "Run the selected action"
+msgstr "执行所选操作"
+
+msgid "Search apps and models..."
+msgstr "搜索模块和功能…"
+
+msgid "Select"
+msgstr "选择"
+
+msgid "Select action"
+msgstr "选择操作"
+
+msgid "Select action to run"
+msgstr "选择要执行的操作"
+
+msgid "Select all %(total_count)s %(module_name)s"
+msgstr "选择全部 %(total_count)s 条%(module_name)s"
+
+msgid "Select currency"
+msgstr "选择币种"
+
+msgid "Select format"
+msgstr "选择格式"
+
+msgid "Select record"
+msgstr "选择记录"
+
+msgid "Select value"
+msgstr "选择值"
+
+msgid "System"
+msgstr "跟随系统"
+
+msgid "This item will be deleted."
+msgstr "此记录将被删除。"
+
+msgid "This page yielded into no results. Create a new item or reset your filters."
+msgstr "暂无符合条件的记录，请新增记录或重置筛选。"
+
+msgid "To"
+msgstr "结束"
+
+msgid "Toggle dark/light mode"
+msgstr "切换深浅主题"
+
+msgid "Toggle filter"
+msgstr "展开或收起筛选器"
+
+msgid "Toggle password visibility"
+msgstr "显示或隐藏密码"
+
+msgid "Toggle sidebar"
+msgstr "展开或收起侧栏"
+
+msgid "True"
+msgstr "是"
+
+msgid "Type to search"
+msgstr "输入关键词搜索"
+
+msgid "Value"
+msgstr "数值"
+
+msgid "Welcome"
+msgstr "欢迎"
+
+msgid "You can not create nested object without parent"
+msgstr "请先保存上级记录，再添加子记录。"
+
+msgid "You have been successfully logged out from the administration"
+msgstr "您已成功退出管理后台。"
