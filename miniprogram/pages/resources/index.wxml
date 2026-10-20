@@ -36,7 +36,7 @@
   </view>
 
   <view class="bottom">
-    <button bindtap="copyCode" disabled="{{!canCopy}}">{{copied ? copiedText : copyButtonText}}</button>
+    <button class="claim-button" bindtap="copyCode" disabled="{{!canCopy}}">{{copied ? copiedText : copyButtonText}}</button>
     <text class="bottom-note">{{canCopy ? '复制后添加微信并发送口令，即可领取' : '资料配置完成后，可复制口令并领取'}}</text>
   </view>
 </view>
