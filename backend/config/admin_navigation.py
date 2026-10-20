@@ -19,6 +19,7 @@ GROUPS = (
         ("文言篇目", "admin:content_article_changelist", "content.view_article"),
         ("文学分类", "admin:content_category_changelist", "content.view_category"),
         ("应用文内容", "admin:writing_writingcontent_changelist", "writing.view_writingcontent"),
+        ("应用文导入", "admin:writing_writingcontent_import", "writing_import"),
         ("应用文分类", "admin:writing_writingcategory_changelist", "writing.view_writingcategory"),
         ("应用文体裁", "admin:writing_writinggenre_changelist", "writing.view_writinggenre"),
     )),
@@ -82,7 +83,11 @@ def navigation(request):
     for title, icon, entries in GROUPS:
         items = []
         for label, route, permission in entries:
-            if permission == "staff":
+            if permission == "writing_import":
+                from writing.import_services import has_import_permission
+
+                allowed = has_import_permission(user)
+            elif permission == "staff":
                 allowed = user.is_staff
             elif isinstance(permission, tuple):
                 allowed = any(user.has_perm(value) for value in permission)

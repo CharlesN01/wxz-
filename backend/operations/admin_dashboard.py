@@ -13,10 +13,14 @@ def dashboard_callback(request, context):
     from feedback.models import Feedback
     from payments.models import Order, PaymentTask
     from writing.models import WritingContent
+    from writing.import_services import has_import_permission
 
     user = request.user
     cards = []
     links = []
+
+    if has_import_permission(user):
+        links.append({"title": "导入应用文", "url": reverse("admin:writing_writingcontent_import")})
 
     if user.has_perm("content.view_question"):
         cards.append({

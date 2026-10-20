@@ -1,0 +1,39 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block extrastyle %}
+  {{ block.super }}
+  <style>
+    .writing-import {max-width: 1200px; line-height: 1.7;}
+    .writing-import .panel {border: 1px solid var(--color-base-200, #e2e8f0); border-radius: 8px; padding: 20px; margin: 0 0 20px;}
+    .dark .writing-import .panel {border-color: var(--color-base-700, #334155);}
+    .writing-import h2 {font-size: 1.1rem; font-weight: 600; margin-bottom: 12px;}
+    .writing-import .actions {display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-top: 16px;}
+    .writing-import .button {display: inline-flex; align-items: center; justify-content: center; padding: 8px 16px; border: 1px solid var(--color-base-300, #cbd5e1); border-radius: 8px; font-weight: 500; cursor: pointer;}
+    .writing-import .primary {background: var(--color-primary-600, #0d9488); color: white; border-color: transparent;}
+    .writing-import button:disabled {opacity: .5; cursor: not-allowed;}
+    .writing-import .error {color: #b91c1c; border-color: #fca5a5;}
+    .dark .writing-import .error {color: #fca5a5;}
+    .writing-import .counts {display: flex; gap: 12px; flex-wrap: wrap; margin: 12px 0;}
+    .writing-import .count {border: 1px solid var(--color-base-200, #e2e8f0); border-radius: 8px; padding: 10px 20px;}
+    .writing-import table {width: 100%; border-collapse: collapse; text-align: left;}
+    .writing-import th, .writing-import td {padding: 10px; border-bottom: 1px solid var(--color-base-200, #e2e8f0); vertical-align: top;}
+    .writing-import .table-scroll {overflow-x: auto;}
+    .writing-import .plain-text {white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; padding: 12px; border: 1px solid var(--color-base-200, #e2e8f0); border-radius: 6px; max-height: 24rem; overflow: auto; min-width: 150px;}
+    .writing-import details {margin: 12px 0;}
+    .writing-import summary {cursor: pointer; font-weight: 500; overflow-wrap: anywhere;}
+    .writing-import .field {margin: 16px 0;}
+    .writing-import .field > label {display: block; font-weight: 600; margin-bottom: 8px;}
+    .writing-import #id_mode label {display: flex; gap: 8px; align-items: center; margin-bottom: 8px;}
+    .writing-import .errorlist {color: #b91c1c; margin-top: 8px;}
+    .writing-import .muted {font-size: .875rem; opacity: .8;}
+    .writing-import .preview-links {display: flex; gap: 8px 20px; flex-wrap: wrap;}
+    @media (max-width: 640px) {.writing-import .panel {padding: 14px;} .writing-import .count {padding: 8px 12px;}}
+  </style>
+{% endblock %}
+
+{% block breadcrumbs %}
+  <div class="breadcrumbs px-4 py-3 text-sm">
+    <a href="{% url 'admin:index' %}">工作台</a> › <a href="{{ changelist_url }}">应用文内容</a> › 应用文批量导入
+  </div>
+{% endblock %}

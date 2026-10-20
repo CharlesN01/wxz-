@@ -1,0 +1,105 @@
+{% extends "admin/writing/writingcontent/import_base.html" %}
+
+{% block content %}
+<div class="writing-import">
+  {% if import_error %}
+    <div class="panel error" role="alert">
+      <h2>本次操作未完成</h2>
+      <p>{{ import_error.message }}</p>
+      <p class="muted">错误码：{{ import_error.code }}</p>
+      <div class="actions">
+        {% if retry_preview_url %}<a class="button primary" href="{{ retry_preview_url }}">核对原批次结果</a>{% elif can_import_writing %}<a class="button primary" href="{{ import_url }}">重新上传预览</a>{% endif %}
+        <a class="button" href="{{ changelist_url }}">返回应用文列表</a>
+      </div>
+    </div>
+  {% elif result %}
+    <section class="panel" aria-labelledby="result-title">
+      <h2 id="result-title">草稿导入完成</h2>
+      <p>本次只保存草稿。已有内容保留当前发布版，新增内容需要在应用文列表中另行发布。</p>
+      <p class="muted">批次：{{ result.batchId }} · 刷新此页不会重复写入</p>
+      <div class="counts">
+        <div class="count">新增 <strong>{{ result.counts.created }}</strong></div>
+        <div class="count">修改 <strong>{{ result.counts.updated }}</strong></div>
+        <div class="count">未变化 <strong>{{ result.counts.unchanged }}</strong></div>
+      </div>
+      <div class="actions"><a class="button primary" href="{{ batch_list_url }}">查看本批草稿</a><a class="button" href="{{ import_url }}">继续导入</a><a class="button" href="{{ changelist_url }}">全部应用文</a></div>
+    </section>
+    <section class="panel">
+      <h2>本批内容预览</h2>
+      <div class="preview-links">{% for item in content_links %}<a class="text-primary-600" href="{{ item.url }}">{{ item.id }} · 预览</a>{% empty %}<p>本批没有应用文内容。</p>{% endfor %}</div>
+      <p class="muted">内容预览展示草稿；小程序在发布前仍使用原发布版本。</p>
+    </section>
+  {% elif preview %}
+    <section class="panel" aria-labelledby="preview-title">
+      <h2 id="preview-title">核对导入预览</h2>
+      <p>当前为只读预览，尚未保存业务数据。导入模式：<strong>{% if preview.mode == 'upsert_draft' %}新增及更新草稿{% else %}仅新增{% endif %}</strong>。</p>
+      <p class="muted">有效期至 {{ preview.expiresAt }}；超过 30 分钟或内容、发布状态及字典发生变化，需要重新上传预览。</p>
+      <div class="counts">
+        <div class="count">新增 <strong>{{ preview.counts.create }}</strong></div>
+        <div class="count">修改 <strong>{{ preview.counts.update }}</strong></div>
+        <div class="count">未变化 <strong>{{ preview.counts.unchanged }}</strong></div>
+        <div class="count">错误 <strong>{{ preview.counts.errors }}</strong></div>
+      </div>
+      <p>同时新增分类 {{ preview.dictionaries.categoriesToCreate }} 项、文种 {{ preview.dictionaries.genresToCreate }} 项。</p>
+      {% if preview.canConfirm and preview.confirmationToken %}
+        <form method="post" action="{{ confirm_url }}">{% csrf_token %}
+          <input type="hidden" name="preview_id" value="{{ preview.previewId }}">
+          <input type="hidden" name="confirmation_token" value="{{ preview.confirmationToken }}">
+          <p>确认将按下方差异保存草稿；文种留空会清除原文种，排序留空会置 0。</p>
+          <div class="actions"><button class="button primary" type="submit">确认导入草稿</button><a class="button" href="{{ import_url }}">取消并重新上传</a></div>
+        </form>
+      {% else %}
+        <p class="error" role="alert">请修正全部错误后重新上传。本批尚未写入任何内容。</p>
+        <div class="actions"><button class="button primary" type="button" disabled>有错误，暂不能确认</button><a class="button" href="{{ report_url }}">下载错误报告</a><a class="button" href="{{ import_url }}">重新上传</a></div>
+      {% endif %}
+    </section>
+    {% if preview.issues %}
+      <section class="panel">
+        <h2>需要修改的错误</h2>
+        <div class="table-scroll"><table><thead><tr><th>工作表</th><th>Excel 行号</th><th>列名</th><th>错误码</th><th>修改建议</th></tr></thead><tbody>
+          {% for issue in preview.issues %}<tr><td>{{ issue.sheet }}</td><td>{{ issue.row|default_if_none:'—' }}</td><td>{{ issue.column|default_if_none:'—' }}</td><td>{{ issue.code }}</td><td>{{ issue.message }}</td></tr>{% endfor %}
+        </tbody></table></div>
+      </section>
+    {% endif %}
+    <section class="panel">
+      <h2>逐行内容与差异</h2>
+      {% for row in preview.rows %}
+        <details>
+          <summary>第 {{ row.row }} 行 · {{ row.id }} · {{ row.title }} · {% if row.action == 'create' %}新增{% elif row.action == 'update' %}修改草稿{% elif row.action == 'unchanged' %}未变化{% else %}有错误{% endif %}</summary>
+          {% if row.changes %}
+            <div class="table-scroll"><table><thead><tr><th>字段</th><th>导入前</th><th>导入后</th></tr></thead><tbody>
+            {% for change in row.changes %}<tr><th>{{ change.label }}</th><td><div class="plain-text">{% if change.before == None or change.before == '' %}（空）{% else %}{{ change.before }}{% endif %}</div></td><td><div class="plain-text">{% if change.after == None or change.after == '' %}（空）{% else %}{{ change.after }}{% endif %}</div></td></tr>{% endfor %}
+            </tbody></table></div>
+          {% else %}<p>没有字段变更；未变化的内容不会重写。</p>{% endif %}
+          <p class="muted">分类编号：{{ row.values.category_id }} · 文种编号：{{ row.values.genre_id|default:'（未指定）' }} · 排序：{{ row.values.sort_order }}</p>
+          <p class="muted">内容类型：{% if row.values.kind == 'template' %}写作模板{% elif row.values.kind == 'example' %}范文示例{% elif row.values.kind == 'past_exam' %}历年真题{% elif row.values.kind == 'exercise' %}专项练习{% endif %}</p>
+          <p>正文</p><div class="plain-text">{{ row.values.body }}</div>
+          {% if row.values.reference_answer %}<p>参考答案</p><div class="plain-text">{{ row.values.reference_answer }}</div>{% endif %}
+        </details>
+      {% empty %}<p>没有可预览的内容行，请按上方错误提示修改文件。</p>{% endfor %}
+    </section>
+  {% else %}
+    <section class="panel">
+      <h2>1. 下载模板并填写</h2>
+      <p>按内容编号关联分类和文种；四种内容类型分别是写作模板、范文示例、历年真题和专项练习。</p>
+      <p>模板业务表默认为空，填写说明页提供示例和现有字典编号。正文及参考答案支持 Alt+Enter 换行，按纯文本保存并保留缩进。</p>
+      <div class="actions"><a class="button" href="{{ template_url }}">下载 Excel 模板</a></div>
+    </section>
+    <section class="panel">
+      <h2>2. 上传并预览</h2>
+      <p>仅接收 .xlsx，最大 5 MiB；最多 1,000 篇内容、200 项分类、200 项文种。不支持公式、图片、合并单元格及隐藏行列。</p>
+      <form method="post" action="{{ import_url }}" enctype="multipart/form-data">{% csrf_token %}
+        {{ form.non_field_errors }}
+        <div class="field"><label for="{{ form.import_file.id_for_label }}">{{ form.import_file.label }}</label>{{ form.import_file }}{{ form.import_file.errors }}</div>
+        <fieldset class="field"><legend class="font-semibold">导入模式</legend>{{ form.mode }}{{ form.mode.errors }}</fieldset>
+        <p class="muted">仅新增：相同编号内容完全一致时跳过；内容不同则整批报错。新增及更新草稿：按完整行覆盖可编辑草稿字段，文种留空会清除，排序留空会置 0。文件外内容保持原状。</p>
+        <div class="actions"><button class="button primary" type="submit">上传并预览</button><a class="button" href="{{ changelist_url }}">返回应用文列表</a></div>
+      </form>
+    </section>
+  {% endif %}
+  <aside class="panel muted">
+    <p>导入只保存草稿，不会自动发布。发布请使用现有“发布所选应用文”确认流程。</p>
+    <p>排序越小越靠前，相同时按内容编号排序。同一分类的四种类型共享首屏免费集合，具体数量沿用学习配置；表格不设置单篇免费或价格。</p>
+  </aside>
+</div>
+{% endblock %}

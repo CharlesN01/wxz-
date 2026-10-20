@@ -9,6 +9,7 @@ from django.utils.html import format_html
 from unfold.admin import ModelAdmin
 
 from .forms import WritingContentAdminForm
+from .import_admin import WritingImportAdminMixin
 from .models import WritingCategory, WritingContent, WritingGenre, WritingRevision
 from .services import (
     ContentConflict,
@@ -46,7 +47,7 @@ class WritingGenreAdmin(RetainedAdmin):
 
 
 @admin.register(WritingContent)
-class WritingContentAdmin(RetainedAdmin):
+class WritingContentAdmin(WritingImportAdminMixin, RetainedAdmin):
     form = WritingContentAdminForm
     list_display = ("id", "title", "category", "genre", "kind", "publication_status", "sort_order", "updated_at")
     list_filter = ("kind", "is_published", "category", "genre")
