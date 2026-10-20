@@ -17,6 +17,54 @@ from .test_preparation import PAYMENT_SETTINGS
 
 @override_settings(**PAYMENT_SETTINGS)
 class PaymentSynchronizationTests(SyncFixture):
+    def test_official_json_attach_closes_unpaid_order_and_allows_activation(self):
+        from django.contrib.auth.models import Permission
+        from activation.models import ActivationRedemption
+        from activation.services import generate_batch, redeem_code, transition_batch
+
+        self.actor.user_permissions.add(*Permission.objects.filter(content_type__app_label="activation"))
+        self.actor = type(self.actor).objects.get(pk=self.actor.pk)
+        batch, codes = generate_batch(self.actor, 1, "关闭旧订单后兑换", "recovery-batch-1")
+        transition_batch(batch.pk, self.actor, "receive")
+        transition_batch(batch.pk, self.actor, "enable")
+        with self.assertRaises(BusinessError) as blocked:
+            redeem_code(self.session.user, codes[0], "recovery-redeem-1")
+        self.assertEqual(str(blocked.exception.detail["error"]["code"]), "PURCHASE_IN_PROGRESS")
+
+        result = apply_query(self.order.pk, snapshot(self.order, 6,
+            biz_meta=json.dumps({"attach": self.order.pk}), paid_fee=None,
+            left_fee=None, wx_order_id="", wxpay_order_id=""))
+        self.assertEqual(result["order"]["status"], "closed")
+        reservation = OpeningReservation.objects.get()
+        self.assertFalse(reservation.is_active)
+        self.assertEqual(reservation.release_reason, "verified_final_unpaid")
+        self.assertEqual(EntitlementSource.objects.count(), 0)
+        redeemed = redeem_code(self.session.user, codes[0], "recovery-redeem-1")
+        self.assertTrue(redeemed["entitlement"]["permanent"])
+        self.assertEqual(redeem_code(self.session.user, codes[0], "recovery-redeem-1"), redeemed)
+        self.assertEqual(ActivationRedemption.objects.count(), 1)
+        self.assertEqual(EntitlementSource.objects.get().source_type, "activation")
+
+    def test_official_json_attach_paid_query_grants_once(self):
+        value = snapshot(self.order, biz_meta=json.dumps({"attach": self.order.pk}))
+        self.assertTrue(apply_query(self.order.pk, value)["entitlement"]["active"])
+        self.assertEqual(apply_query(self.order.pk, value)["order"]["status"], "fulfilled")
+        self.assertEqual(EntitlementSource.objects.count(), 1)
+
+    def test_malformed_or_mismatched_json_attach_never_releases_or_grants(self):
+        for metadata in (json.dumps({"attach": "other-order"}), '{}', '{broken',
+                         '[]', 'null', json.dumps({"attach": 1}),
+                         '{"attach":"wrong","attach":"' + self.order.pk + '"}',
+                         {"attach": self.order.pk}, 0, None):
+            for status in (2, 6):
+                with self.subTest(metadata=metadata, status=status), self.assertRaises(BusinessError):
+                    apply_query(self.order.pk, snapshot(self.order, status, biz_meta=metadata))
+        self.order.refresh_from_db()
+        self.assertEqual(self.order.status, "preparing")
+        self.assertTrue(OpeningReservation.objects.get().is_active)
+        self.assertFalse(EntitlementSource.objects.exists())
+        self.assertFalse(PaymentEvent.objects.exists())
+
     def test_callback_payment_commit_replay_and_query_are_one_source(self):
         payload = goods(self.order)
         self.assertEqual(apply_callback(payload, self.order.app_id), "applied")

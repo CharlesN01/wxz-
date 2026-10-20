@@ -12,7 +12,7 @@ from entitlements.services import (
 )
 from . import gateway
 from .models import Order, PaymentEvent, PaymentTask
-from .protocol import invalid, number_field, text_field
+from .protocol import invalid, number_field, parse_payload, text_field
 from .refund_queries import record_refund_query
 from .services import order_payload
 
@@ -251,8 +251,15 @@ def apply_query(order_id, snapshot):
     if status in (2, 3, 4) and number_field(snapshot, "paid_fee", minimum=1) != order.price_fen:
         raise invalid()
     metadata = snapshot.get("biz_meta", "")
-    if metadata and metadata not in (order.pk, order.sign_data):
+    if not isinstance(metadata, str):
         raise invalid()
+    if metadata and metadata not in (order.pk, order.sign_data):
+        # Official cash-order queries wrap the original attach in a JSON
+        # object, rather than echoing the order ID or the full signData packet.
+        # Parse through the strict platform decoder (including duplicate keys).
+        attached = parse_payload(metadata.encode("utf-8"))
+        if attached.get("attach") != order.pk:
+            raise invalid()
     payload = {"orderId": order.pk, "status": status, "platformOrderId": platform_id,
                "transactionId": transaction_id, "orderFee": snapshot.get("order_fee"),
                "leftFee": snapshot.get("left_fee"), "updateTime": snapshot.get("update_time")}

@@ -22,7 +22,7 @@ Page({
     loggedIn: false, userId: '', entitlement: null, stats: null, product: null,
     orders: [], loading: false, error: '', feedbackTypes, feedbackType: 'feature',
     activationVisible: false, feedbackVisible: false, ordersVisible: false,
-    infoVisible: false, infoTitle: '', infoText: '', infoKind: '', memberVisible: false, activationCode: '',
+    infoVisible: false, infoTitle: '', infoText: '', infoKind: '', memberVisible: false, activationCode: '', activationError: '',
     selectedOrder: null, orderDetailVisible: false, orderDetailLoading: false, orderDetailError: '',
     voucherVisible: false, voucherCode: '', voucherMask: '', voucherOrderId: '', voucherError: '',
     feedbackContent: '', feedbackContact: '', busy: false
@@ -126,31 +126,37 @@ Page({
   },
   redeemVoucher() {
     if (!this.data.voucherCode) { showToast('原激活码仅展示一次，请先复制'); return; }
-    this.setData({ activationVisible: true, activationCode: this.data.voucherCode, voucherVisible: false });
+    this.setData({ activationVisible: true, activationCode: this.data.voucherCode, activationError: '', voucherVisible: false });
   },
   openActivation() {
     if (!this.data.loggedIn) { showToast('请先登录'); return; }
-    this.setData({ activationVisible: true, activationCode: '' });
+    this.setData({ activationVisible: true, activationCode: '', activationError: '' });
   },
-  closeActivation() { this.setData({ activationVisible: false }); },
+  closeActivation() { this.setData({ activationVisible: false, activationCode: '', activationError: '' }); },
   openMembership() { this.setData({ memberVisible: true }); },
   closeMembership() { this.setData({ memberVisible: false }); },
   chooseMembership() { this.setData({ memberVisible: false }); return this.purchase(); },
-  onActivationInput(event) { this.setData({ activationCode: event.detail.value || '' }); },
+  onActivationInput(event) { this.setData({ activationCode: event.detail.value || '', activationError: '' }); },
 
   async redeem() {
     const code = String(this.data.activationCode || '').trim();
     if (!code || this.data.busy) { if (!code) showToast('请输入激活码'); return; }
-    this.setData({ busy: true });
+    this.setData({ busy: true, activationError: '' });
     try {
       const result = await api.activation.redeem(code);
-      this.setData({ entitlement: result.entitlement || this.data.entitlement, activationVisible: false });
+      if (!result.entitlement || !result.entitlement.active) {
+        this.setData({ entitlement: result.entitlement || this.data.entitlement, activationError: '服务端尚未确认权益生效，请刷新后重试。' });
+        return;
+      }
+      this.setData({ entitlement: result.entitlement, activationVisible: false, activationCode: '', voucherCode: '' });
       await this.refresh();
       showToast('兑换成功，权益已更新');
     } catch (error) {
-      if (error && error.code === 'ALREADY_ACTIVATED') { this.setData({ activationVisible: false }); await this.refresh(); }
-      showToast(apiMessage(error, '兑换失败，请检查激活码'));
-    } finally { this.setData({ busy: false, activationCode: '' }); }
+      if (error && error.code === 'ALREADY_ACTIVATED') { this.setData({ activationVisible: false, activationCode: '' }); await this.refresh(); }
+      const message = apiMessage(error, '兑换失败，请检查激活码');
+      this.setData({ activationError: message });
+      showToast(message);
+    } finally { this.setData({ busy: false }); }
   },
 
   channelForDevice() {

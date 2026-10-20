@@ -50,6 +50,50 @@ test('我的页面提供登录入口并按订单 ID 请求详情', async () => {
   assert.match(template, /bindtap="openOrder"/);
 });
 
+test('激活码兑换失败保留输入并显示完整原因，重试成功后清除原码', async () => {
+  const message = '激活码批次尚未启用，请联系发码管理员启用后重试。';
+  let succeed = false;
+  const page = load('pages/mine/index.js', {
+    activation: { redeem() {
+      return succeed ? Promise.resolve({ entitlement: { active: true, permanent: true } })
+        : Promise.reject({ code: 'CODE_UNAVAILABLE', message });
+    } }
+  });
+  let refreshed = 0;
+  page.refresh = async () => { refreshed += 1; };
+  page.data.activationVisible = true;
+  page.data.activationCode = 'disposable-code';
+  await page.redeem();
+  assert.equal(page.data.activationCode, 'disposable-code');
+  assert.equal(page.data.activationVisible, true);
+  assert.equal(page.data.activationError, message);
+  assert.equal(page.data.busy, false);
+  assert.equal(refreshed, 0);
+  succeed = true;
+  await page.redeem();
+  assert.equal(page.data.activationCode, '');
+  assert.equal(page.data.activationError, '');
+  assert.equal(page.data.activationVisible, false);
+  assert.equal(page.data.entitlement.active, true);
+  assert.equal(refreshed, 1);
+});
+
+test('服务端权益未生效时兑换页不显示成功或关闭输入', async () => {
+  const page = load('pages/mine/index.js', {
+    activation: { redeem: async () => ({ entitlement: { active: false } }) }
+  });
+  page.data.activationVisible = true;
+  page.data.activationCode = 'disposable-code';
+  await page.redeem();
+  assert.equal(page.data.entitlement.active, false);
+  assert.equal(page.data.activationVisible, true);
+  assert.equal(page.data.activationCode, 'disposable-code');
+  assert.match(page.data.activationError, /尚未确认权益生效/);
+  assert.equal(page.data.busy, false);
+  page.closeActivation();
+  assert.equal(page.data.activationCode, '');
+});
+
 test('应用文条目打开时请求单条详情并保留错误态', async () => {
   const ids = [];
   const api = {

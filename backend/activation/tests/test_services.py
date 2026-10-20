@@ -53,6 +53,20 @@ class ActivationServiceTests(TestCase):
         self.assertEqual(ActivationCode.objects.filter(state="unused").count(), 2)
         self.assertEqual(ActivationRedemption.objects.count(), 0)
 
+    def test_unenabled_batch_explains_administrator_action_without_consuming_code(self):
+        batch, codes = generate_batch(self.admin, 1, "未启用批次", "not-enabled-batch-1")
+        reserve_opening(self.user, "pending-payment")
+        for state in ("awaiting_receipt", "received"):
+            if state == "received":
+                transition_batch(batch.pk, self.admin, "receive")
+            with self.subTest(state=state), self.assertRaises(BusinessError) as error:
+                redeem_code(self.user, codes[0], "not-enabled-redeem-1")
+            self.assertEqual(str(error.exception.detail["error"]["code"]), "CODE_UNAVAILABLE")
+            self.assertIn("尚未启用", str(error.exception.detail["error"]["message"]))
+        self.assertEqual(ActivationCode.objects.get().state, "unused")
+        self.assertFalse(ActivationRedemption.objects.exists())
+        self.assertFalse(EntitlementSource.objects.exists())
+
     def test_success_replay_after_revoke_does_not_restore_or_consume_new_code(self):
         _, codes = self.enabled_codes()
         first = redeem_code(self.user, codes[0], "redeem-key-1")

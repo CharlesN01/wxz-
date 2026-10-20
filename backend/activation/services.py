@@ -187,11 +187,13 @@ def redeem_code(user, code, key):
         idempotency.remember(user, "activation.redeem", key, payload, history)
         _audit("activation_redeemed", user=user, source=source, order_id=voucher.order_id, voucherId=str(voucher.pk), redemptionId=str(redemption.pk))
         return {**history, "entitlement": entitlement_snapshot(user)}
-    check_new_opening(user)
     batch = _get_batch(reference.batch_id, lock=True)
     current = ActivationCode.objects.select_for_update().get(pk=reference.pk)
+    if current.state == "unused" and batch.state in ("awaiting_receipt", "received"):
+        raise BusinessError("CODE_UNAVAILABLE", "激活码批次尚未启用，请联系发码管理员启用后重试。", 409)
     if batch.state != "enabled" or current.state != "unused":
         raise BusinessError("CODE_UNAVAILABLE", "激活码不可用，请核对或联系发码管理员。", 409)
+    check_new_opening(user)
     source = grant_entitlement(user, "activation", str(current.pk))
     if source.status != "active":
         raise BusinessError("CODE_UNAVAILABLE", "激活码不可用，请核对或联系发码管理员。", 409)
