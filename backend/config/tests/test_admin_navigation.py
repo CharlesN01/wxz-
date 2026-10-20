@@ -103,6 +103,16 @@ class AdminNavigationTests(TestCase):
         response = self.client.get(reverse("admin:learning_questionstate_changelist"))
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "暂无数据")
-        self.assertContains(response, "清除筛选条件")
+        self.assertContains(response, "暂无符合条件的记录")
+        self.assertContains(response, "重置筛选条件")
+        self.assertContains(response, "搜索管理功能")
+        self.assertContains(response, "输入关键词搜索")
         self.assertNotContains(response, "No results found")
+
+    def test_admin_login_without_next_returns_to_dashboard(self):
+        response = self.client.post(reverse("admin:login"), {
+            "username": self.user.username,
+            "password": "test-password",
+        })
+
+        self.assertRedirects(response, reverse("admin:index"))
