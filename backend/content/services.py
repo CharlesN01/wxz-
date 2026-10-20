@@ -110,7 +110,7 @@ def require_publish_permission(actor):
 
 
 def _log_publication(question, actor, description):
-    LogEntry.objects.create(
+    return LogEntry(
         user_id=actor.pk,
         content_type=ContentType.objects.get_for_model(Question),
         object_id=str(question.pk),
@@ -152,6 +152,10 @@ def publish_questions(queryset, actor, *, confirmation_token=None):
     if errors:
         raise ValidationError(errors)
 
+    highest_versions = dict(QuestionRevision.objects.filter(
+        question_id__in=[question.pk for question in questions],
+    ).order_by().values("question_id").annotate(highest=Max("version")).values_list("question_id", "highest"))
+    log_entries = []
     changed = 0
     for question in questions:
         existing = question.published_revision
@@ -162,7 +166,7 @@ def publish_questions(queryset, actor, *, confirmation_token=None):
             revision = existing
             description = f"恢复发布 v{revision.version}"
         else:
-            highest_version = question.revisions.aggregate(highest=Max("version"))["highest"] or 0
+            highest_version = highest_versions.get(question.pk, 0)
             revision = QuestionRevision.objects.create(
                 question=question,
                 version=highest_version + 1,
@@ -172,9 +176,16 @@ def publish_questions(queryset, actor, *, confirmation_token=None):
             description = f"发布 v{revision.version}"
         question.published_revision = revision
         question.is_published = True
-        question.save(update_fields=("published_revision", "is_published", "updated_at"))
-        _log_publication(question, actor, description)
+        # The complete batch was validated above while holding its row locks,
+        # and the revision was validated when created (or belongs to this
+        # question already). Avoid StableIdentity.save() repeating all FK and
+        # ownership checks for every row during a large publication request.
+        Question.objects.filter(pk=question.pk).update(
+            published_revision=revision, is_published=True, updated_at=timezone.now(),
+        )
+        log_entries.append(_log_publication(question, actor, description))
         changed += 1
+    LogEntry.objects.bulk_create(log_entries, batch_size=500)
     return changed
 
 
@@ -192,6 +203,6 @@ def unpublish_questions(queryset, actor, *, confirmation_token=None):
         # A malformed draft must never prevent withdrawing a published version.
         Question.objects.filter(pk=question.pk).update(is_published=False, updated_at=timezone.now())
         question.is_published = False
-        _log_publication(question, actor, "下架题目（保留发布修订）")
+        _log_publication(question, actor, "下架题目（保留发布修订）").save()
         changed += 1
     return changed
