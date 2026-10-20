@@ -1,4 +1,5 @@
 const api = require('../../services/api');
+const { resourceImageUrl, retryImageUrl } = require('../../utils/resource-image');
 
 Page({
   data: {
@@ -7,6 +8,8 @@ Page({
     error: '',
     copied: false,
     qrCode: '',
+    qrLoading: false,
+    qrError: '',
     wechatId: '',
     announcement: '',
     qrDescription: '资料领取配置完成后，将在这里显示领取方式。',
@@ -18,8 +21,8 @@ Page({
   onLoad() {},
   onShow() { this.load(); },
   onPullDownRefresh() { this.load(); },
-  async load() {
-    this.setData({ loading: true, error: '' });
+  async load(options) {
+    this.setData({ loading: true, error: '', qrCode: '', qrLoading: false, qrError: '' });
     try {
       const resource = await api.resources.group();
       const claimCode = resource && resource.enabled && resource.claimCode ? resource.claimCode : '';
@@ -29,10 +32,14 @@ Page({
       const heroCopy = resource && resource.enabled
         ? (claimCode ? '添加微信好友，发送“' + claimCode + '”，领取学习资料与备考提醒。' : '添加微信好友，按页面提示领取学习资料与备考提醒。')
         : '资料领取配置完成后，将在这里显示领取方式。';
+      const configuredQr = resource && resource.enabled ? resource.groupQrCode : '';
+      const qrCode = options && options.retryQr ? retryImageUrl(configuredQr) : resourceImageUrl(configuredQr);
       this.setData({
         resource: resource || null,
         loading: false,
-        qrCode: resource && resource.enabled && resource.groupQrCode ? resource.groupQrCode : '',
+        qrCode,
+        qrLoading: Boolean(qrCode),
+        qrError: configuredQr && !qrCode ? '二维码地址不可用，请联系管理员检查图片配置。' : '',
         wechatId: resource && resource.enabled ? resource.wechatId || '' : '',
         announcement: resource && resource.enabled ? resource.announcement || '' : '',
         qrDescription,
@@ -56,8 +63,20 @@ Page({
   },
   previewQr() {
     const url = this.data.qrCode;
+    if (this.data.qrError) { this.retryQr(); return; }
     if (url) wx.previewImage({ urls: [url] });
     else wx.showToast({ title: '二维码暂未配置', icon: 'none' });
   },
+  onQrLoad(event) {
+    const source = event && event.currentTarget && event.currentTarget.dataset.source;
+    if (source && source !== this.data.qrCode) return;
+    this.setData({ qrLoading: false, qrError: '' });
+  },
+  onQrError(event) {
+    const source = event && event.currentTarget && event.currentTarget.dataset.source;
+    if (source && source !== this.data.qrCode) return;
+    this.setData({ qrLoading: false, qrError: '二维码图片加载失败，点击重试；如仍失败，请联系管理员重新上传。' });
+  },
+  retryQr() { return this.load({ retryQr: true }); },
   retry() { this.load(); }
 });

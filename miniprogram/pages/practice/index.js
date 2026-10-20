@@ -1,3 +1,4 @@
+const { withStudyTime } = require('../../utils/study-timer');
 const dataService = require('../../services/data-service');
 const studyStore = require('../../utils/study-store');
 const navigation = require('../../utils/navigation');
@@ -31,7 +32,7 @@ function localQuestionState(id) {
   return { favorite: state.favorites.indexOf(id) !== -1, mastered: Object.prototype.hasOwnProperty.call(state.mastered, id), version: 0 };
 }
 
-Page({
+Page(withStudyTime({
   data: { loading: true, hasError: false, errorMessage: '', dataSource: 'local', personalError: '', requiresEntitlement: false, restrictedCount: 0, title: '重点字词专项', typeLabel: '重点字词', isWord: true, mode: 'writing', questions: [], total: 0, completed: 0, progressPercent: 0, answeredCount: 0, answerProgressPercent: 0, pageCompleted: 0, pageProgressPercent: 0, pageQuestionCount: 0, groupIndex: 0, groupCount: 0, nextLabel: '下一组' },
   onLoad(options) {
     options = options || {};
@@ -419,4 +420,4 @@ Page({
     if (this.data.requiresEntitlement) { navigation.openPage('/pages/mine/index'); return; }
     if (getCurrentPages().length > 1) wx.navigateBack({ delta: 1 }); else navigation.openPage('/pages/classical/index');
   }
-});
+}));

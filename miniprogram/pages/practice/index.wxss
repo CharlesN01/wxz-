@@ -215,6 +215,10 @@ page {
 .state-copy { max-width: 540rpx; margin-top: 6rpx; }
 
 .state-retry {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: normal;
   min-width: 176rpx;
   margin-top: 20rpx;
   padding: 14rpx 24rpx;
@@ -222,7 +226,6 @@ page {
   background: #237bea;
   color: #ffffff;
   font-size: 25rpx;
-  line-height: 1.4;
 }
 
 .practice-empty {
@@ -243,6 +246,7 @@ page {
   display: flex;
   align-items: center;
   justify-content: center;
+  line-height: normal;
   width: 68rpx;
   height: 60rpx;
   border: 1rpx solid #e9eef5;
@@ -250,7 +254,6 @@ page {
   background: #ffffff;
   color: #6d7b90;
   font-size: 40rpx;
-  line-height: 1;
 }
 
 .page-button-pressed { background: #edf5ff; color: #237bea; }

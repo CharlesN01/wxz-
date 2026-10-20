@@ -13,6 +13,7 @@ function load(relativePath, api, navigation = {}) {
   let definition;
   vm.runInNewContext(fs.readFileSync(filename, 'utf8'), {
     require(request) {
+      if (request === '../../utils/study-timer') return { withStudyTime: (definition) => definition };
       if (request === '../../services/api') return api;
       if (request === '../../utils/navigation') return navigation;
       return localRequire(request);

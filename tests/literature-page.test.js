@@ -35,6 +35,7 @@ function createPage(questionCount, apiPageSize) {
   const wx = { pageScrollTo() {}, showToast() {} };
   vm.runInNewContext(fs.readFileSync(pagePath, 'utf8'), {
     require(name) {
+      if (name === '../../utils/study-timer') return { withStudyTime: (definition) => definition };
       if (name === '../../services/api') return api;
       if (name === '../../utils/navigation') return navigation;
       if (name === '../../utils/safe-top') return { getSafeTop: () => 0 };

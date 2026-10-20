@@ -69,6 +69,18 @@ class AdminNavigationTests(TestCase):
             reverse("admin:activation_redemption_export_agent"),
         )
 
+    def test_exam_countdown_is_an_operational_entry_and_requires_configuration_permission(self):
+        self.assertFalse(any(
+            "考试倒计时" in item["title"]
+            for group in navigation(self.request) for item in group["items"]
+        ))
+        self.grant("content.change_learningconfiguration")
+        groups = navigation(self.request)
+        matches = [(group["title"], item) for group in groups for item in group["items"] if "考试倒计时" in item["title"]]
+        self.assertEqual(len(matches), 1)
+        self.assertEqual(matches[0][0], "运营与系统")
+        self.assertEqual(str(matches[0][1]["link"]), reverse("admin:content_learningconfiguration_changelist"))
+
     def test_agent_model_links_require_every_read_permission(self):
         self.grant("distribution.view_agentprofile")
         groups = navigation(self.request)

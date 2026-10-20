@@ -11,6 +11,7 @@ function loadPage(relativePath, overrides, globals = {}) {
   let definition;
   vm.runInNewContext(fs.readFileSync(filename, 'utf8'), {
     require(name) {
+      if (name === '../../utils/study-timer') return { withStudyTime: (definition) => definition };
       if (Object.prototype.hasOwnProperty.call(overrides, name)) return overrides[name];
       if (name === '../../utils/answer-drafts') return require('../miniprogram/utils/answer-drafts');
       throw new Error('Unexpected module: ' + name);

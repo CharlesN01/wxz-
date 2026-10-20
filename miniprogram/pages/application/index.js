@@ -1,3 +1,4 @@
+const { withStudyTime } = require('../../utils/study-timer');
 const api = require('../../services/api');
 const navigation = require('../../utils/navigation');
 
@@ -8,7 +9,7 @@ const kinds = [
   { id: 'exercise', label: '专项练习', icon: '练', description: '按文种完成写作训练' }
 ];
 
-Page({
+Page(withStudyTime({
   data: { kinds, items: [], detailItems: [], selectedKind: '', selectedKindLabel: '', selected: null, detailIntro: '按模块练习，逐步掌握应用文写作。', detailFallback: false, detailVisible: false, detailLoading: false, detailError: '', loading: true, error: '' },
   onLoad() { this.load(); },
   async loadWritings(params) {
@@ -83,4 +84,5 @@ Page({
   closeDetail() { this.setData({ selected: null, detailFallback: false, detailVisible: false }); },
   retry() { this.load(); },
   back() { navigation.openPage('/pages/home/index'); }
-});
+}, (page) => Boolean(!page.data.loading && page.data.detailVisible && !page.data.detailLoading
+  && !page.data.detailError && page.data.selected && page.data.selected.body)));

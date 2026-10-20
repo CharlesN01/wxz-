@@ -3,7 +3,7 @@ page { background: #F6F8FB; }
 .literature-main { max-width: 430px; margin: 0 auto; padding: 17px 12px 10px; box-sizing: border-box; }
 .periods { width: calc(100% + 24px); height: 36px; margin: 0 -12px; white-space: nowrap; box-sizing: border-box; }
 .period-row { display: inline-flex; align-items: center; gap: 7px; padding: 0 12px 4px; box-sizing: border-box; }
-.period { flex: 0 0 auto; padding: 8px 13px; border: 1px solid #E9EEF5; border-radius: 10px; color: #6F7C91; background: #FFFFFF; font-size: 12px; line-height: 1.2; white-space: nowrap; box-sizing: border-box; }
+.period { display: flex; align-items: center; justify-content: center; line-height: normal; flex: 0 0 auto; padding: 8px 13px; border: 1px solid #E9EEF5; border-radius: 10px; color: #6F7C91; background: #FFFFFF; font-size: 12px; white-space: nowrap; box-sizing: border-box; }
 .period-active { border-color: #237BEA; color: #FFFFFF; background: #237BEA; box-shadow: 0 4px 10px rgba(35,123,234,.18); }
 .period-pressed { opacity: .75; }
 .notice-card { display: flex; align-items: center; gap: 6px; margin: 10px 1px 0; padding: 8px 10px; border-radius: 9px; color: #607184; background: #FFF8EC; font-size: 10px; line-height: 1.45; }
@@ -14,7 +14,7 @@ page { background: #F6F8FB; }
 .section-title { color: #18243B; font-size: 16px; font-weight: 700; line-height: 1.3; }
 .section-page { color: #8995A8; font-size: 11px; line-height: 1.3; }
 .modes { display: flex; flex: 0 0 auto; padding: 3px; border-radius: 9px; background: #EAF1FA; box-sizing: border-box; }
-.mode { flex: 1; min-width: 0; padding: 6px 9px; border-radius: 7px; color: #8995A8; background: transparent; font-size: 11px; line-height: 1.2; text-align: center; }
+.mode { display: flex; align-items: center; justify-content: center; line-height: normal; flex: 1; min-width: 0; padding: 6px 9px; border-radius: 7px; color: #8995A8; background: transparent; font-size: 11px; text-align: center; }
 .mode-active { color: #237BEA; background: #FFFFFF; font-weight: 700; box-shadow: 0 2px 6px rgba(36,78,125,.1); }
 .page-progress { height: 5px; margin: 11px 1px 11px; overflow: hidden; border-radius: 6px; background: #E9F0F8; }
 .page-progress-fill { display: block; height: 100%; border-radius: inherit; background: #237BEA; transition: width .2s; }
@@ -23,7 +23,7 @@ page { background: #F6F8FB; }
 .question-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .question-index { color: #237BEA; font-size: 11px; font-weight: 700; line-height: 1.3; }
 .question-tools { display: flex; align-items: center; gap: 3px; }
-.favorite-button { display: flex; align-items: center; justify-content: center; width: 28px; height: 26px; border-radius: 7px; color: #A6B1C0; font-size: 17px; line-height: 1; }
+.favorite-button { display: flex; align-items: center; justify-content: center; line-height: normal; width: 28px; height: 26px; border-radius: 7px; color: #A6B1C0; font-size: 17px; }
 .favorite-selected { color: #F0A33D; background: #FFF8EC; }
 .question-text { min-width: 0; margin: 5px 0 7px; color: #18243B; font-size: 13px; line-height: 1.8; white-space: pre-wrap; word-break: break-all; }
 .blank { color: #237BEA; font-weight: 700; letter-spacing: 1px; }
@@ -33,10 +33,10 @@ page { background: #F6F8FB; }
 .answer { min-width: 0; margin: 0 0 9px; padding: 8px 10px; border-left: 3px solid #8BBDF7; border-radius: 0 7px 7px 0; color: #486487; background: #F4F8FF; font-size: 12px; line-height: 1.7; white-space: pre-wrap; word-break: break-all; }
 .answer-label { font-weight: 700; }
 .question-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-.answer-button { padding: 5px 8px; border-radius: 7px; color: #237BEA; background: #EDF5FF; font-size: 11px; line-height: 1.3; }
+.answer-button { display: flex; align-items: center; justify-content: center; line-height: normal; padding: 5px 8px; border-radius: 7px; color: #237BEA; background: #EDF5FF; font-size: 11px; }
 .access-note { padding: 8px 10px; border-radius: 9px; color: #8995A8; background: #FFFFFF; font-size: 10px; line-height: 1.45; text-align: center; }
 .pagination { display: flex; align-items: center; justify-content: center; gap: 14px; margin: 16px 0 6px; }
-.page-button { display: flex; align-items: center; justify-content: center; width: 32px; height: 30px; border: 1px solid #E9EEF5; border-radius: 8px; color: #6D7B90; background: #FFFFFF; font-size: 24px; line-height: 1; box-sizing: border-box; }
+.page-button { display: flex; align-items: center; justify-content: center; line-height: normal; width: 32px; height: 30px; border: 1px solid #E9EEF5; border-radius: 8px; color: #6D7B90; background: #FFFFFF; font-size: 24px; box-sizing: border-box; }
 .page-disabled { color: #C9D1DC; background: #F7F9FC; }
 .page-number { color: #8995A8; font-size: 12px; line-height: 1.3; }
 .tip { margin-top: 10px; padding: 8px 10px; border-radius: 9px; color: #8995A8; background: #FFFFFF; font-size: 10px; line-height: 1.45; }
@@ -46,7 +46,7 @@ page { background: #F6F8FB; }
 .error-icon { display: flex; align-items: center; justify-content: center; width: 42px; height: 42px; margin-bottom: 10px; border-radius: 50%; color: #237BEA; background: #E7F2FF; font-size: 22px; font-weight: 700; }
 .error-title { color: #18243B; font-size: 15px; font-weight: 700; }
 .error-copy { margin-top: 6px; color: #8995A8; font-size: 12px; line-height: 1.6; }
-.retry-button { min-width: 90px; margin-top: 14px; padding: 8px 12px; border-radius: 8px; color: #FFFFFF; background: #237BEA; font-size: 12px; }
+.retry-button { display: flex; align-items: center; justify-content: center; line-height: normal; min-width: 90px; margin-top: 14px; padding: 8px 12px; border-radius: 8px; color: #FFFFFF; background: #237BEA; font-size: 12px; }
 .bottom-nav { position: fixed; z-index: 6; right: 0; bottom: 0; left: 0; display: grid; grid-template-columns: repeat(3, 1fr); width: 100%; max-width: 430px; height: 64px; margin: 0 auto; padding-bottom: env(safe-area-inset-bottom); border-top: 1px solid #E9EEF5; background: rgba(255,255,255,.96); box-sizing: content-box; }
 .bottom-nav-item { display: flex; align-items: center; justify-content: center; flex-direction: column; color: #A0ABB9; font-size: 11px; line-height: 1.2; }
 .bottom-nav-active { color: #237BEA; font-weight: 700; }

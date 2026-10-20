@@ -26,6 +26,7 @@ function createPage() {
     getState() { return { favorites: [], mastered: {} }; }, toggleFavorite() {}, toggleMastered() {}
   };
   const dependencies = {
+    '../../utils/study-timer': { withStudyTime: (definition) => definition },
     '../../services/data-service': dataService,
     '../../utils/study-store': studyStore,
     '../../utils/safe-top': require('../miniprogram/utils/safe-top'),

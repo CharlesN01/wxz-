@@ -9,8 +9,8 @@ from content.access import accessible_questions, published_questions
 from content.models import LearningConfiguration, Question
 from content.serializers import StudentQuestionSerializer, StrictPositiveIntegerField, validate_query_params
 from .models import QuestionState
-from .serializers import PreferenceInput, QuestionStateInput
-from .services import preference_snapshot, read_question_state, state_snapshot, statistics, update_preferences, update_question_state
+from .serializers import PreferenceInput, QuestionStateInput, StudyTimeInput
+from .services import preference_snapshot, read_question_state, record_study_time, state_snapshot, statistics, update_preferences, update_question_state
 
 
 class NoQuery(serializers.Serializer):
@@ -59,6 +59,14 @@ class StatisticsView(LearningAPIView):
     def get(self, request):
         validate_query_params(request.query_params, NoQuery)
         return Response(statistics(request.user))
+
+
+class StudyTimeView(LearningAPIView):
+    def post(self, request):
+        validate_query_params(request.query_params, NoQuery)
+        serializer = StudyTimeInput(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        return Response(record_study_time(request.user, serializer.validated_data))
 
 
 class FavoritePagination(PageNumberPagination):

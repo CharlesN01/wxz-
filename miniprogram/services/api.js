@@ -30,6 +30,7 @@ function write(method, path, body, options) {
     data: body === undefined ? {} : body,
     auth: opts.auth === undefined ? true : opts.auth,
     idempotencyKey: key,
+    retryAuth: opts.retryAuth,
     headers: opts.headers,
     timeout: opts.timeout
   });
@@ -66,6 +67,7 @@ const api = {
     questionState: (id, options) => query('GET', ROOT + '/me/questions/' + encodeId(id) + '/state/', null, Object.assign({ auth: true }, options || {})),
     setQuestionState: (id, data, options) => write('PUT', ROOT + '/me/questions/' + encodeId(id) + '/state/', data, options),
     statistics: (options) => query('GET', ROOT + '/me/statistics/', null, Object.assign({ auth: true }, options || {})),
+    studyTime: (data, options) => write('POST', ROOT + '/me/study-time/', data, options),
     resume: (options) => query('GET', ROOT + '/me/resume/', null, Object.assign({ auth: true }, options || {})),
     saveResume: (data, options) => write('PUT', ROOT + '/me/resume/', data, options),
     preferences: (options) => query('GET', ROOT + '/me/preferences/', null, Object.assign({ auth: true }, options || {})),

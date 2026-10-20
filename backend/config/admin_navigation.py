@@ -38,6 +38,7 @@ GROUPS = (
         ("代理激活明细导出", "admin:activation_redemption_export_agent", "distribution.export_agentperformance"),
     )),
     ("运营与系统", "settings", (
+        ("考试倒计时与学习配置", "admin:content_learningconfiguration_changelist", ("content.view_learningconfiguration", "content.change_learningconfiguration")),
         ("资料群配置", "admin:resources_groupresourceconfiguration_changelist", "resources.view_groupresourceconfiguration"),
         ("用户反馈", "admin:feedback_feedback_changelist", ("feedback.view_feedback", "feedback.process_feedback")),
         ("后台账号", "admin:accounts_user_changelist", "accounts.view_user"),
@@ -46,7 +47,6 @@ GROUPS = (
     )),
     ("高级记录", "manage_search", (
         ("题目修订记录", "admin:content_questionrevision_changelist", "content.view_questionrevision"),
-        ("学习配置", "admin:content_learningconfiguration_changelist", "content.view_learningconfiguration"),
         ("应用文发布修订", "admin:writing_writingrevision_changelist", "writing.view_writingrevision"),
         ("学员微信身份", "admin:accounts_wechatidentity_changelist", "accounts.view_wechatidentity"),
         ("学员会话", "admin:accounts_studentsession_changelist", "accounts.view_studentsession"),

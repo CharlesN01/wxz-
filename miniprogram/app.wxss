@@ -15,7 +15,7 @@ page {
   line-height: 1.6;
 }
 view, text, button, input, scroll-view { box-sizing: border-box; }
-button { margin: 0; padding: 0; border-radius: 0; font-size: inherit; line-height: inherit; background: transparent; }
+button { display: flex; align-items: center; justify-content: center; margin: 0; padding: 0; border-radius: 0; font-size: inherit; line-height: normal; text-align: center; background: transparent; box-sizing: border-box; }
 button::after { border: 0; }
 .safe-top { padding-top: env(safe-area-inset-top); }
 .safe-bottom { padding-bottom: calc(28rpx + env(safe-area-inset-bottom)); }
@@ -23,7 +23,7 @@ button::after { border: 0; }
 .primary-button {
   min-height: 88rpx; display: flex; align-items: center; justify-content: center;
   padding: 18rpx 32rpx; border-radius: 20rpx; background: var(--study-blue-900);
-  color: #FFFFFF; font-size: 30rpx; font-weight: 600; line-height: 1.4;
+  color: #FFFFFF; font-size: 30rpx; font-weight: 600; line-height: normal;
   box-shadow: 0 8rpx 20rpx rgba(18, 52, 91, .14);
 }
 .muted { color: var(--study-muted); }

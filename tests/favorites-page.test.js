@@ -17,6 +17,7 @@ function createPage(mode = 'writing', apiOverrides = {}) {
   const navigation = { openPage() {} };
   vm.runInNewContext(fs.readFileSync(pagePath, 'utf8'), {
     require(name) {
+      if (name === '../../utils/study-timer') return { withStudyTime: (definition) => definition };
       if (name === '../../services/data-service') return dataService;
       if (name === '../../utils/study-store') return studyStore;
       if (name === '../../utils/question-utils') return questionUtils;

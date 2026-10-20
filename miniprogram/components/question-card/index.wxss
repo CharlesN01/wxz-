@@ -13,7 +13,7 @@
 .tag { display: block; margin: 0 0 8rpx; color: #607184; font-size: 25rpx; line-height: 1.6; }
 .card-footer { display: flex; justify-content: flex-end; margin-top: 20rpx; border-top: 1px dashed #ECEEE9; }
 .master-hit { display: flex; align-items: center; justify-content: flex-end; min-height: 80rpx; min-width: 172rpx; padding-left: 20rpx; }
-.master { display: flex; align-items: center; justify-content: center; min-height: 48rpx; padding: 4rpx 18rpx; border: 1px solid #DDE1DC; border-radius: 30rpx; color: #5C6460; background: #FCFCFB; font-size: 24rpx; line-height: 1.4; white-space: nowrap; }
+.master { display: flex; align-items: center; justify-content: center; line-height: normal; min-height: 48rpx; padding: 4rpx 18rpx; border: 1px solid #DDE1DC; border-radius: 30rpx; color: #5C6460; background: #FCFCFB; font-size: 24rpx; white-space: nowrap; }
 .master-symbol { margin-right: 12rpx; font-size: 28rpx; line-height: 1; }
 .mastered { border-color: #A6CEB5; background: #F3FBF6; color: #286D4E; }
 .original { font-weight: 500; }
@@ -21,7 +21,7 @@
 .answer-caption { display: block; margin-bottom: 8rpx; color: #758074; font-size: 25rpx; line-height: 1.5; }
 .translation-text { display: block; color: #1B5E91; font-size: 33rpx; line-height: 1.75; word-break: break-all; }
 .translation-recall { margin-top: 22rpx; padding: 20rpx 24rpx 22rpx; border-radius: 12rpx; background: #F5FAFE; }
-.answer-toggle { display: inline-flex; margin-top: 18rpx; padding: 10rpx 16rpx; border-radius: 12rpx; color: #1B5E91; background: #EAF4FB; font-size: 23rpx; }
+.answer-toggle { display: inline-flex; align-items: center; justify-content: center; line-height: normal; margin-top: 18rpx; padding: 10rpx 16rpx; border-radius: 12rpx; color: #1B5E91; background: #EAF4FB; font-size: 23rpx; }
 .answer-box { margin-top: 14rpx; padding: 16rpx 20rpx; border-radius: 12rpx; color: #1B5E91; background: #F0F7FC; font-size: 27rpx; line-height: 1.6; }
 .answer-text { display: block; max-width: 100%; white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-all; }
 .recall-line { height: 28rpx; border-bottom: 1px solid #C5CEC3; }
@@ -59,7 +59,7 @@
 .variant-random .answer-box, .variant-practice-word .answer-box, .variant-practice-translation .answer-box { display: block; margin-top: 12rpx; padding: 14rpx 16rpx; border-left: 6rpx solid #8BBDF7; border-radius: 0 14rpx 14rpx 0; background: #F4F8FF; color: #486487; font-size: 22rpx; line-height: 1.5; }
 .classical-random-card .answer-box { margin-top: 12rpx; }
 .question-foot { display: flex; justify-content: flex-end; margin-top: 14rpx; padding-top: 12rpx; border-top: 1px solid #F0F3F7; }
-.variant-random .answer-toggle, .variant-practice-word .answer-toggle, .variant-practice-translation .answer-toggle { margin: 0; padding: 8rpx 14rpx; border-radius: 12rpx; color: #237BEA; background: #EDF5FF; font-size: 22rpx; line-height: 1.4; }
+.variant-random .answer-toggle, .variant-practice-word .answer-toggle, .variant-practice-translation .answer-toggle { margin: 0; padding: 8rpx 14rpx; border-radius: 12rpx; color: #237BEA; background: #EDF5FF; font-size: 22rpx; line-height: normal; }
 .answer-open { background: #E8F7F1 !important; color: #20A774 !important; }
 .variant-practice-word .question-index, .variant-practice-translation .question-index { font-size: 22rpx; }
 .variant-practice-word .answer-line { margin-top: 12rpx; }

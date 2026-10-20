@@ -13,6 +13,7 @@ function loadPage(relativePath, overrides = {}, globals = {}) {
   let definition;
   vm.runInNewContext(fs.readFileSync(filename, 'utf8'), {
     require(request) {
+      if (request === '../../utils/study-timer') return { withStudyTime: (definition) => definition, clock: { async settled() {} } };
       return Object.prototype.hasOwnProperty.call(overrides, request) ? overrides[request] : localRequire(request);
     },
     Page(value) { definition = value; },

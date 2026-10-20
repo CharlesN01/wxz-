@@ -274,6 +274,43 @@ test('401 refresh logs in without Bearer and retries the original request once',
   assert.equal(session.getToken(), 'fresh-token');
 });
 
+test('study-time write透传retryAuth=false，401不自动微信登录或重发旧计时包', async () => {
+  const calls = installWx((options) => respond(options, 401, {
+    error: { code: 'INVALID_TOKEN', message: 'expired' }, requestId: 'study-expired'
+  }));
+  let logins = 0;
+  global.wx.login = () => { logins += 1; throw new Error('计时请求不应触发微信登录'); };
+  session.saveSession({ token: 'study-old-token', expiresAt: '', user: { id: 'student-a' } });
+  const packet = { sessionId: 'test-study-session', sequence: 1, elapsedSeconds: 30 };
+  await assert.rejects(api.learning.studyTime(packet, { idempotencyKey: 'study-fixed-key-1', retryAuth: false }),
+    (error) => error.status === 401 && error.code === 'INVALID_TOKEN');
+  assert.equal(calls.length, 1);
+  assert.equal(logins, 0);
+  assert.equal(calls[0].url, 'http://127.0.0.1:8000/api/student/v1/me/study-time/');
+  assert.equal(calls[0].method, 'POST');
+  assert.deepEqual(calls[0].data, packet);
+  assert.equal(calls[0].header['Idempotency-Key'], 'study-fixed-key-1');
+  assert.equal(calls[0].header.Authorization, 'Bearer study-old-token');
+});
+
+test('其他写接口仍默认刷新一次401并保留原幂等键', async () => {
+  const calls = installWx((options) => {
+    if (options.url.endsWith('/auth/wechat/')) {
+      respond(options, 200, { token: 'write-fresh-token', expiresAt: '', user: { id: 1 } });
+    } else if (options.header.Authorization === 'Bearer write-old-token') {
+      respond(options, 401, { error: { code: 'INVALID_TOKEN', message: 'expired' } });
+    } else respond(options, 200, { questionId: 'q-1', favorite: true, version: 2 });
+  });
+  session.saveSession({ token: 'write-old-token', expiresAt: '', user: { id: 1 } });
+  const result = await api.learning.setQuestionState('q-1', { favorite: true, baseVersion: 1 }, { idempotencyKey: 'write-fixed-key-1' });
+  assert.equal(result.version, 2);
+  assert.equal(calls.length, 3);
+  assert.equal(calls[0].header['Idempotency-Key'], 'write-fixed-key-1');
+  assert.equal(calls[2].header['Idempotency-Key'], 'write-fixed-key-1');
+  assert.equal(calls[2].header.Authorization, 'Bearer write-fresh-token');
+  assert.deepEqual(calls[2].data, calls[0].data);
+});
+
 test('a second 401 ends the single retry and clears the session', async () => {
   session.saveSession({ token: 'expired-token', expiresAt: '' });
   const calls = installWx((options) => {

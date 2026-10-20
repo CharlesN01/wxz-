@@ -1,3 +1,4 @@
+const { withStudyTime } = require('../../utils/study-timer');
 const dataService = require('../../services/data-service');
 const studyStore = require('../../utils/study-store');
 const safeTop = require('../../utils/safe-top');
@@ -35,7 +36,7 @@ function compatibleType(source, type) {
   return type == null || (source === 'literature' ? type === 'fact' : type === 'word' || type === 'translation');
 }
 
-Page({
+Page(withStudyTime({
   data: { loading: true, hasError: false, errorMessage: '', dataSource: 'local', personalError: '', source: 'literature', safeTop: 0, typeFilter: 'word', mode: 'writing', sourceName: '文学常识', subtitle: '8 类混合随机 · 每页 6 题', questions: [], groupNumber: 0, groupCount: 0, roundQuestionCount: 0, groupPageSize: GROUP_SIZE, progressPercent: 0, answeredCount: 0, answerProgressPercent: 0, pageQuestionCount: 0, nextLabel: '下一组' },
 
   onLoad(options = {}) {
@@ -379,4 +380,4 @@ Page({
   openFavorites() { navigation.openPage('/pages/favorites/index'); },
   openProfile() { navigation.openPage('/pages/mine/index'); },
   onGoStudy() { navigation.openPage(this._source === 'classical' ? '/pages/classical/index' : '/pages/literature/index'); }
-});
+}));

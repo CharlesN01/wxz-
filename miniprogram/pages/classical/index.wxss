@@ -5,7 +5,7 @@ page { background: #F6F8FB; }
 .remote-error { border-color: #F5DCC3; background: #FFF8EC; }
 .state-title { color: #18243B; font-size: 15px; font-weight: 700; }
 .state-message { margin-top: 5px; color: #8995A8; }
-.state-retry { margin-top: 13px; padding: 8px 14px; border-radius: 8px; color: #FFFFFF; background: #237BEA; font-size: 12px; }
+.state-retry { display: flex; align-items: center; justify-content: center; line-height: normal; margin-top: 13px; padding: 8px 14px; border-radius: 8px; color: #FFFFFF; background: #237BEA; font-size: 12px; }
 .state-spinner { width: 26px; height: 26px; margin-bottom: 12px; border: 3px solid #DCE9FB; border-top-color: #237BEA; border-radius: 50%; animation: classical-spin 1s linear infinite; }
 .remote-note { margin: 10px 1px 0; padding: 8px 10px; border-radius: 9px; color: #607184; background: #FFF8EC; font-size: 10px; line-height: 1.45; }
 @keyframes classical-spin { from { transform: rotate(0); } to { transform: rotate(360deg); } }
@@ -33,7 +33,7 @@ page { background: #F6F8FB; }
 .section-title { padding-left: 10px; border-left: 4px solid #237BEA; color: #18243B; font-size: 17px; font-weight: 700; line-height: 1.3; }
 .section-count { color: #8A96A8; font-size: 12px; line-height: 1.3; }
 .filters { display: flex; gap: 8px; overflow-x: auto; margin: 0 -12px; padding: 0 12px 4px; white-space: nowrap; }
-.filter { flex: 0 0 auto; padding: 8px 16px; border: 1px solid #E8EEF6; border-radius: 18px; color: #748096; background: #FFFFFF; font-size: 12px; line-height: 1.2; }
+.filter { display: flex; align-items: center; justify-content: center; line-height: normal; flex: 0 0 auto; padding: 8px 16px; border: 1px solid #E8EEF6; border-radius: 18px; color: #748096; background: #FFFFFF; font-size: 12px; }
 .filter-active { border-color: #237BEA; color: #FFFFFF; background: #237BEA; box-shadow: 0 4px 10px rgba(35,123,234,.18); }
 .article-list { margin-top: 9px; padding: 0 12px; border-radius: 16px; background: #FFFFFF; box-shadow: 0 5px 18px rgba(45,91,155,.045); }
 .article-item { display: flex; min-height: 76px; align-items: center; gap: 11px; border-bottom: 1px solid #F0F3F7; }
@@ -52,7 +52,7 @@ page { background: #F6F8FB; }
 .continue-copy { min-width: 0; flex: 1; }
 .continue-title { display: block; color: #18243B; font-size: 13px; font-weight: 700; line-height: 1.3; }
 .continue-caption { display: block; overflow: hidden; margin-top: 4px; color: #8A96A8; font-size: 10px; line-height: 1.3; text-overflow: ellipsis; white-space: nowrap; }
-.continue-action { flex: 0 0 auto; padding: 8px 11px; border-radius: 9px; color: #FFFFFF; background: #237BEA; font-size: 11px; font-weight: 700; line-height: 1.2; }
+.continue-action { display: flex; align-items: center; justify-content: center; line-height: normal; flex: 0 0 auto; padding: 8px 11px; border-radius: 9px; color: #FFFFFF; background: #237BEA; font-size: 11px; font-weight: 700; }
 .demo-note { display: block; margin-top: 10px; color: #8A96A8; font-size: 10px; line-height: 1.45; text-align: center; }
 .bottom-nav { position: fixed; right: 0; bottom: 0; left: 0; z-index: 6; display: grid; grid-template-columns: repeat(3, 1fr); width: 100%; max-width: 430px; height: 64px; margin: 0 auto; padding-bottom: env(safe-area-inset-bottom); border-top: 1px solid #E9EEF5; background: rgba(255,255,255,.97); box-sizing: content-box; }
 .bottom-nav-item { display: flex; align-items: center; justify-content: center; flex-direction: column; color: #A0ABB9; font-size: 11px; line-height: 1.2; }
@@ -61,7 +61,7 @@ page { background: #F6F8FB; }
 .modal-mask { position: fixed; inset: 0; z-index: 20; display: grid; align-items: end; justify-items: center; padding: 16px; background: rgba(24,36,59,.36); }
 .modal { width: 100%; max-width: 410px; padding: 4px 16px 18px; border-radius: 24px 24px 16px 16px; background: #FFFFFF; box-sizing: border-box; }
 .modal-top { display: flex; justify-content: flex-end; }
-.modal-close { display: flex; width: 32px; height: 32px; align-items: center; justify-content: center; color: #8793A3; font-size: 24px; line-height: 1; }
+.modal-close { display: flex; align-items: center; justify-content: center; line-height: normal; width: 32px; height: 32px; color: #8793A3; font-size: 24px; }
 .modal-kicker { display: block; color: #B3995E; font-size: 12px; line-height: 1.4; text-align: center; }
 .modal-title { display: block; margin-top: 10px; color: #18243B; font-family: Georgia, "Songti SC", serif; font-size: 23px; line-height: 1.3; text-align: center; }
 .modal-sub { display: block; margin-top: 5px; color: #8A96A8; font-size: 12px; line-height: 1.3; text-align: center; }

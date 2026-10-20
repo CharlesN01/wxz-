@@ -7,5 +7,5 @@
 .spark { position: absolute; right: 7rpx; top: 2rpx; color: #C47A2B; font-size: 44rpx; }
 .title { color: #12345B; font-size: 34rpx; line-height: 1.5; font-weight: 600; font-family: "Songti SC", STSong, SimSun, serif; }
 .description { max-width: 520rpx; margin: 18rpx auto 0; font-size: 28rpx; line-height: 1.8; color: #607184; }
-.action { display: inline-flex; align-items: center; justify-content: center; min-height: 88rpx; margin-top: 32rpx; padding: 16rpx 40rpx; border-radius: 20rpx; background: #12345B; color: #FFFFFF; font-size: 29rpx; box-sizing: border-box; }
+.action { display: inline-flex; align-items: center; justify-content: center; line-height: normal; min-height: 88rpx; margin-top: 32rpx; padding: 16rpx 40rpx; border-radius: 20rpx; background: #12345B; color: #FFFFFF; font-size: 29rpx; box-sizing: border-box; }
 .arrow { margin-left: 24rpx; }

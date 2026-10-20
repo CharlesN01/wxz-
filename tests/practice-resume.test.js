@@ -36,6 +36,7 @@ function createPage(resume, questionPayload) {
   };
   vm.runInNewContext(fs.readFileSync(pagePath, 'utf8'), {
     require(name) {
+      if (name === '../../utils/study-timer') return { withStudyTime: (definition) => definition };
       if (name === '../../services/data-service') return { getArticles: () => [] };
       if (name === '../../utils/study-store') return studyStore;
       if (name === '../../utils/navigation') return { openPage: (url) => routes.push(url) };

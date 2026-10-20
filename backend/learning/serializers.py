@@ -42,3 +42,19 @@ class PreferenceInput(StrictInput):
         if not ({"mode", "dailyTarget"} & data.keys()):
             raise serializers.ValidationError("至少指定一个学习偏好。")
         return data
+
+
+class StrictUUID(serializers.UUIDField):
+    def to_internal_value(self, data):
+        if not isinstance(data, str):
+            self.fail("invalid")
+        value = super().to_internal_value(data)
+        if str(value) != data.lower():
+            self.fail("invalid")
+        return value
+
+
+class StudyTimeInput(StrictInput):
+    sessionId = StrictUUID()
+    sequence = StrictInteger(min_value=0, max_value=2147483646)
+    elapsedSeconds = StrictInteger(min_value=0, max_value=60)

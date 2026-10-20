@@ -9,6 +9,7 @@ from django.http import Http404
 from django.template.response import TemplateResponse
 from django.urls import path, reverse
 from django.utils.html import format_html
+from django.utils import timezone
 from import_export.admin import ImportExportModelAdmin
 from unfold.admin import ModelAdmin
 
@@ -238,8 +239,33 @@ class QuestionRevisionAdmin(ModelAdmin):
 
 @admin.register(LearningConfiguration)
 class LearningConfigurationAdmin(ModelAdmin):
-    list_display = ("page_size", "daily_target", "exam_date")
-    fields = ("page_size", "daily_target", "exam_date")
+    list_display = ("exam_date", "countdown_status", "page_size", "daily_target")
+    readonly_fields = ("countdown_status",)
+    fieldsets = (
+        ("考试倒计时", {
+            "fields": ("exam_date", "countdown_status"),
+            "description": "在这里设置考试日期，保存后小程序首页读取最新日期并计算剩余天数。留空时不显示倒计时；请以官方公布日期为准。",
+        }),
+        ("学习参数", {"fields": ("page_size", "daily_target")}),
+    )
+
+    @admin.display(description="倒计时预览")
+    def countdown_status(self, obj):
+        if obj is None or obj.exam_date is None:
+            return "尚未设置考试日期，小程序不显示倒计时"
+        days = (obj.exam_date - timezone.localdate()).days
+        if days > 0:
+            return f"距考试还有 {days} 天"
+        if days == 0:
+            return "今天考试"
+        return "考试日期已过，请确认是否需要更新下一次考试日期"
+
+    def formfield_for_dbfield(self, db_field, request, **kwargs):
+        field = super().formfield_for_dbfield(db_field, request, **kwargs)
+        if db_field.name == "exam_date" and field is not None:
+            field.label = "考试倒计时日期"
+            field.help_text = "选择官方考试日期（年-月-日）。此项可以留空，不会自动替你设置日期。"
+        return field
 
     def has_add_permission(self, request):
         return super().has_add_permission(request) and not LearningConfiguration.objects.exists()

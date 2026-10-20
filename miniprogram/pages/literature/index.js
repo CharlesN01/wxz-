@@ -1,3 +1,4 @@
+const { withStudyTime } = require('../../utils/study-timer');
 const api = require('../../services/api');
 const navigation = require('../../utils/navigation');
 const safeTop = require('../../utils/safe-top');
@@ -70,7 +71,7 @@ function formatQuestionProgress(startIndex, total) {
   return format(current) + ' / ' + format(totalCount);
 }
 
-Page({
+Page(withStudyTime({
   data: {
     loading: true,
     hasError: false,
@@ -645,4 +646,4 @@ Page({
   onNextPage() {
     this.goPage({ currentTarget: { dataset: { delta: 1 } } });
   }
-});
+}));

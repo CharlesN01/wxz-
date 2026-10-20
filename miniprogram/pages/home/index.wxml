@@ -11,10 +11,10 @@
     <view class="dashboard-card">
       <view class="dashboard-head"><text>山东专升本考试倒计时</text><text class="target-pill">{{targetLabel}}</text></view>
       <view class="countdown-line"><text class="countdown-number">{{countdown}}</text><text class="countdown-unit">天</text></view>
-      <text class="dashboard-caption">每天进步一点，稳步走向上岸</text>
+      <text class="dashboard-caption">{{config.examDate ? '每天进步一点，稳步走向上岸' : '考试日期待设置'}}</text>
       <view class="dashboard-stats">
         <view class="dashboard-stat"><text class="stat-number">{{statsReady ? stats.studyDays : '--'}}</text><text class="stat-label">连续学习 / 天</text></view>
-        <view class="dashboard-stat"><text class="stat-number">{{statsReady ? stats.todayCount : '--'}}</text><text class="stat-label">今日学习 / 分钟</text></view>
+        <view class="dashboard-stat"><text class="stat-number">{{statsReady ? stats.todayMinutes : '--'}}</text><text class="stat-label">今日学习 / 分钟</text></view>
       </view>
     </view>
 
@@ -44,8 +44,9 @@
       <view class="group-icon">群</view><view class="group-copy"><text class="group-badge">备考资料共享</text><text class="group-title">山东专升本资料备考群</text><text class="group-desc">每日更新最新资料 · 进群有机会领取免费会员</text></view><view class="group-action" role="button" catchtap="openGroupModal">扫码进群</view>
     </view>
     <view class="growth-card">
-      <view class="growth-head"><text class="growth-title">学习趋势</text><text class="growth-value">较上周 +23%</text></view>
-      <view class="trend-bars"><view wx:for="{{trendBars}}" wx:key="label" class="trend-column"><view class="trend-bar {{item.active ? 'trend-bar-active' : ''}}" style="height: {{item.height}}rpx;"></view><text>{{item.label}}</text></view></view>
+      <view class="growth-head"><text class="growth-title">学习趋势</text><text class="growth-value">{{trendHint}}</text></view>
+      <view wx:if="{{statsReady}}" class="trend-bars"><view wx:for="{{trendBars}}" wx:key="date" class="trend-column"><text>{{item.minutes}}分</text><view class="trend-bar {{item.active ? 'trend-bar-active' : ''}}" style="height: {{item.height}}px;"></view><text>{{item.label}}</text></view></view>
+      <text wx:if="{{statsReady && !trendHasData}}" class="personal-note">阅读题目或应用文正文后自动记录学习时长</text>
     </view>
     <text wx:if="{{personalError}}" class="personal-note">{{personalError}}</text>
   </view>
@@ -57,12 +58,14 @@
       <text class="group-modal-title">山东专升本资料备考群</text>
       <text class="group-modal-copy">{{groupModalCopy}}</text>
       <view wx:if="{{groupQrCode}}" class="group-qr group-qr-image-box" bindtap="previewGroupQr">
-        <image class="group-qr-image" src="{{groupQrCode}}" mode="aspectFit" />
+        <image class="group-qr-image" src="{{groupQrCode}}" data-src="{{groupQrCode}}" mode="aspectFit" bindload="onGroupQrLoad" binderror="onGroupQrError" />
       </view>
       <view wx:else class="group-qr" bindtap="previewGroupQr">
         <view class="group-qr-text"><text class="group-qr-heading">微信二维码</text><text>二维码暂未配置</text></view>
       </view>
       <text wx:if="{{groupResourceError}}" class="group-modal-error">{{groupResourceError}}</text>
+      <text wx:if="{{groupQrLoading}}" class="group-modal-note">二维码加载中...</text>
+      <view wx:if="{{groupQrError}}" class="group-modal-error" role="button" bindtap="retryGroupQr">{{groupQrError}}</view>
       <text class="group-modal-tip">{{groupModalTip}}</text>
       <text class="group-modal-note">{{groupModalNote}}</text>
     </view>

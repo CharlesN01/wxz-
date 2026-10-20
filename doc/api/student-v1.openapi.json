@@ -2974,13 +2974,61 @@
                   "$ref": "#/components/schemas/Statistics"
                 },
                 "example": {
-                  "totalQuestions": 0,
+                  "totalQuestions": 20,
                   "masteredQuestions": 0,
                   "masteredPercent": 0,
                   "todayQuestions": 0,
                   "studyDays": 0,
                   "completedArticles": 0,
-                  "dailyTarget": 1
+                  "dailyTarget": 20,
+                  "todayStudySeconds": 0,
+                  "consecutiveStudyDays": 0,
+                  "currentPeriodStudySeconds": 0,
+                  "previousPeriodStudySeconds": 0,
+                  "dailyTrend": [
+                    {
+                      "date": "2026-10-14",
+                      "questionCount": 0,
+                      "studySeconds": 0,
+                      "isToday": false
+                    },
+                    {
+                      "date": "2026-10-15",
+                      "questionCount": 0,
+                      "studySeconds": 0,
+                      "isToday": false
+                    },
+                    {
+                      "date": "2026-10-16",
+                      "questionCount": 0,
+                      "studySeconds": 0,
+                      "isToday": false
+                    },
+                    {
+                      "date": "2026-10-17",
+                      "questionCount": 0,
+                      "studySeconds": 0,
+                      "isToday": false
+                    },
+                    {
+                      "date": "2026-10-18",
+                      "questionCount": 0,
+                      "studySeconds": 0,
+                      "isToday": false
+                    },
+                    {
+                      "date": "2026-10-19",
+                      "questionCount": 0,
+                      "studySeconds": 0,
+                      "isToday": false
+                    },
+                    {
+                      "date": "2026-10-20",
+                      "questionCount": 0,
+                      "studySeconds": 0,
+                      "isToday": true
+                    }
+                  ]
                 }
               }
             },
@@ -3109,6 +3157,211 @@
                   },
                   "requestId": "test-only-request-id"
                 }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/student/v1/me/study-time/": {
+      "post": {
+        "operationId": "student_study_time_post",
+        "summary": "student-study-time",
+        "tags": [
+          "learning"
+        ],
+        "security": [
+          {
+            "studentBearer": []
+          }
+        ],
+        "parameters": [],
+        "x-backend-view": "learning.student_api.StudyTimeView",
+        "x-request-serializer": "learning.serializers.StudyTimeInput",
+        "x-query-serializer": "learning.student_api.NoQuery",
+        "x-query-policy": "strict",
+        "x-idempotency": false,
+        "responses": {
+          "200": {
+            "description": "成功；示例为脱敏结构示例。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StudyTime"
+                },
+                "example": {
+                  "sessionId": "00000000-0000-4000-8000-000000000001",
+                  "sequence": 0,
+                  "nextSequence": 1,
+                  "creditedSeconds": 0,
+                  "todayStudySeconds": 0,
+                  "studyDate": "2026-10-02",
+                  "serverTime": "2026-10-02T00:00:00+08:00"
+                }
+              }
+            },
+            "headers": {
+              "X-Request-ID": {
+                "description": "服务端请求标识，用于定位联调问题。",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "统一认证／校验／业务错误结构；各方法仅返回实际触发的错误，具体 code 见联调手册。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StudentError"
+                },
+                "example": {
+                  "error": {
+                    "code": "VALIDATION_ERROR",
+                    "message": "脱敏错误示例"
+                  },
+                  "requestId": "test-only-request-id"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "统一认证／校验／业务错误结构；各方法仅返回实际触发的错误，具体 code 见联调手册。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StudentError"
+                },
+                "example": {
+                  "error": {
+                    "code": "INVALID_TOKEN",
+                    "message": "脱敏错误示例"
+                  },
+                  "requestId": "test-only-request-id"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "统一认证／校验／业务错误结构；各方法仅返回实际触发的错误，具体 code 见联调手册。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StudentError"
+                },
+                "example": {
+                  "error": {
+                    "code": "ENTITLEMENT_REQUIRED",
+                    "message": "脱敏错误示例"
+                  },
+                  "requestId": "test-only-request-id"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "统一认证／校验／业务错误结构；各方法仅返回实际触发的错误，具体 code 见联调手册。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StudentError"
+                },
+                "example": {
+                  "error": {
+                    "code": "NOT_FOUND",
+                    "message": "脱敏错误示例"
+                  },
+                  "requestId": "test-only-request-id"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "统一认证／校验／业务错误结构；各方法仅返回实际触发的错误，具体 code 见联调手册。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StudentError"
+                },
+                "example": {
+                  "error": {
+                    "code": "VERSION_CONFLICT",
+                    "message": "脱敏错误示例"
+                  },
+                  "requestId": "test-only-request-id"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "统一认证／校验／业务错误结构；各方法仅返回实际触发的错误，具体 code 见联调手册。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StudentError"
+                },
+                "example": {
+                  "error": {
+                    "code": "RATE_LIMITED",
+                    "message": "脱敏错误示例"
+                  },
+                  "requestId": "test-only-request-id"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "统一认证／校验／业务错误结构；各方法仅返回实际触发的错误，具体 code 见联调手册。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StudentError"
+                },
+                "example": {
+                  "error": {
+                    "code": "PAYMENT_CHANNEL_UNAVAILABLE",
+                    "message": "脱敏错误示例"
+                  },
+                  "requestId": "test-only-request-id"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "sessionId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "sequence": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 2147483646
+                  },
+                  "elapsedSeconds": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 60
+                  }
+                },
+                "required": [
+                  "sessionId",
+                  "sequence",
+                  "elapsedSeconds"
+                ],
+                "additionalProperties": false
+              },
+              "example": {
+                "sessionId": "00000000-0000-4000-8000-000000000001",
+                "sequence": 0,
+                "elapsedSeconds": 0
               }
             }
           }
@@ -7072,6 +7325,53 @@
             "type": "integer",
             "minimum": 0
           },
+          "todayStudySeconds": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "consecutiveStudyDays": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "currentPeriodStudySeconds": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "previousPeriodStudySeconds": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "dailyTrend": {
+            "type": "array",
+            "minItems": 7,
+            "items": {
+              "type": "object",
+              "properties": {
+                "date": {
+                  "type": "string",
+                  "format": "date"
+                },
+                "questionCount": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "studySeconds": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "isToday": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "date",
+                "questionCount",
+                "studySeconds",
+                "isToday"
+              ],
+              "additionalProperties": false
+            }
+          },
           "dailyTarget": {
             "type": "integer",
             "minimum": 1,
@@ -7085,7 +7385,55 @@
           "todayQuestions",
           "studyDays",
           "completedArticles",
+          "todayStudySeconds",
+          "consecutiveStudyDays",
+          "currentPeriodStudySeconds",
+          "previousPeriodStudySeconds",
+          "dailyTrend",
           "dailyTarget"
+        ],
+        "additionalProperties": false
+      },
+      "StudyTime": {
+        "type": "object",
+        "properties": {
+          "sessionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sequence": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "nextSequence": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "creditedSeconds": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "todayStudySeconds": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "studyDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "serverTime": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "sessionId",
+          "sequence",
+          "nextSequence",
+          "creditedSeconds",
+          "todayStudySeconds",
+          "studyDate",
+          "serverTime"
         ],
         "additionalProperties": false
       },

@@ -1,10 +1,11 @@
 from django.urls import path
 
-from .student_api import FavoritesView, PreferenceView, QuestionStateView, StatisticsView
+from .student_api import FavoritesView, PreferenceView, QuestionStateView, StatisticsView, StudyTimeView
 
 urlpatterns = [
     path("me/questions/<slug:pk>/state/", QuestionStateView.as_view(), name="student-question-state"),
     path("me/favorites/", FavoritesView.as_view(), name="student-favorites"),
     path("me/statistics/", StatisticsView.as_view(), name="student-statistics"),
+    path("me/study-time/", StudyTimeView.as_view(), name="student-study-time"),
     path("me/preferences/", PreferenceView.as_view(), name="student-preferences"),
 ]

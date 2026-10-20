@@ -1,3 +1,4 @@
+const { withStudyTime } = require('../../utils/study-timer');
 const dataService = require('../../services/data-service');
 const studyStore = require('../../utils/study-store');
 const questionUtils = require('../../utils/question-utils');
@@ -39,7 +40,7 @@ function decorateFavorite(question) {
   return Object.assign({}, item, { parts, hasInlineBlanks: item.type !== 'translation' && /\{\{\d+\}\}/.test(stem), hasAnswerInput: questionUtils.requiredAnswerIndices(item).length > 0, answerText: answerText ? prefix + answerText : '', answerVisible: false, title: item.title || item.stem || '收藏考点' });
 }
 
-Page({
+Page(withStudyTime({
   data: { categoryRows: [], categoryId: '', activeCategoryElement: '', activeCategoryRow: 'literature', sourceFilter: 'literature', mode: 'writing', questions: [], hasQuestions: false, pageNumber: 0, pageCount: 0, totalFavorites: 0, todayAdded: 0, nextLabel: '下一页', loading: true, hasError: false, errorMessage: '', dataSource: 'local', personalError: '', requiresLogin: false },
   onLoad(options = {}) { this._categories = dataService.getCategories('favorites'); this._pageIndex = 0; this._categoryId = options.categoryId || ''; this._sourceFilter = options.source === 'classical' ? 'classical' : 'literature'; this._remoteRows = []; this._remoteLoaded = false; this._stateInFlight = Object.create(null); this._ready = true; this._setupCategories(); this._refreshFavorites(); },
   onShow() { if (this._ready) this._refreshFavorites(); },
@@ -152,4 +153,4 @@ Page({
   onFavorite(event) { const id = event && event.currentTarget && event.currentTarget.dataset ? event.currentTarget.dataset.id : event && event.detail && event.detail.id; return this._updateState(id, 'favorite'); },
   onMaster(event) { return this._updateState(event.detail.id, 'mastered'); },
   onGoStudy() { if (this._sourceFilter === 'classical' || this._categoryId.indexOf('classical-') === 0) navigation.openPage('/pages/classical/index'); else navigation.openPage('/pages/literature/index', this._categoryId ? { categoryId: this._categoryId } : undefined); }
-});
+}));

@@ -1,11 +1,15 @@
 const api = require('../../services/api');
 const navigation = require('../../utils/navigation');
+const { learningTrend, minutes } = require('../../utils/learning-trend');
+const { resourceImageUrl, retryImageUrl } = require('../../utils/resource-image');
+const studyTimer = require('../../utils/study-timer').clock;
 
 const EMPTY_STATS = {
   masteredCount: 0,
   studyDays: 0,
   completion: 0,
   todayCount: 0,
+  todayMinutes: 0,
   todayTarget: 20,
   totalQuestions: 0,
   completedArticles: 0
@@ -50,9 +54,10 @@ function mapStatistics(value, dailyTarget) {
   const source = value || {};
   return {
     masteredCount: numberOr(source.masteredQuestions, 0),
-    studyDays: numberOr(source.studyDays, 0),
+    studyDays: numberOr(source.consecutiveStudyDays, 0),
     completion: numberOr(source.masteredPercent, 0),
     todayCount: numberOr(source.todayQuestions, 0),
+    todayMinutes: minutes(source.todayStudySeconds),
     todayTarget: numberOr(source.dailyTarget, dailyTarget || EMPTY_STATS.todayTarget),
     totalQuestions: numberOr(source.totalQuestions, 0),
     completedArticles: numberOr(source.completedArticles, 0)
@@ -96,10 +101,11 @@ Page({
     groupModalTip: '每日更新最新资料',
     groupModalNote: '进群有机会领取免费会员',
     groupResourceError: '',
-    trendBars: [
-      { label: '一', height: 56 }, { label: '二', height: 82 }, { label: '三', height: 108, active: true },
-      { label: '四', height: 70 }, { label: '五', height: 128, active: true }, { label: '六', height: 92 }, { label: '日', height: 60 }
-    ]
+    groupQrError: '',
+    groupQrLoading: false,
+    trendBars: [],
+    trendHasData: false,
+    trendHint: '登录后查看学习趋势'
   },
 
   onLoad() {
@@ -111,9 +117,18 @@ Page({
 
   onShow() {
     if (this._loaded) {
-      this.loadPersonalData();
+      this.refreshLearningConfig().then(() => this.loadPersonalData());
       this.loadGroupResource();
     }
+  },
+
+  async refreshLearningConfig() {
+    const result = await settle(api.config.get());
+    if (!result.ok || !result.value) return;
+    const config = Object.assign({}, this.data.config, result.value);
+    const countdown = daysUntil(config.examDate);
+    this.setData({ config, countdown: countdown === null ? '--' : countdown,
+      targetLabel: config.examDate ? String(config.examDate).slice(0, 4) + ' 山东专升本' : '山东专升本' });
   },
 
   async loadPublicData() {
@@ -176,6 +191,7 @@ Page({
 
   async loadPersonalData(version) {
     if (version && version !== this._loadVersion) return;
+    const personalVersion = this._personalVersion = (this._personalVersion || 0) + 1;
     if (!hasToken()) {
       this.setData({
         isGuest: true,
@@ -186,6 +202,7 @@ Page({
         }),
         todayPercent: 0,
         growthHint: '登录后查看学习统计',
+        trendBars: [], trendHasData: false, trendHint: '登录后查看学习趋势',
         resume: null,
         resumeAvailable: false,
         resumeLabel: '开始学习：文学常识',
@@ -194,11 +211,14 @@ Page({
       return;
     }
 
+    const token = api.auth.getToken();
+    await studyTimer.settled();
     const results = await Promise.all([
       settle(api.learning.statistics()),
       settle(api.learning.resume())
     ]);
     if (version && version !== this._loadVersion) return;
+    if (personalVersion !== this._personalVersion || token !== api.auth.getToken()) return;
     const statisticsResult = results[0];
     const resumeResult = results[1];
     const stats = statisticsResult.ok
@@ -218,6 +238,8 @@ Page({
         )
         : '',
       stats,
+      ... (statisticsResult.ok ? learningTrend(statisticsResult.value)
+        : { trendBars: [], trendHasData: false, trendHint: '学习趋势暂不可用，请重试' }),
       todayPercent,
       growthHint: statisticsResult.ok
         ? '今日 ' + stats.todayCount + ' / ' + target + ' 题'
@@ -245,15 +267,22 @@ Page({
 
   async loadGroupResource() {
     if (!api.resources || typeof api.resources.group !== 'function') return;
+    const version = this._groupVersion = (this._groupVersion || 0) + 1;
     const result = await settle(api.resources.group());
+    if (version !== this._groupVersion) return false;
     if (!result.ok) {
       this.setData({ groupResourceError: describeError(result.error, '资料群配置暂时无法加载') });
-      return;
+      return false;
     }
     const resource = result.value && result.value.enabled ? result.value : {};
     const claimCode = resource.claimCode || '';
+    const groupQrCode = resourceImageUrl(resource.groupQrCode);
+    const changed = groupQrCode !== this.data.groupQrCode;
     this.setData({
-      groupQrCode: resource.groupQrCode || '',
+      groupQrCode,
+      groupQrLoading: Boolean(groupQrCode) && (changed || this.data.groupQrLoading),
+      groupQrError: resource.groupQrCode && !groupQrCode ? '二维码地址不可用，请联系管理员检查图片配置'
+        : (changed ? '' : this.data.groupQrError),
       groupWechatId: resource.wechatId || '',
       groupClaimCode: claimCode,
       groupModalCopy: resource.wechatId
@@ -263,9 +292,11 @@ Page({
       groupModalNote: resource.announcement || (claimCode ? '领取口令：' + claimCode : '进群有机会领取免费会员'),
       groupResourceError: ''
     });
+    return true;
   },
 
   previewGroupQr() {
+    if (this.data.groupQrError) { this.retryGroupQr(); return; }
     if (this.data.groupQrCode && typeof wx !== 'undefined' && typeof wx.previewImage === 'function') {
       wx.previewImage({ urls: [this.data.groupQrCode] });
       return;
@@ -273,6 +304,21 @@ Page({
     if (typeof wx !== 'undefined' && typeof wx.showToast === 'function') {
       wx.showToast({ title: '二维码暂未配置', icon: 'none' });
     }
+  },
+
+  onGroupQrLoad(event) {
+    if (event && event.currentTarget && event.currentTarget.dataset.src !== this.data.groupQrCode) return;
+    this.setData({ groupQrLoading: false, groupQrError: '' });
+  },
+
+  onGroupQrError(event) {
+    if (event && event.currentTarget && event.currentTarget.dataset.src !== this.data.groupQrCode) return;
+    this.setData({ groupQrLoading: false, groupQrError: '二维码加载失败，请点击重试' });
+  },
+
+  async retryGroupQr() {
+    const loaded = await this.loadGroupResource();
+    if (loaded && this.data.groupQrCode) this.setData({ groupQrCode: retryImageUrl(this.data.groupQrCode), groupQrLoading: true, groupQrError: '' });
   },
 
   closeGroupModal() {
