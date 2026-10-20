@@ -94,6 +94,30 @@ test('服务端权益未生效时兑换页不显示成功或关闭输入', async
   assert.equal(page.data.activationCode, '');
 });
 
+test('收藏返回页面会重读服务端，开通后恢复原来受限题的正文', async () => {
+  let activated = false;
+  const page = load('pages/favorites/index.js', {
+    auth: { getToken: () => 'favorite-learner' },
+    learning: { favorites: async () => ({ count: 1, next: null, results: [{
+      questionId: 'paid-favorite', source: 'literature',
+      state: { favorite: true, version: 1 },
+      question: activated ? { id: 'paid-favorite', source: 'literature', stem: '完整题干', answers: ['完整答案'] } : null,
+      unavailableReason: activated ? null : 'ENTITLEMENT_REQUIRED'
+    }] }) }
+  });
+  page._ready = true;
+  page._sourceFilter = 'literature';
+  page._categoryId = '';
+  await page._refreshFavorites();
+  assert.equal(page.data.questions[0].unavailable, true);
+  activated = true;
+  page.onShow();
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(page.data.questions[0].unavailable, undefined);
+  assert.equal(page.data.questions[0].stem, '完整题干');
+  assert.match(page.data.questions[0].answerText, /完整答案/);
+});
+
 test('应用文条目打开时请求单条详情并保留错误态', async () => {
   const ids = [];
   const api = {

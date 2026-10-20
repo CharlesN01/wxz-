@@ -40,7 +40,7 @@ function createPage(resume, questionPayload) {
       throw new Error('Unexpected module: ' + name);
     },
     Page(value) { definition = value; },
-    wx: { pageScrollTo() {} }
+    wx: { pageScrollTo() {}, request() {} }
   }, { filename: pagePath });
   const page = {
     ...definition,
@@ -79,6 +79,31 @@ test('专项练习续学请求不向非随机位置提交 groupIndex', async () 
   assert.equal(getSavedBody().questionId, 'question-7');
   assert.equal(getSavedBody().roundId, null);
   assert.equal(getSavedBody().groupIndex, null);
+});
+
+test('字词和翻译有部分免费题时，开通权益返回也会重新加载受限题', async () => {
+  for (const type of ['word', 'translation']) {
+    const { page, api, questionCalls } = createPage(null, {
+      count: 1, results: [{ id: 'free-q', stem: '免费题', answers: [] }], next: null,
+      access: { restrictedCount: 2 }
+    });
+    page.questionType = type;
+    page.savePosition = () => {};
+    await page.loadRemote(false);
+    assert.equal(page.data.requiresEntitlement, false);
+    assert.equal(page.data.restrictedCount, 2);
+    assert.equal(page.data.total, 1);
+    api.content.questions = async () => ({ count: 3, results: [
+      { id: 'free-q', stem: '免费题', answers: [] },
+      { id: 'paid-q1', stem: '付费题1', answers: [] },
+      { id: 'paid-q2', stem: '付费题2', answers: [] }
+    ], next: null, access: { restrictedCount: 0 } });
+    await page.onShow();
+    assert.equal(questionCalls[0].options.auth, true);
+    assert.equal(page.data.total, 3);
+    assert.equal(page.data.restrictedCount, 0);
+    assert.equal(page.data.questions.length, 3);
+  }
 });
 
 test('专项练习首个题目分页请求在已有会话时携带 Bearer 认证选项', async () => {

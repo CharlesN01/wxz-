@@ -7,9 +7,10 @@ function canRequest() {
   return typeof wx !== 'undefined' && typeof wx.request === 'function';
 }
 
-function hasToken() {
-  try { return Boolean(api.auth && api.auth.getToken && api.auth.getToken()); } catch (_) { return false; }
+function getToken() {
+  try { return api.auth && api.auth.getToken && api.auth.getToken() || ''; } catch (_) { return ''; }
 }
+function hasToken() { return Boolean(getToken()); }
 
 function describeError(error) {
   if (error && error.code === 'ENTITLEMENT_REQUIRED') return '该目录需要登录并开通学习权益';
@@ -70,6 +71,8 @@ Page({
   },
 
   onShow() {
+    if (canRequest() && this._remoteLoaded && !this.data.loading && (this._contentToken !== getToken()
+      || hasToken() && (this._restrictedCount > 0 || this.data.dataSource === 'local'))) return this.loadRemote();
     if (!canRequest() || this._remoteLoaded) this.refreshProgress();
   },
 
@@ -98,6 +101,8 @@ Page({
   },
 
   async loadRemote() {
+    this._contentToken = getToken();
+    this._restrictedCount = 0;
     this.setData({ loading: true, hasError: false, errorMessage: '' });
     const result = await settle(api.content.articles({ page: 1 }));
     if (!result.ok) {
@@ -167,6 +172,7 @@ Page({
   async loadArticleStates(articles) {
     const progress = {};
     let firstError = null;
+    let restrictedCount = 0;
     const remoteQuestions = [];
     for (const article of articles) {
       const questionResult = await settle(api.content.questions(
@@ -178,6 +184,7 @@ Page({
         continue;
       }
       const payload = questionResult.value || {};
+      restrictedCount += Math.max(0, Number(payload.access && payload.access.restrictedCount) || 0);
       const questions = Array.isArray(payload.results) ? payload.results.slice() : [];
       let next = payload.next || null;
       const seen = new Set();
@@ -216,6 +223,7 @@ Page({
       return Object.assign({}, article, { total, completed: item.completed }, articleStatus(item.completed, total));
     });
     this.articles = updated;
+    this._restrictedCount = restrictedCount;
     this._remoteQuestions = remoteQuestions;
     this.setData({ visibleArticles: updated, visibleCount: updated.length });
     return firstError ? { ok: false, error: firstError } : { ok: true, value: progress };

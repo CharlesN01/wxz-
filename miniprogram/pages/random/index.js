@@ -7,7 +7,15 @@ const api = require('../../services/api');
 const GROUP_SIZE = 6;
 const PAGE_PATH = '/pages/random/index';
 function settle(promise) { return Promise.resolve(promise).then((value) => ({ ok: true, value }), (error) => ({ ok: false, error })); }
-function hasToken() { try { return Boolean(api.auth && api.auth.getToken && api.auth.getToken()); } catch (_) { return false; } }
+function getToken() { try { return api.auth && api.auth.getToken && api.auth.getToken() || ''; } catch (_) { return ''; } }
+function hasToken() { return Boolean(getToken()); }
+function getAccountKey() {
+  try {
+    const session = api.auth && api.auth.getSession && api.auth.getSession();
+    if (session && session.user && session.user.id) return String(session.user.id);
+  } catch (_) {}
+  return getToken();
+}
 function errorText(error) {
   if (error && error.code === 'ENTITLEMENT_REQUIRED') return '随机练习需要先开通学习权益';
   if (error && (error.status === 401 || error.code === 'INVALID_TOKEN')) return '登录状态已失效，请重新登录';
@@ -64,7 +72,24 @@ Page({
     }
   },
 
-  onShow() { if (this._ready && this.data.dataSource === 'local') this.refreshLocalGroup(); },
+  onShow() {
+    if (this.data.loading || !this._ready && !this.data.hasError) return;
+    if (typeof wx !== 'undefined' && typeof wx.request === 'function' && hasToken()) {
+      if (this._contentAccountKey !== getAccountKey()) {
+        this._stateMap = {}; this._groupCache = {}; this._resumeVersion = 0;
+        return this.startRemoteRound(false);
+      }
+      if (this.data.dataSource === 'local') return this.startRemoteRound(Boolean(this._roundId));
+      if (this._roundId) return this.loadRemoteGroup(this._groupIndex);
+      return this.startRemoteRound(false);
+    }
+    if (this.data.dataSource === 'remote') {
+      this._roundId = ''; this._groupCache = {}; this._stateMap = {};
+      this.startLocalRound(false);
+      this.setData({ dataSource: 'local', personalError: '未登录，当前显示本地演示题目' });
+    }
+    this.refreshLocalGroup();
+  },
 
   startLocalRound(restore) {
     const resume = restore ? studyStore.getResume() : null;
@@ -110,6 +135,7 @@ Page({
   },
 
   async startRemoteRound(restore) {
+    this._contentAccountKey = getAccountKey();
     if (!restore) { this._roundId = ''; this._roundIds = []; this._groupIndex = 1; }
     const localResume = restore ? studyStore.getResume() : null;
     if (restore) this.hydrateLocalResume(localResume);

@@ -56,7 +56,7 @@ function createPage(questionCount, apiPageSize) {
   page._pendingState = {};
   page._answerVisible = {};
   page._resumeQuestionId = '';
-  return { page, calls };
+  return { page, calls, api };
 }
 
 test('文学常识页面固定每组 6 题，适配后端 20 题分页并正确跨页', async () => {
@@ -96,4 +96,36 @@ test('文学常识最后一组只显示剩余题目并可恢复到包含续学�
   assert.equal(page.data.pageCount, 3);
   assert.equal(page.data.questionProgressLabel, '13 / 14');
   assert.deepEqual(Array.from(page.data.questions, (item) => item.id), ['q13', 'q14']);
+});
+
+test('开通权益返回文学页面重新获取完整题量并清除免费分页缓存', async () => {
+  const { page, api } = createPage(30, 20);
+  let activated = false;
+  let reads = 0;
+  api.auth.getToken = () => 'same-learner-session';
+  api.learning.questionState = async () => ({ version: 0 });
+  api.content.questions = async ({ page: number }) => {
+    reads += 1;
+    const count = activated ? 30 : 20;
+    return { count, access: { pageSize: 20, restrictedCount: activated ? 0 : 10 },
+      results: Array.from({ length: Math.min(20, count - (number - 1) * 20) }, (_, index) => ({ id: 'q' + ((number - 1) * 20 + index + 1), stem: '题干', answers: [] })) };
+  };
+  page.queueResume = () => {};
+  page._loaded = true;
+  await page.loadPage(1);
+  assert.equal(page.data.restrictedCount, 10);
+  assert.equal(page.data.totalQuestions, 20);
+  activated = true;
+  await page.onShow();
+  assert.equal(reads, 2);
+  assert.equal(page.data.restrictedCount, 0);
+  assert.equal(page.data.totalQuestions, 30);
+  await page.loadPage(5);
+  assert.deepEqual(Array.from(page.data.questions, row => row.id), ['q25', 'q26', 'q27', 'q28', 'q29', 'q30']);
+  activated = false;
+  await page.onShow();
+  assert.equal(page.data.page, 4);
+  assert.equal(page.data.totalQuestions, 20);
+  assert.equal(page.data.questions.length, 2);
+  assert.equal(page.data.restrictedCount, 10);
 });

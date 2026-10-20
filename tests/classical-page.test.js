@@ -17,6 +17,7 @@ function createClassicalPage() {
   global.wx = {
     getStorageSync() { return storage; },
     setStorageSync(_key, value) { storage = JSON.parse(JSON.stringify(value)); },
+    removeStorageSync() { storage = null; },
     navigateTo(options) { routes.push(options.url); },
     redirectTo(options) { routes.push(options.url); },
     showToast() {},
@@ -36,6 +37,25 @@ function createClassicalPage() {
   };
   return { page, store: require(storePath), service: require(servicePath), routes };
 }
+
+test('文言目录返回时重新加载开通前受限的题目，切换账号也清除旧范围', async () => {
+  const { page } = createClassicalPage();
+  session.saveSession({ token: 'directory-learner', expiresAt: '' });
+  global.wx.request = () => {};
+  page._remoteLoaded = true;
+  page._contentToken = 'directory-learner';
+  page._restrictedCount = 8;
+  page.data.loading = false;
+  page.data.dataSource = 'remote';
+  let reloads = 0;
+  page.loadRemote = async () => { reloads += 1; };
+  await page.onShow();
+  assert.equal(reloads, 1);
+  page._restrictedCount = 0;
+  session.clearSession();
+  await page.onShow();
+  assert.equal(reloads, 2);
+});
 
 test('目录专项入口透传当前背诵模式', () => {
   const { page, routes } = createClassicalPage();

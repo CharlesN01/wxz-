@@ -59,14 +59,27 @@ test('an in-memory session remains available when persistence fails', () => {
   assert.equal(session.getToken(), 'memory-token');
 });
 
-test('public content request is anonymous and uses the configured API prefix', async () => {
+test('question requests automatically carry the learner session and configured API prefix', async () => {
   session.saveSession({ token: 'stored-token', expiresAt: '' });
   const calls = installWx((options) => respond(options, 200, { results: [] }));
   const result = await api.content.questions({ source: 'literature', page: 2 });
   assert.deepEqual(result, { results: [] });
   assert.equal(calls[0].url, 'http://127.0.0.1:8000/api/student/v1/questions/');
   assert.deepEqual(calls[0].data, { source: 'literature', page: 2 });
+  assert.equal(calls[0].header.Authorization, 'Bearer stored-token');
+});
+
+test('question lists and details stay anonymous for guests and support an explicit public read', async () => {
+  const calls = installWx((options) => respond(options, 200, { results: [] }));
+  await api.content.questions({ source: 'literature', categoryId: 'pre-qin' });
+  await api.content.question('paid-question');
   assert.equal(calls[0].header.Authorization, undefined);
+  assert.equal(calls[1].header.Authorization, undefined);
+  session.saveSession({ token: 'learner-token', expiresAt: '' });
+  await api.content.question('paid-question');
+  await api.content.questions({ source: 'literature' }, { auth: false });
+  assert.equal(calls[2].header.Authorization, 'Bearer learner-token');
+  assert.equal(calls[3].header.Authorization, undefined);
 });
 
 test('content requests can opt into the Bearer contract for activated learners', async () => {

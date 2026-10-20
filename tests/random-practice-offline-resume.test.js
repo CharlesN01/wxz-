@@ -39,6 +39,47 @@ function baseStore(resume) {
   };
 }
 
+test('文常和文言随机在登录后退出演示模式，并在开通后重读原轮次当前组', async () => {
+  for (const source of ['literature', 'classical']) {
+    let token = '';
+    let activated = false;
+    let creations = 0;
+    const row = question('paid-random-q', source, source === 'classical' ? 'word' : 'fact');
+    const api = {
+      auth: { getToken: () => token, getSession: () => ({ user: { id: 7 } }) },
+      learning: { questionState: async () => ({ version: 0 }) },
+      practice: {
+        createRound: async () => { creations += 1; return { id: 'server-round', groupCount: 1, totalCount: 1, pageSize: 6 }; },
+        group: async () => ({ groupIndex: 1, groupCount: 1, totalCount: 1,
+          results: activated ? [row] : [], skipped: activated ? [] : [{ reason: 'ENTITLEMENT_REQUIRED' }] })
+      }
+    };
+    const page = loadPage('pages/random/index.js', {
+      '../../services/api': api, '../../utils/study-store': baseStore(null),
+      '../../services/data-service': { getQuestions: () => [], getQuestion: () => null, decorateQuestions: rows => rows },
+      '../../utils/navigation': {}, '../../utils/safe-top': {}
+    }, { wx: { request() {} } });
+    page.saveResume = () => {};
+    page.onLoad({ source });
+    assert.equal(page.data.dataSource, 'local');
+    token = 'same-random-learner';
+    await page.onShow();
+    assert.equal(page.data.dataSource, 'remote');
+    assert.match(page.data.personalError, /开通学习权益/);
+    assert.equal(creations, 1);
+    activated = true;
+    await page.onShow();
+    assert.equal(page.data.personalError, '');
+    assert.equal(page.data.questions[0].id, 'paid-random-q');
+    assert.equal(page._roundId, 'server-round');
+    assert.equal(creations, 1);
+    token = 'refreshed-session-same-account';
+    await page.onShow();
+    assert.equal(page._roundId, 'server-round');
+    assert.equal(creations, 1);
+  }
+});
+
 test('随机练习恢复接口断网时保留本地远端题组和当前组号', async () => {
   const groupTwo = [question('remote-q7'), question('remote-q8')];
   const resume = {

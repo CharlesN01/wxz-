@@ -124,7 +124,14 @@ Page({
   },
 
   onShow() {
-    if (this._loaded && hasToken()) this.refreshVisibleStates();
+    if (!this._loaded || this.data.loading) return;
+    // Returning from membership/activation must refetch the accessible count
+    // and pages; refreshing question state alone retains the free-only cache.
+    this._questionPages = {};
+    this._questionRows = [];
+    this._stateMap = {};
+    this.setData({ questions: [], restrictedCount: 0, personalError: '', isGuest: !hasToken() });
+    return this.loadPage(this.data.page || 1);
   },
 
   async bootstrap() {
@@ -270,6 +277,7 @@ Page({
       }
     }
 
+    targetPage = Math.min(targetPage, pageCount || 1);
     const startIndex = (targetPage - 1) * UI_PAGE_SIZE;
     const endIndex = Math.min(startIndex + UI_PAGE_SIZE, count);
     const firstApiPage = Math.floor(startIndex / apiPageSize) + 1;

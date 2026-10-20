@@ -6,7 +6,8 @@ const api = require('../../services/api');
 const GROUP_SIZE = 6;
 function canRequest() { return typeof wx !== 'undefined' && typeof wx.request === 'function'; }
 function settle(promise) { return Promise.resolve(promise).then((value) => ({ ok: true, value }), (error) => ({ ok: false, error })); }
-function hasToken() { try { return Boolean(api.auth && api.auth.getToken && api.auth.getToken()); } catch (_) { return false; } }
+function getToken() { try { return api.auth && api.auth.getToken && api.auth.getToken() || ''; } catch (_) { return ''; } }
+function hasToken() { return Boolean(getToken()); }
 function errorText(error) {
   if (error && error.code === 'ENTITLEMENT_REQUIRED') return '当前专项需要开通学习权益';
   if (error && (error.status === 401 || error.code === 'INVALID_TOKEN')) return '登录状态已失效，请重新登录';
@@ -52,12 +53,15 @@ Page({
     }
   },
   onShow() {
-    if (!this._remoteLoaded) return;
-    if (this.data.requiresEntitlement && hasToken()) this.loadRemote(false);
+    if (!this._remoteLoaded || this.data.loading) return;
+    if (canRequest() && (this._contentToken !== getToken()
+      || hasToken() && (this.data.restrictedCount > 0 || this.data.dataSource === 'local'))) return this.loadRemote(false);
     else this.refreshQuestions();
   },
   async loadRemote(restore) {
-    this.setData({ loading: true, hasError: false, errorMessage: '', requiresEntitlement: false, restrictedCount: 0 });
+    if (this._contentToken !== getToken()) { this._stateMap = {}; this._groupCache = {}; }
+    this._contentToken = getToken();
+    this.setData({ loading: true, hasError: false, errorMessage: '', requiresEntitlement: false, restrictedCount: 0, questions: [] });
     const response = this.articleId
       ? await settle(api.content.questions(
         { source: 'classical', articleId: this.articleId, type: this.questionType, page: 1 },
