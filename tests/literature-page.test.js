@@ -86,6 +86,26 @@ test('文学常识首次加载完成后退出 loading 并显示首组题目', as
   assert.equal(page.data.questionProgressLabel, '01 / 08');
 });
 
+test('已登录文学首屏使用题目附带的状态，不再逐题请求状态接口', async () => {
+  const { page, api, calls } = createPage(287, 20);
+  api.auth.getToken = () => 'learner';
+  const readQuestions = api.content.questions;
+  api.content.questions = async (params) => {
+    const response = await readQuestions(params);
+    response.results.forEach((row, index) => { row.state = { questionId: row.id, favorite: index === 0, mastered: index === 1, version: index + 2 }; });
+    return response;
+  };
+  api.learning.questionState = () => { throw new Error('unexpected per-question state read'); };
+  page.queueResume = () => {};
+  await page.loadPage(1);
+  assert.equal(page.data.loading, false);
+  assert.deepEqual(calls, [1]);
+  assert.equal(page.data.questions.length, 6);
+  assert.equal(page.data.questions[0].favorite, true);
+  assert.equal(page.data.questions[1].mastered, true);
+  assert.equal(page.data.questions[1].version, 3);
+});
+
 test('文学常识最后一组只显示剩余题目并可恢复到包含续学题的六题组', async () => {
   const { page } = createPage(14, 20);
   page._resumeQuestionId = 'q14';
@@ -96,6 +116,25 @@ test('文学常识最后一组只显示剩余题目并可恢复到包含续学�
   assert.equal(page.data.pageCount, 3);
   assert.equal(page.data.questionProgressLabel, '13 / 14');
   assert.deepEqual(Array.from(page.data.questions, (item) => item.id), ['q13', 'q14']);
+});
+
+test('文学深页续学直接定位目标题页，不扫描此前所有API分页', async () => {
+  const { page, api, calls } = createPage(287, 20);
+  page._resumeQuestionId = 'q281';
+  api.content.question = async () => ({ id: 'q281', source: 'literature', categoryId: 'pre-qin', scopeIndex: 280 });
+  await page.loadPage(1, { findResume: true });
+  assert.deepEqual(calls, [1, 14, 15]);
+  assert.equal(page.data.page, 47);
+  assert.equal(page.data.questions[4].id, 'q281');
+});
+
+test('文学分页缓存中的旧状态不会覆盖本页已保存的新收藏状态', async () => {
+  const { page, api } = createPage(25, 20);
+  api.auth.getToken = () => 'learner';
+  page._stateMap.q1 = { favorite: true, mastered: false, version: 8 };
+  await page.loadStates([{ id: 'q1', state: { favorite: false, mastered: false, version: 0 } }], 0);
+  assert.equal(page._stateMap.q1.favorite, true);
+  assert.equal(page._stateMap.q1.version, 8);
 });
 
 test('开通权益返回文学页面重新获取完整题量并清除免费分页缓存', async () => {

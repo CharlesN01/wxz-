@@ -230,8 +230,16 @@ Page({
 
   async loadStates(rows) {
     if (!hasToken()) return;
-    const results = await Promise.all(rows.map((item) => settle(api.learning.questionState(item.id))));
-    results.forEach((item, index) => { if (item.ok) this._stateMap[rows[index].id] = normalizeState(item.value); });
+    rows.forEach((item) => { if (item.state) this._stateMap[item.id] = normalizeState(item.state); });
+    const missing = rows.filter((item) => !item.state);
+    if (!missing.length) return;
+    const results = await Promise.all(missing.map((item) => settle(api.learning.questionState(item.id))));
+    let firstError;
+    results.forEach((item, index) => {
+      if (item.ok) this._stateMap[missing[index].id] = normalizeState(item.value);
+      else firstError = firstError || item.error;
+    });
+    if (firstError) this.setData({ personalError: errorText(firstError) });
   },
 
   saveResume() {

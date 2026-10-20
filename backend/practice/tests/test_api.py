@@ -6,7 +6,9 @@ from unittest.mock import patch
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
+from django.db import connection
 from django.test import override_settings
+from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
 from rest_framework.test import APIClient
 
@@ -15,6 +17,7 @@ from common.models import IdempotencyRecord, RateBucket
 from content.models import Article, Category, LearningConfiguration, Question
 from content.tests.test_student_access import StudentContentFixture
 from entitlements.services import grant_entitlement, revoke_entitlement
+from learning.models import QuestionState
 from practice.models import PracticeRound, ResumePosition, RoundItem
 
 
@@ -62,6 +65,20 @@ class PracticeAPITests(StudentContentFixture):
         word = self.create_round({**self.scope, "type": "word"}, key="p08-word-key")
         self.assertEqual(word.data["totalCount"], 1)
         self.assertEqual(PracticeRound.objects.count(), 2)
+
+    def test_group_batches_own_current_states_without_new_rows(self):
+        round_id = self.create_round().data["id"]
+        QuestionState.objects.create(user=self.user, question=self.first, favorite=True, version=3)
+        QuestionState.objects.create(user=self.other_user, question=self.second, mastered=True, version=8)
+        with CaptureQueriesContext(connection) as captured:
+            response = self.group(round_id)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual([row["state"] for row in response.data["results"]], [
+            {"questionId": self.first.pk, "favorite": True, "mastered": False, "version": 3},
+            {"questionId": self.second.pk, "favorite": False, "mastered": False, "version": 0},
+        ])
+        self.assertEqual(sum('"learning_questionstate"' in row["sql"] for row in captured), 1)
+        self.assertEqual(QuestionState.objects.count(), 2)
 
     def test_source_wide_rounds_span_categories_and_articles_and_resume_in_scope(self):
         grant_entitlement(self.user, "activation", "p08-source-wide")

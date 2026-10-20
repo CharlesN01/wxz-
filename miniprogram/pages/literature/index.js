@@ -135,7 +135,15 @@ Page({
   },
 
   async bootstrap() {
-    const categoriesResult = await settle(api.content.categories({ page: 1 }));
+    // Start independent reads together; categories must not delay preferences
+    // or the saved position by another network round trip.
+    const signedIn = hasToken();
+    const results = await Promise.all([
+      settle(api.content.categories({ page: 1 })),
+      signedIn ? settle(api.learning.preferences()) : Promise.resolve({ ok: true, value: null }),
+      signedIn ? settle(api.learning.resume()) : Promise.resolve({ ok: true, value: null })
+    ]);
+    const categoriesResult = results[0];
     if (!categoriesResult.ok) {
       this.setData({
         loading: false,
@@ -148,20 +156,10 @@ Page({
     const categories = categoriesResult.value && Array.isArray(categoriesResult.value.results)
       ? categoriesResult.value.results.map((item) => Object.assign({}, item, { name: displayCategoryName(item) }))
       : [];
-    let preference = null;
-    let resumeSnapshot = null;
-    let preferenceError = null;
-    let resumeError = null;
-    if (hasToken()) {
-      const privateResults = await Promise.all([
-        settle(api.learning.preferences()),
-        settle(api.learning.resume())
-      ]);
-      if (privateResults[0].ok) preference = privateResults[0].value;
-      else preferenceError = privateResults[0].error;
-      if (privateResults[1].ok) resumeSnapshot = privateResults[1].value;
-      else resumeError = privateResults[1].error;
-    }
+    const preference = results[1].ok ? results[1].value : null;
+    const resumeSnapshot = results[2].ok ? results[2].value : null;
+    const preferenceError = results[1].error;
+    const resumeError = results[2].error;
 
     const mayRestore = this._options.resume === '1' || Boolean(this._options.questionId);
     const resume = resumeSnapshot
@@ -259,7 +257,25 @@ Page({
     if (options && options.findResume && this._resumeQuestionId) {
       const serverPageCount = count ? Math.ceil(count / apiPageSize) : 0;
       let resumeIndex = -1;
-      for (let apiPage = 1; apiPage <= serverPageCount; apiPage += 1) {
+      let scanPages = true;
+      const cachedIndex = firstPage.rows.findIndex((item) => item.id === this._resumeQuestionId);
+      if (cachedIndex >= 0) {
+        resumeIndex = cachedIndex;
+        scanPages = false;
+      } else if (api.content.question) {
+        const detail = await settle(api.content.question(this._resumeQuestionId));
+        if (requestId !== this._questionRequest) return;
+        if (detail.ok && detail.value && detail.value.categoryId === this.data.categoryId
+          && detail.value.source === SOURCE && Number.isInteger(detail.value.scopeIndex)
+          && detail.value.scopeIndex >= 0 && detail.value.scopeIndex < count) {
+          resumeIndex = detail.value.scopeIndex;
+          scanPages = false;
+        } else if (!detail.ok && detail.error && (detail.error.status === 403 || detail.error.status === 404)) {
+          // A withdrawn or newly restricted saved question cannot be restored.
+          scanPages = false;
+        }
+      }
+      for (let apiPage = 1; scanPages && apiPage <= serverPageCount; apiPage += 1) {
         let record = this._questionPages[this.data.categoryId + ':' + apiPage];
         if (!record) record = await this.loadApiPage(apiPage, requestId);
         if (requestId !== this._questionRequest) return;
@@ -329,13 +345,23 @@ Page({
     this.queueResume();
   },
 
-  async loadStates(rows, requestId) {
+  async loadStates(rows, requestId, refresh) {
     if (!hasToken() || !rows.length) return;
-    const results = await Promise.all(rows.map((item) => settle(api.learning.questionState(item.id))));
+    // Current content responses already contain the learner's state. Only
+    // older servers (or an explicit refresh) require individual reads.
+    const missing = rows.filter((item) => refresh || !item.state);
+    rows.forEach((item) => {
+      const current = this._stateMap[item.id];
+      if (!refresh && item.state && (!current || Number(item.state.version) >= current.version)) {
+        this._stateMap[item.id] = normalizeState(item.state);
+      }
+    });
+    if (!missing.length) return;
+    const results = await Promise.all(missing.map((item) => settle(api.learning.questionState(item.id))));
     if (requestId !== this._questionRequest) return;
     let stateError = null;
     results.forEach((result, index) => {
-      if (result.ok) this._stateMap[rows[index].id] = normalizeState(result.value);
+      if (result.ok) this._stateMap[missing[index].id] = normalizeState(result.value);
       else if (!stateError) stateError = result.error;
     });
     if (stateError && stateError.code !== 'NOT_FOUND') {
@@ -371,7 +397,7 @@ Page({
 
   async refreshVisibleStates() {
     if (!this._questionRows.length) return;
-    await this.loadStates(this._questionRows, this._questionRequest);
+    await this.loadStates(this._questionRows, this._questionRequest, true);
     this.setData({ questions: this.renderRows(this._questionRows) });
   },
 

@@ -88,11 +88,24 @@ class PublishedQuestionSerializer(serializers.ModelSerializer):
         source="published_revision.sort_order", read_only=True
     )
     revision = serializers.IntegerField(source="published_revision.version", read_only=True)
-
     class Meta:
         model = Question
         fields = (
             "id", "source", "categoryId", "articleId", "type", "tag", "stem",
             "answers", "sortOrder", "revision",
         )
+        read_only_fields = fields
+
+
+class StudentQuestionSerializer(PublishedQuestionSerializer):
+    """Personal state belongs to student responses, not the staff content API."""
+
+    state = serializers.SerializerMethodField()
+
+    def get_state(self, question):
+        states = self.context.get("question_states")
+        return states.get(str(question.id)) if states is not None else None
+
+    class Meta(PublishedQuestionSerializer.Meta):
+        fields = PublishedQuestionSerializer.Meta.fields + ("state",)
         read_only_fields = fields

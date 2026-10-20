@@ -11,8 +11,9 @@ from common.errors import BusinessError
 from common.idempotency import lookup, remember, require_key
 from content.access import accessible_questions, published_questions, scope_questions
 from content.models import Article, Category, LearningConfiguration
-from content.serializers import PublishedQuestionSerializer
+from content.serializers import StudentQuestionSerializer
 from entitlements.services import lock_user
+from learning.services import batch_question_states
 from .models import PracticeRound, ResumePosition, RoundItem
 
 
@@ -115,6 +116,7 @@ def read_group(user, round_id, group_index):
     items = list(round_.items.filter(position__gte=first, position__lt=first + round_.group_size).select_related("revision"))
     context = scope_context(round_)
     allowed = set(accessible_questions(user, _query(context).filter(pk__in=[item.question_id for item in items])).values_list("pk", flat=True))
+    state_context = {"question_states": batch_question_states(user, allowed)}
     results, skipped = [], []
     for item in items:
         if item.question_id not in allowed or item.revision.question_id != item.question_id:
@@ -123,7 +125,7 @@ def read_group(user, round_id, group_index):
             continue
         # The historical revision is serialized only after CURRENT access in SQL.
         fixed = SimpleNamespace(id=item.question_id, published_revision=item.revision)
-        results.append({**PublishedQuestionSerializer(fixed).data, "position": item.position})
+        results.append({**StudentQuestionSerializer(fixed, context=state_context).data, "position": item.position})
     return {"roundId": str(round_.pk), "groupIndex": group_index,
             "groupCount": round_.group_count, "totalCount": round_.item_count,
             "pageSize": round_.group_size, "mode": round_.mode, "results": results, "skipped": skipped}

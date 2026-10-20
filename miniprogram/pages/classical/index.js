@@ -10,7 +10,6 @@ function canRequest() {
 function getToken() {
   try { return api.auth && api.auth.getToken && api.auth.getToken() || ''; } catch (_) { return ''; }
 }
-function hasToken() { return Boolean(getToken()); }
 
 function describeError(error) {
   if (error && error.code === 'ENTITLEMENT_REQUIRED') return '该目录需要登录并开通学习权益';
@@ -24,14 +23,17 @@ function settle(promise) {
   return Promise.resolve(promise).then((value) => ({ ok: true, value }), (error) => ({ ok: false, error }));
 }
 
-function normalizeQuestionState(value) {
-  return { mastered: Boolean(value && value.mastered) };
-}
-
 function articleStatus(completed, total) {
   if (!total || completed <= 0) return { status: 'unlearned', statusLabel: '未学' };
   if (completed >= total) return { status: 'learned', statusLabel: '已学' };
   return { status: 'learning', statusLabel: '练习中' };
+}
+
+function readableCount(article) {
+  if (Object.prototype.hasOwnProperty.call(article, 'wordCount') && Object.prototype.hasOwnProperty.call(article, 'translationCount')) {
+    return Math.max(0, Number(article.wordCount) || 0) + Math.max(0, Number(article.translationCount) || 0);
+  }
+  return Math.max(0, Number(article.publishedCount) || Number(article.freeCount) || 0);
 }
 
 Page({
@@ -64,16 +66,26 @@ Page({
       ? options.mode
       : studyStore.getMode();
     this._remoteLoaded = false;
-    this._remoteQuestions = [];
+    this._loadGeneration = 0;
+    this._needsRemoteRefresh = false;
     this.setData({ mode: requestedMode });
     if (options.mode === 'writing' || options.mode === 'reciting') studyStore.setMode(requestedMode);
     if (canRequest()) this.loadRemote();
   },
 
   onShow() {
-    if (canRequest() && this._remoteLoaded && !this.data.loading && (this._contentToken !== getToken()
-      || hasToken() && (this._restrictedCount > 0 || this.data.dataSource === 'local'))) return this.loadRemote();
+    if (canRequest() && this._loadingPromise) return this.loadRemote();
+    if (canRequest() && this._remoteLoaded && (this._contentToken !== getToken()
+      || this._needsRemoteRefresh || this.data.dataSource === 'local')) return this.loadRemote();
     if (!canRequest() || this._remoteLoaded) this.refreshProgress();
+  },
+
+  onHide() {
+    this._needsRemoteRefresh = true;
+  },
+
+  onUnload() {
+    this._loadGeneration = (this._loadGeneration || 0) + 1;
   },
 
   onReady() {
@@ -100,11 +112,30 @@ Page({
     if (this.canvasReady) wx.nextTick(() => this.drawProgress());
   },
 
-  async loadRemote() {
-    this._contentToken = getToken();
-    this._restrictedCount = 0;
-    this.setData({ loading: true, hasError: false, errorMessage: '' });
-    const result = await settle(api.content.articles({ page: 1 }));
+  loadRemote() {
+    const token = getToken();
+    if (this._loadingPromise && this._loadingToken === token) return this._loadingPromise;
+    const generation = (this._loadGeneration || 0) + 1;
+    this._loadGeneration = generation;
+    this._loadingToken = token;
+    this._needsRemoteRefresh = false;
+    this._loadingPromise = this.fetchRemote(generation, token).finally(() => {
+      if (this._loadGeneration === generation) this._loadingPromise = null;
+    });
+    return this._loadingPromise;
+  },
+
+  async fetchRemote(generation, token) {
+    const isCurrent = () => this._loadGeneration === generation && getToken() === token;
+    const keepVisible = this.data.dataSource === 'remote' && this._contentToken === token && Array.isArray(this.articles);
+    this._contentToken = token;
+    this.setData({ loading: !keepVisible, hasError: false, errorMessage: '', personalError: '' });
+    if (!keepVisible) {
+      this.articles = [];
+      this.setData({ visibleArticles: [], visibleCount: 0, learnedCount: 0, completionPercent: 0 });
+    }
+    const result = await settle(api.content.articles({ page: 1 }, { auth: 'optional' }));
+    if (!isCurrent()) return;
     if (!result.ok) {
       const message = describeError(result.error);
       if (result.error && result.error.code === 'NETWORK_ERROR') {
@@ -118,115 +149,51 @@ Page({
     }
     const payload = result.value || {};
     const rows = Array.isArray(payload.results) ? payload.results.slice() : [];
+    const total = Number.isFinite(Number(payload.count)) && Number(payload.count) >= 0 ? Number(payload.count) : rows.length;
+    this._remoteLoaded = true;
+    this.renderRemoteArticles(rows, total);
     let next = payload.next || null;
     const seen = new Set();
     while (next && !seen.has(String(next))) {
       seen.add(String(next));
       const pageResult = await settle(api.pagination.follow(next, { auth: 'optional', basePath: '/api/student/v1/articles/' }));
+      if (!isCurrent()) return;
       if (!pageResult.ok) {
-        this.setData({ loading: false, hasError: true, errorMessage: describeError(pageResult.error), visibleArticles: [], visibleCount: 0 });
+        // Keep the already visible directory usable when a later page fails.
+        this.setData({ hasError: true, errorMessage: describeError(pageResult.error) });
         return;
       }
       const page = pageResult.value || {};
       if (Array.isArray(page.results)) rows.push(...page.results);
       next = page.next || null;
+      this.renderRemoteArticles(rows, total);
     }
-    if (!rows.length) {
-      this._remoteLoaded = true;
-      this.articles = [];
-      this._remoteQuestions = [];
-      this.setData({ loading: false, dataSource: 'remote', articleTotal: 0, learnedCount: 0, completionPercent: 0, visibleArticles: [], visibleCount: 0 });
-      return;
-    }
-    const statsResult = hasToken() ? await settle(api.learning.statistics()) : { ok: false, error: null };
-    const stats = statsResult.ok ? (statsResult.value || {}) : {};
-    const learnedCount = Number(stats.completedArticles) >= 0 ? Number(stats.completedArticles) : 0;
-    const total = Number(payload.count) >= 0 ? Number(payload.count) : rows.length;
+  },
+
+  renderRemoteArticles(rows, total) {
     this.articles = rows.map((item, index) => ({
       id: item.id,
       title: item.title,
       index: Number(item.sortOrder) || index + 1,
-      total: Number(item.publishedCount) || Number(item.freeCount) || 0,
-      completed: 0,
-      status: 'unlearned',
-      statusLabel: '未学',
-      placeholder: false
+      total: readableCount(item),
+      wordCount: Math.max(0, Number(item.wordCount) || 0),
+      translationCount: Math.max(0, Number(item.translationCount) || 0),
+      completed: Math.max(0, Number(item.progress && item.progress.masteredCount) || 0),
+      nextQuestion: item.progress && item.progress.nextQuestion || null,
+      placeholder: false,
+      ...articleStatus(Number(item.progress && item.progress.masteredCount) || 0, readableCount(item))
     }));
-    const stateResult = await this.loadArticleStates(this.articles);
-    this._remoteLoaded = true;
+    const learnedCount = this.articles.filter((article) => article.status === 'learned').length;
     this.setData({
       loading: false,
       dataSource: 'remote',
       articleTotal: total,
       learnedCount,
-      completionPercent: total ? Math.round(learnedCount / total * 100) : 0,
-      personalError: !statsResult.ok
-        ? describeError(statsResult.error)
-        : (!stateResult.ok ? describeError(stateResult.error) : '')
+      completionPercent: total ? Math.round(learnedCount / total * 100) : 0
     });
     this.applyFilter();
     this.restoreRequestedArticle();
     if (this.canvasReady) wx.nextTick(() => this.drawProgress());
-  },
-
-  async loadArticleStates(articles) {
-    const progress = {};
-    let firstError = null;
-    let restrictedCount = 0;
-    const remoteQuestions = [];
-    for (const article of articles) {
-      const questionResult = await settle(api.content.questions(
-        { source: 'classical', articleId: article.id, page: 1 },
-        { auth: hasToken() }
-      ));
-      if (!questionResult.ok) {
-        firstError = firstError || questionResult.error;
-        continue;
-      }
-      const payload = questionResult.value || {};
-      restrictedCount += Math.max(0, Number(payload.access && payload.access.restrictedCount) || 0);
-      const questions = Array.isArray(payload.results) ? payload.results.slice() : [];
-      let next = payload.next || null;
-      const seen = new Set();
-      while (next && !seen.has(String(next))) {
-        seen.add(String(next));
-        const pageResult = await settle(api.pagination.follow(next, { auth: hasToken() ? true : 'optional', basePath: '/api/student/v1/questions/' }));
-        if (!pageResult.ok) {
-          firstError = firstError || pageResult.error;
-          break;
-        }
-        const page = pageResult.value || {};
-        if (Array.isArray(page.results)) questions.push(...page.results);
-        next = page.next || null;
-      }
-      if (!progress[article.id]) progress[article.id] = { total: 0, completed: 0 };
-      progress[article.id].total = questions.length;
-      const stateResults = hasToken()
-        ? await Promise.all(questions.map((question) => settle(api.learning.questionState(question.id))))
-        : questions.map((question) => ({ ok: true, value: question }));
-      questions.forEach((question, index) => {
-        const state = stateResults[index];
-        const normalized = state && state.ok
-          ? normalizeQuestionState(state.value)
-          : normalizeQuestionState(question);
-        if (normalized.mastered) progress[article.id].completed += 1;
-        if (question.type === 'word' || question.type === 'translation') {
-          remoteQuestions.push(Object.assign({}, question, normalized));
-        }
-        if (state && !state.ok) firstError = firstError || state.error;
-      });
-    }
-    const updated = articles.map((article) => {
-      const item = progress[article.id];
-      if (!item) return article;
-      const total = article.total || item.total;
-      return Object.assign({}, article, { total, completed: item.completed }, articleStatus(item.completed, total));
-    });
-    this.articles = updated;
-    this._restrictedCount = restrictedCount;
-    this._remoteQuestions = remoteQuestions;
-    this.setData({ visibleArticles: updated, visibleCount: updated.length });
-    return firstError ? { ok: false, error: firstError } : { ok: true, value: progress };
   },
 
   onRetry() {
@@ -319,21 +286,36 @@ Page({
     });
   },
 
-  onContinue() {
+  async onContinue() {
     if (this.data.loading && canRequest()) {
       wx.showToast({ title: '正在同步文言内容', icon: 'none' });
       return;
     }
     if (this.data.dataSource === 'remote') {
-      const questions = Array.isArray(this._remoteQuestions) ? this._remoteQuestions : [];
-      const articles = (this.articles || []).filter((article) => questions.some((question) => String(question.articleId) === String(article.id)));
-      const article = articles.find((item) => questions.some((question) => String(question.articleId) === String(item.id) && !question.mastered)) || articles[0];
+      if (this._continuing) return;
+      const articles = (this.articles || []).filter((article) => article.nextQuestion || article.total > 0);
+      const article = articles.find((item) => item.status !== 'learned' && item.nextQuestion)
+        || articles.find((item) => item.nextQuestion) || articles[0];
       if (!article) {
         wx.showToast({ title: '暂无可学习的远端内容', icon: 'none' });
         return;
       }
-      const articleQuestions = questions.filter((question) => String(question.articleId) === String(article.id));
-      const nextQuestion = articleQuestions.find((question) => !question.mastered) || articleQuestions[0];
+      let nextQuestion = article.nextQuestion;
+      if (!nextQuestion) {
+        const token = getToken();
+        this._continuing = true;
+        const result = await settle(api.content.questions({
+          source: 'classical', articleId: article.id, page: 1,
+          type: article.wordCount > 0 ? 'word' : (article.translationCount > 0 ? 'translation' : undefined)
+        }, { auth: 'optional' }));
+        this._continuing = false;
+        if (getToken() !== token) return;
+        if (!result.ok) {
+          wx.showToast({ title: describeError(result.error), icon: 'none' });
+          return;
+        }
+        nextQuestion = (result.value && result.value.results || []).find((question) => question.type === 'word' || question.type === 'translation');
+      }
       if (!nextQuestion) {
         wx.showToast({ title: '暂无可学习的远端内容', icon: 'none' });
         return;

@@ -89,6 +89,15 @@ test('content requests can opt into the Bearer contract for activated learners',
   assert.equal(calls[0].header.Authorization, 'Bearer activated-token');
 });
 
+test('article catalogs carry the learner session for aggregated progress while guests stay public', async () => {
+  const calls = installWx((options) => respond(options, 200, { results: [] }));
+  await api.content.articles({ page: 1 });
+  assert.equal(calls[0].header.Authorization, undefined);
+  session.saveSession({ token: 'article-learner', expiresAt: '' });
+  await api.content.articles({ page: 1 });
+  assert.equal(calls[1].header.Authorization, 'Bearer article-learner');
+});
+
 test('app extension configuration overrides the configured API origin', async () => {
   const calls = installWx((options) => respond(options, 200, { pageSize: 20 }));
   global.wx.getExtConfigSync = () => ({ apiBaseUrl: 'https://student-api.example' });

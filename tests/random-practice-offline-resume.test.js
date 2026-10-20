@@ -39,6 +39,31 @@ function baseStore(resume) {
   };
 }
 
+test('随机组使用后端附带状态，20题只发一次题组请求且保留收藏版本', async () => {
+  let reads = 0;
+  const api = {
+    auth: { getToken: () => 'learner' },
+    practice: { group: async () => {
+      reads += 1;
+      return { groupIndex: 1, groupCount: 1, totalCount: 20, pageSize: 20,
+        results: Array.from({ length: 20 }, (_, index) => ({ ...question('q' + index), state: { questionId: 'q' + index, favorite: index === 0, mastered: index === 1, version: 7 } })) };
+    } },
+    learning: { questionState: () => { throw new Error('unexpected per-question read'); } }
+  };
+  const page = loadPage('pages/random/index.js', {
+    '../../services/api': api, '../../utils/study-store': baseStore(null),
+    '../../services/data-service': {}, '../../utils/safe-top': {}, '../../utils/navigation': {}
+  });
+  page._stateMap = {}; page._groupCache = {}; page._roundIds = [];
+  page._roundId = 'round'; page.saveResume = () => {};
+  await page.loadRemoteGroup(1);
+  assert.equal(reads, 1);
+  assert.equal(page.data.loading, false);
+  assert.equal(page.data.questions[0].favorite, true);
+  assert.equal(page.data.questions[1].mastered, true);
+  assert.equal(page.data.questions[0].version, 7);
+});
+
 test('文常和文言随机在登录后退出演示模式，并在开通后重读原轮次当前组', async () => {
   for (const source of ['literature', 'classical']) {
     let token = '';

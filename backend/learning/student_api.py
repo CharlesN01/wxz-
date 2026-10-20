@@ -7,7 +7,7 @@ from rest_framework.response import Response
 from common.api import StudentAPIView
 from content.access import accessible_questions, published_questions
 from content.models import LearningConfiguration, Question
-from content.serializers import PublishedQuestionSerializer, StrictPositiveIntegerField, validate_query_params
+from content.serializers import StudentQuestionSerializer, StrictPositiveIntegerField, validate_query_params
 from .models import QuestionState
 from .serializers import PreferenceInput, QuestionStateInput
 from .services import preference_snapshot, read_question_state, state_snapshot, statistics, update_preferences, update_question_state
@@ -95,7 +95,9 @@ class FavoritesView(LearningAPIView):
             }
             results.append({
                 "state": state_snapshot(state, state.question_id),
-                "question": PublishedQuestionSerializer(question).data if question else None,
+                "question": StudentQuestionSerializer(question, context={
+                    "question_states": {str(state.question_id): state_snapshot(state, state.question_id)},
+                }).data if question else None,
                 **metadata,
                 "unavailableReason": None if question else (
                     "ENTITLEMENT_REQUIRED" if state.question_id in visible_ids else "CONTENT_UNAVAILABLE"

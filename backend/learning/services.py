@@ -25,6 +25,15 @@ def state_snapshot(state, question_id):
             "mastered": state.mastered if state else False, "version": state.version if state else 0}
 
 
+def batch_question_states(user, question_ids):
+    """Read one already-authorized page/group without creating empty state rows."""
+    if not user or not user.is_authenticated:
+        return None
+    ids = list(question_ids)
+    states = {state.question_id: state for state in QuestionState.objects.filter(user=user, question_id__in=ids)}
+    return {str(question_id): state_snapshot(states.get(question_id), question_id) for question_id in ids}
+
+
 def preference_snapshot(user):
     from content.models import LearningConfiguration
     preference = LearningPreference.objects.filter(user=user).first()

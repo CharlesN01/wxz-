@@ -48,6 +48,7 @@
       <text class="page-number">第 {{groupIndex + 1}} / {{groupCount}} 页</text>
       <view class="page-button {{groupIndex >= groupCount - 1 ? 'page-disabled' : ''}}" role="button" bindtap="onNextGroup" hover-class="page-button-pressed" aria-label="下一页" aria-disabled="{{groupIndex >= groupCount - 1}}">›</view>
     </view>
+    <text wx:if="{{groupLoading}}" class="practice-tip">正在读取题目，请稍候…</text>
     <text wx:if="{{!loading && !hasError && total}}" class="practice-tip">{{mode === 'writing' ? '独立作答后，可切换背诵全览核对答案' : '答案直接显示，完成本页后进入下一页'}}</text>
   </view>
 </view>

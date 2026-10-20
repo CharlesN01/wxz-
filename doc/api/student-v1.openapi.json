@@ -267,7 +267,12 @@
                       "title": "劝学",
                       "sortOrder": 1,
                       "publishedCount": 30,
-                      "freeCount": 20
+                      "freeCount": 20,
+                      "publishedWordCount": 18,
+                      "publishedTranslationCount": 12,
+                      "wordCount": 12,
+                      "translationCount": 8,
+                      "progress": null
                     }
                   ]
                 }
@@ -4687,6 +4692,7 @@
                       ],
                       "sortOrder": 0,
                       "revision": 1,
+                      "state": null,
                       "position": 1
                     }
                   ],
@@ -5119,9 +5125,11 @@
                         "终日"
                       ],
                       "sortOrder": 1,
-                      "revision": 1
+                      "revision": 1,
+                      "state": null
                     }
                   ],
+                  "progress": null,
                   "access": {
                     "activated": false,
                     "pageSize": 20,
@@ -5312,6 +5320,8 @@
                   ],
                   "sortOrder": 1,
                   "revision": 1,
+                  "state": null,
+                  "scopeIndex": 0,
                   "access": {
                     "activated": false,
                     "free": true,
@@ -6204,6 +6214,80 @@
           "freeCount": {
             "type": "integer",
             "minimum": 0
+          },
+          "publishedWordCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "publishedTranslationCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "wordCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "translationCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "progress": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "masteredCount": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "masteredWordCount": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "masteredTranslationCount": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "nextQuestion": {
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "type": {
+                            "type": "string",
+                            "enum": [
+                              "word",
+                              "translation"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "type"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "masteredCount",
+                  "masteredWordCount",
+                  "masteredTranslationCount",
+                  "nextQuestion"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
@@ -6211,7 +6295,12 @@
           "title",
           "sortOrder",
           "publishedCount",
-          "freeCount"
+          "freeCount",
+          "publishedWordCount",
+          "publishedTranslationCount",
+          "wordCount",
+          "translationCount",
+          "progress"
         ],
         "additionalProperties": false
       },
@@ -6276,6 +6365,16 @@
           "revision": {
             "type": "integer",
             "minimum": 1
+          },
+          "state": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/QuestionState"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
@@ -6288,7 +6387,8 @@
           "stem",
           "answers",
           "sortOrder",
-          "revision"
+          "revision",
+          "state"
         ],
         "additionalProperties": false
       },
@@ -6433,6 +6533,20 @@
             "type": "integer",
             "minimum": 1
           },
+          "state": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/QuestionState"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "scopeIndex": {
+            "type": "integer",
+            "minimum": 0
+          },
           "access": {
             "type": "object",
             "properties": {
@@ -6467,6 +6581,8 @@
           "answers",
           "sortOrder",
           "revision",
+          "state",
+          "scopeIndex",
           "access"
         ],
         "additionalProperties": false
@@ -6682,6 +6798,26 @@
               "$ref": "#/components/schemas/Question"
             }
           },
+          "progress": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "masteredCount": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                },
+                "required": [
+                  "masteredCount"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "access": {
             "type": "object",
             "properties": {
@@ -6721,6 +6857,7 @@
           "next",
           "previous",
           "results",
+          "progress",
           "access"
         ],
         "additionalProperties": false
@@ -7226,6 +7363,16 @@
                   "type": "integer",
                   "minimum": 1
                 },
+                "state": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/QuestionState"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
                 "position": {
                   "type": "integer",
                   "minimum": 1
@@ -7242,6 +7389,7 @@
                 "answers",
                 "sortOrder",
                 "revision",
+                "state",
                 "position"
               ],
               "additionalProperties": false

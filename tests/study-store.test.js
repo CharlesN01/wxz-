@@ -94,6 +94,29 @@ test('远端随机续学保留非 mock 题目 ID、当前组和题组缓存', ()
   assert.deepEqual(reloaded.groupCache['2'], group);
 });
 
+test('专项稀疏续学重启后保留全局页码，并通过当前题目恢复而非按已读 ID 索引', () => {
+  const { store, read } = createStore();
+  const group = [{ id: 'remote-question-421', type: 'word', stem: '当前题目' }];
+  store.saveResume({
+    path: '/pages/practice/index',
+    options: { articleId: null, type: 'word', questionId: 'remote-question-421' },
+    groupIds: ['remote-question-1', 'remote-question-421'],
+    groupIndex: 70, groupCount: 168, roundQuestionCount: 1005, groupPageSize: 6,
+    groupCache: { '71': group }
+  });
+  const reloaded = createStore(read()).store.getResume();
+  assert.equal(reloaded.groupIndex, 70);
+  assert.equal(reloaded.groupIds.length, 2);
+  assert.deepEqual(reloaded.groupCache['71'], group);
+  const routes = [];
+  global.wx.navigateTo = (options) => routes.push(options.url);
+  global.getCurrentPages = () => [{}, {}];
+  const navigationPath = require.resolve('../miniprogram/utils/navigation');
+  delete require.cache[navigationPath];
+  require(navigationPath).continueLearning();
+  assert.deepEqual(routes, ['/pages/practice/index?type=word&questionId=remote-question-421&resume=1']);
+});
+
 test('目录无题篇目保持未学，有题篇目按实际题目掌握', () => {
   const { store } = createStore();
   const service = require(servicePath);
