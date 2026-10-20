@@ -9,6 +9,7 @@ from django.utils import timezone
 from unfold.admin import ModelAdmin
 from unfold.forms import AdminPasswordChangeForm, UserChangeForm, UserCreationForm
 
+from operations.admin_ui import action_link
 from .models import StudentAccount, StudentSession, User, WeChatIdentity
 
 
@@ -97,15 +98,13 @@ class StudentAccountAdmin(ReadonlyIdentityAdmin):
     @admin.display(description='学员档案')
     def profile_link(self, obj):
         from django.urls import reverse
-        from django.utils.html import format_html
-        return format_html('<a href="{}">查看档案</a>', reverse('admin:accounts_studentaccount_profile', args=(obj.pk,)))
+        return action_link(reverse('admin:accounts_studentaccount_profile', args=(obj.pk,)), '查看档案')
 
     @admin.display(description='启停操作')
     def status_links(self,obj):
         from django.urls import reverse
-        from django.utils.html import format_html
         action='disable' if obj.is_active else 'enable'
-        return format_html('<a href="{}">{}</a>',reverse('admin:student_status',args=(obj.pk,action)), '停用学员' if obj.is_active else '启用学员')
+        return action_link(reverse('admin:student_status', args=(obj.pk, action)), '停用学员' if obj.is_active else '启用学员', variant='danger' if obj.is_active else 'primary')
 
     def get_list_display(self, request):
         fields = super().get_list_display(request)

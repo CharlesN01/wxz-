@@ -8,7 +8,7 @@
     {% for question in questions|slice:":20" %}<li class="mb-2">{{ question.id }} · {{ question.stem|truncatechars:90 }}</li>{% endfor %}
     {% if questions|length > 20 %}<li class="mb-2">其余 {{ questions|length|add:"-20" }} 道题将在确认后一起处理。</li>{% endif %}
   </ul>
-  {% if not confirmation_error %}<form method="post">
+  {% if not confirmation_error %}<form method="post" class="admin-actions">
     {% csrf_token %}
     {% if select_across %}
       {# Keep the form below Django's field-count limit. The signed token binds the complete queryset. #}
@@ -20,8 +20,8 @@
     <input type="hidden" name="confirm_publication" value="{{ action_name }}">
     <input type="hidden" name="confirmation_token" value="{{ confirmation_token }}">
     <input type="hidden" name="select_across" value="{% if select_across %}1{% else %}0{% endif %}">
-    <button type="submit" class="bg-primary-600 border border-transparent font-medium px-4 py-2 rounded-default text-white">确认{% if publishing %}发布{% else %}下架{% endif %}</button>
-    <a href="{% url 'admin:content_question_changelist' %}" class="ml-4">取消并返回</a>
-  </form>{% else %}<a href="{% url 'admin:content_question_changelist' %}">返回列表重新确认</a>{% endif %}
+    <button type="submit" class="admin-action admin-action--{% if publishing %}primary{% else %}danger{% endif %}">确认{% if publishing %}发布{% else %}下架{% endif %}</button>
+    <a href="{% url 'admin:content_question_changelist' %}" class="admin-action admin-action--secondary">取消并返回</a>
+  </form>{% else %}<a class="admin-action admin-action--secondary" href="{% url 'admin:content_question_changelist' %}">返回列表重新确认</a>{% endif %}
 </div>
 {% endblock %}

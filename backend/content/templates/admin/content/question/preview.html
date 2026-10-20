@@ -10,7 +10,6 @@
 .question-preview h2 { font-size: 19px; color: #0f766e; font-weight: 600; margin-bottom: 20px; }
 .question-preview .stem { font-size: 18px; line-height: 2; white-space: pre-wrap; overflow-wrap: anywhere; }
 .question-preview .answer { color: #0f766e; font-weight: 600; }
-.question-preview .return-link { display: inline-block; margin-top: 24px; color: #0f766e; font-weight: 600; }
 @media (max-width: 780px) { .question-preview .preview-grid { grid-template-columns: 1fr; } }
 </style>
 {% endblock %}
@@ -25,6 +24,6 @@
     <section class="card"><h2>默写 · 回忆答案</h2><p class="stem">{% for segment in writing_segments %}<span>{{ segment.text }}</span>{% endfor %}</p></section>
     <section class="card"><h2>背诵 · 查看答案</h2><p class="stem">{% for segment in reciting_segments %}<span{% if segment.answer %} class="answer"{% endif %}>{{ segment.text }}</span>{% endfor %}</p></section>
   </div>
-  <a class="return-link" href="{{ change_url }}">返回题目详情</a>
+  <a class="admin-action admin-action--secondary mt-6" href="{{ change_url }}">返回题目详情</a>
 </div>
 {% endblock %}

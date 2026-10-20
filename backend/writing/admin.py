@@ -5,9 +5,9 @@ from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
 from django.template.response import TemplateResponse
 from django.urls import path, reverse
-from django.utils.html import format_html
 from unfold.admin import ModelAdmin
 
+from operations.admin_ui import action_link
 from .forms import WritingContentAdminForm
 from .import_admin import WritingImportAdminMixin
 from .models import WritingCategory, WritingContent, WritingGenre, WritingRevision
@@ -78,7 +78,7 @@ class WritingContentAdmin(WritingImportAdminMixin, RetainedAdmin):
         if not obj or obj._state.adding:
             return "保存后可预览"
         url = reverse("admin:writing_writingcontent_preview", args=(quote(obj.pk),))
-        return format_html('<a href="{}">查看内容预览</a>', url)
+        return action_link(url, "查看内容预览")
 
     def get_form(self, request, obj=None, **kwargs):
         base_form = super().get_form(request, obj, **kwargs)

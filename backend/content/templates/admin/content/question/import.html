@@ -64,12 +64,12 @@
 <div class="qi-intro">
   <h2>题库草稿导入</h2>
   <p>下载模板 → 填写“题库”工作表 → 预检 → 确认写入草稿 → 在后台发布。上限：5 MiB、5000 题、32 个答案列。</p>
-  <p><a href="{{ import_template_url }}">下载 XLSX 模板（含填写说明、例题和分类/篇目 ID）</a></p>
+  <p><a class="admin-action admin-action--secondary" href="{{ import_template_url }}">下载 XLSX 模板（含填写说明、例题和分类/篇目 ID）</a></p>
   <p>题目 ID 决定新增或更新；不会按题干猜测。任何一行错误都不写入；无变化行不会重复创建。预览有效期 30 分钟。</p>
 </div>
 {% if confirmation_error %}
   <div class="qi-errors" role="alert">{{ confirmation_error }}</div>
-  <p><a href="{{ import_url }}">返回并重新上传预检</a></p>
+  <p><a class="admin-action admin-action--secondary" href="{{ import_url }}">返回并重新上传预检</a></p>
 {% endif %}
 {% if result %}
   <h2>预检汇总</h2>
@@ -80,7 +80,7 @@
 <form class="qi-confirm" action="{% url opts|admin_urlname:'process_import' %}" method="post">
   {% csrf_token %}{{ confirm_form.as_p }}
   <p>请核对下方新增、修改及无变化内容。确认仅写入草稿，不会发布；若题目在预览后被其他人修改，本批会拒绝写入。</p>
-  <div class="submit-row"><button class="bg-primary-600 text-white px-4 py-2 rounded-default" type="submit">确认整批写入草稿</button></div>
+  <div class="submit-row"><button class="admin-action admin-action--primary" type="submit">确认整批写入草稿</button></div>
 </form>
 {% elif form %}
   {{ form.non_field_errors }}

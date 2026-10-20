@@ -2,8 +2,8 @@
 
 {% block object-tools-items %}
   {% if can_import_writing %}
-    <a class="border border-base-200 flex font-medium items-center px-3 py-2 rounded-default shadow-xs text-sm dark:border-base-700" href="{% url 'admin:writing_writingcontent_import_template' %}">下载模板</a>
-    <a class="bg-primary-600 border border-transparent flex font-medium items-center px-3 py-2 rounded-default shadow-xs text-sm text-white" href="{% url 'admin:writing_writingcontent_import' %}">批量导入</a>
+    <a class="admin-action admin-action--secondary" href="{% url 'admin:writing_writingcontent_import_template' %}">下载模板</a>
+    <a class="admin-action admin-action--primary" href="{% url 'admin:writing_writingcontent_import' %}">批量导入</a>
   {% endif %}
   {{ block.super }}
 {% endblock %}
@@ -13,7 +13,7 @@
     <div class="border border-base-200 mb-4 p-4 rounded-default dark:border-base-700">
       <p class="font-semibold">正在查看本批草稿 · {{ writing_import_batch.batchId }}</p>
       <p class="mt-2">仅展示本批导入涉及的内容。已有内容保留原发布状态，新草稿需要单独发布。</p>
-      <p class="mt-2"><a class="text-primary-600" href="{{ writing_import_batch_url }}">查看导入结果</a> · <a class="text-primary-600" href="{% url 'admin:writing_writingcontent_changelist' %}">查看全部应用文</a></p>
+      <p class="admin-actions mt-2"><a class="admin-action admin-action--secondary" href="{{ writing_import_batch_url }}">查看导入结果</a><a class="admin-action admin-action--secondary" href="{% url 'admin:writing_writingcontent_changelist' %}">查看全部应用文</a></p>
     </div>
   {% endif %}
   {{ block.super }}

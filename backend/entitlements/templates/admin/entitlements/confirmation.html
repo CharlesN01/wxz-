@@ -7,14 +7,14 @@
   </dl>
   {% if error %}<p role="alert" class="text-red-600 mb-4">本次操作未生效：{{ error }}</p>{% endif %}
   {% if not error %}
-  <form method="post">
+  <form method="post" class="admin-action-form">
     {% csrf_token %}
     <input type="hidden" name="confirmation_token" value="{{ confirmation_token }}">
     <input type="hidden" name="confirm" value="yes">
     {% if need_reason %}<label for="reason" class="block mb-2">撤销理由</label><textarea id="reason" name="reason" required maxlength="500" rows="4" class="border border-base-200 rounded-default w-full mb-4">{{ reason }}</textarea>{% endif %}
-    <button type="submit" class="bg-primary-600 text-white rounded-default px-4 py-2">核对后确认</button>
+    <button type="submit" class="admin-action admin-action--{% if need_reason %}danger{% else %}primary{% endif %}">核对后确认</button>
   </form>
   {% endif %}
-  <a href="{{ back_url }}" class="inline-block mt-4">返回详情重新核对</a>
+  <a href="{{ back_url }}" class="admin-action admin-action--secondary">返回详情重新核对</a>
 </div>
 {% endblock %}

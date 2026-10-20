@@ -6,9 +6,9 @@ from django.shortcuts import get_object_or_404
 from django.template.response import TemplateResponse
 from django.urls import path, reverse
 from django.utils.http import urlencode
-from django.utils.html import format_html
 from common.errors import BusinessError
 from unfold.admin import ModelAdmin
+from operations.admin_ui import action_group, action_link
 from .models import Order, PaymentTask, PaymentEvent
 from .tasks import reschedule_task, task_fingerprint
 
@@ -39,14 +39,13 @@ class OrderAdmin(ReadOnlyAdmin):
         parts = []
         if task_count:
             url = reverse('admin:payments_paymenttask_changelist') + '?' + urlencode({'q': obj.pk})
-            parts.append(format_html('<a href="{}">支付任务（{}）</a>', url, task_count))
+            parts.append(action_link(url, f'支付任务（{task_count}）'))
         if event_count:
             url = reverse('admin:payments_paymentevent_changelist') + '?' + urlencode({'q': obj.pk})
-            parts.append(format_html('<a href="{}">支付事件（{}）</a>', url, event_count))
+            parts.append(action_link(url, f'支付事件（{event_count}）'))
         if not parts:
             return '暂无支付任务或事件'
-        from django.utils.html import format_html_join
-        return format_html_join(' · ', '{}', ((part,) for part in parts))
+        return action_group(*parts)
 
 
 @admin.register(PaymentTask)
@@ -65,7 +64,7 @@ class PaymentTaskAdmin(ReadOnlyAdmin):
     @admin.display(description='核查后重调度')
     def retry_link(self, obj):
         if obj.status == 'failed':
-            return format_html('<a href="{}">预览并重调度失败任务</a>', reverse('admin:payments_task_reschedule', args=(obj.pk,)))
+            return action_link(reverse('admin:payments_task_reschedule', args=(obj.pk,)), '预览并重调度失败任务', variant='primary')
         return '当前任务无人工重调度入口'
 
     def reschedule_view(self, request, task_id):

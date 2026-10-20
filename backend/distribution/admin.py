@@ -4,10 +4,10 @@ from django.core.exceptions import PermissionDenied
 from django.http import HttpResponseRedirect
 from django.template.response import TemplateResponse
 from django.urls import path, reverse
-from django.utils.html import format_html
 from django.utils import timezone
 from unfold.admin import ModelAdmin
 
+from operations.admin_ui import action_group, action_link
 from .admin_access import is_agent_self_service_user, scope_to_agent_user
 from entitlements.services import _audit
 from .models import AgentProfile, AgentOrderAttribution, AgentVoucher
@@ -48,7 +48,7 @@ class AgentProfileAdmin(ModelAdmin):
     def qr_link_for_agent(self, obj):
         if not obj.qr_image:
             return "二维码尚未生成"
-        return format_html('<a href="{}" target="_blank">查看二维码</a>', obj.qr_image.url)
+        return action_link(obj.qr_image.url, "查看二维码", new_tab=True)
 
     def has_delete_permission(self, request, obj=None):
         return False
@@ -95,8 +95,11 @@ class AgentProfileAdmin(ModelAdmin):
         if not obj or not obj.pk:
             return "未生成"
         if obj.qr_image:
-            return format_html('<a href="{}" target="_blank">查看二维码</a> · <a href="{}">重新生成</a>', obj.qr_image.url, reverse("admin:distribution_agent_generate_qr", args=(obj.pk,)))
-        return format_html('<a href="{}">生成二维码</a>', reverse("admin:distribution_agent_generate_qr", args=(obj.pk,)))
+            return action_group(
+                action_link(obj.qr_image.url, "查看二维码", new_tab=True),
+                action_link(reverse("admin:distribution_agent_generate_qr", args=(obj.pk,)), "重新生成", variant="primary"),
+            )
+        return action_link(reverse("admin:distribution_agent_generate_qr", args=(obj.pk,)), "生成二维码", variant="primary")
 
     def generate_qr_view(self, request, agent_id):
         if is_agent_self_service_user(request.user) or not request.user.has_perm("distribution.qrcode_agentprofile"):

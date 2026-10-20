@@ -7,10 +7,10 @@ from django.db import transaction
 from django.shortcuts import get_object_or_404
 from django.template.response import TemplateResponse
 from django.urls import path, reverse
-from django.utils.html import format_html
 from unfold.admin import ModelAdmin
 
 from common.errors import BusinessError
+from operations.admin_ui import action_link
 from .models import AuditEvent, EntitlementSource, OpeningReservation, Product
 from .services import (
     _audit, mark_product_synced, product_fingerprint, revoke_entitlement,
@@ -83,7 +83,7 @@ class ProductAdmin(ModelAdmin):
     def sync_link(self, obj):
         if not obj or not obj.pk:
             return "—"
-        return format_html('<a href="{}">核对平台商品与金额</a>', reverse("admin:entitlements_product_sync", args=(obj.pk,)))
+        return action_link(reverse("admin:entitlements_product_sync", args=(obj.pk,)), "核对平台商品与金额", variant="primary")
 
     def get_urls(self):
         return [path("<str:product_id>/sync/", self.admin_site.admin_view(self.sync_view), name="entitlements_product_sync")] + super().get_urls()
@@ -128,7 +128,7 @@ class EntitlementSourceAdmin(ReadOnlyBusinessAdmin):
             return "已撤销（保留历史）"
         if obj.source_type == "payment":
             return "付款来源由平台退款核验同步处理"
-        return format_html('<a href="{}">预览并撤销此来源</a>', reverse("admin:entitlements_source_revoke", args=(obj.pk,)))
+        return action_link(reverse("admin:entitlements_source_revoke", args=(obj.pk,)), "预览并撤销此来源", variant="danger")
 
     def get_urls(self):
         return [path("<uuid:source_id>/revoke/", self.admin_site.admin_view(self.revoke_view), name="entitlements_source_revoke")] + super().get_urls()

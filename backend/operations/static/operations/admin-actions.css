@@ -1,0 +1,43 @@
+/* Custom admin actions must work without relying on Tailwind class discovery. */
+.admin-action {
+    --action-bg: #ffffff;
+    --action-fg: #334155;
+    --action-border: #94a3b8;
+    --action-hover: #f1f5f9;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: .375rem;
+    min-height: 38px;
+    box-sizing: border-box;
+    padding: .5rem .875rem;
+    border: 1px solid var(--action-border);
+    border-radius: 8px;
+    background: var(--action-bg);
+    color: var(--action-fg);
+    font: inherit;
+    font-size: .875rem;
+    font-weight: 600;
+    line-height: 1.4;
+    text-align: center;
+    text-decoration: none;
+    vertical-align: middle;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: box-shadow .15s;
+}
+a.admin-action:visited { color: var(--action-fg); }
+.admin-action.admin-action:hover { background: var(--action-hover); color: var(--action-fg); text-decoration: none; }
+.admin-action:focus-visible { outline: 3px solid #0d9488; outline-offset: 3px; }
+.admin-action--primary { --action-bg: #0f766e; --action-border: #0f766e; --action-fg: #ffffff; --action-hover: #115e59; }
+.admin-action--danger { --action-bg: #fff1f2; --action-border: #e11d48; --action-fg: #9f1239; --action-hover: #ffe4e6; }
+.admin-action--danger:focus-visible { outline-color: #e11d48; }
+.admin-action:disabled, .admin-action[aria-disabled="true"] { opacity: .5; cursor: not-allowed; }
+.admin-actions { display: inline-flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
+.admin-action-form { display: flex; flex-direction: column; align-items: flex-start; gap: 1rem; margin: 1rem 0; }
+.admin-action-form textarea { border: 1px solid #94a3b8; border-radius: 8px; padding: .625rem; width: 100%; max-width: 40rem; }
+.dark .admin-action { --action-bg: #1e293b; --action-border: #64748b; --action-fg: #f1f5f9; --action-hover: #334155; }
+.dark .admin-action--primary { --action-bg: #0f766e; --action-border: #2dd4bf; --action-fg: #ffffff; --action-hover: #115e59; }
+.dark .admin-action--danger { --action-bg: #4c0519; --action-border: #fb7185; --action-fg: #ffe4e6; --action-hover: #881337; }
+.dark .admin-action-form textarea { border-color: #64748b; }
+@media (prefers-reduced-motion: reduce) { .admin-action { transition: none; } }

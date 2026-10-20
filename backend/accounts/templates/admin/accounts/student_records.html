@@ -4,7 +4,7 @@
 <div class="flex flex-col gap-4">
   <div class="flex flex-wrap items-center justify-between gap-3">
     <div><h1 class="text-2xl font-semibold">{{ title }}</h1><p class="text-sm text-base-500">学员编号：{{ student.pk }} · 共 {{ page_obj.paginator.count }} 条</p></div>
-    <a class="button" href="{{ back_url }}">返回学员档案</a>
+    <a class="admin-action admin-action--secondary" href="{{ back_url }}">返回学员档案</a>
   </div>
 
   <div class="overflow-x-auto border border-base-200 bg-white dark:bg-base-900">
@@ -27,9 +27,9 @@
 
   {% if page_obj.paginator.num_pages > 1 %}
     <nav class="flex items-center justify-between" aria-label="分页">
-      {% if page_obj.has_previous %}<a href="?page={{ page_obj.previous_page_number }}">上一页</a>{% else %}<span></span>{% endif %}
+      {% if page_obj.has_previous %}<a class="admin-action admin-action--secondary" href="?page={{ page_obj.previous_page_number }}">上一页</a>{% else %}<span></span>{% endif %}
       <span>第 {{ page_obj.number }} / {{ page_obj.paginator.num_pages }} 页</span>
-      {% if page_obj.has_next %}<a href="?page={{ page_obj.next_page_number }}">下一页</a>{% else %}<span></span>{% endif %}
+      {% if page_obj.has_next %}<a class="admin-action admin-action--secondary" href="?page={{ page_obj.next_page_number }}">下一页</a>{% else %}<span></span>{% endif %}
     </nav>
   {% endif %}
 </div>

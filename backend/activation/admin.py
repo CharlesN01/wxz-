@@ -9,13 +9,13 @@ from django.http import HttpResponse, HttpResponseRedirect
 from django.shortcuts import get_object_or_404
 from django.template.response import TemplateResponse
 from django.urls import path, reverse
-from django.utils.html import format_html, format_html_join
 from django.views.decorators.debug import sensitive_variables
 from unfold.admin import ModelAdmin
 
 from common.errors import BusinessError
 from distribution.admin_access import scope_to_agent_user
 from entitlements.admin import ReadOnlyBusinessAdmin
+from operations.admin_ui import action_group, action_link
 from .forms import GenerateBatchForm
 from .models import ActivationBatch, ActivationCode, ActivationRedemption
 from .services import (
@@ -69,11 +69,14 @@ class ActivationBatchAdmin(ReadOnlyBusinessAdmin):
     @admin.display(description="批次操作")
     def action_links(self, obj):
         available = {"awaiting_receipt": ("receive", "void"), "received": ("enable",), "enabled": ("disable",), "disabled": ("enable",), "void": ()}
-        return format_html_join(" · ", '<a href="{}">{}</a>', ((reverse("admin:activation_batch_transition", args=(obj.pk, action)), ACTION_LABELS[action]) for action in available[obj.state])) or "已作废不可恢复"
+        return action_group(*(action_link(
+            reverse("admin:activation_batch_transition", args=(obj.pk, action)),
+            ACTION_LABELS[action], variant="danger" if action in ("disable", "void") else "primary",
+        ) for action in available[obj.state])) if available[obj.state] else "已作废不可恢复"
 
     @admin.display(description="激活码记录")
     def codes_link(self, obj):
-        return format_html('<a href="{}?batch__id__exact={}">查看本批掩码与兑换状态</a>', reverse("admin:activation_activationcode_changelist"), obj.pk)
+        return action_link(f'{reverse("admin:activation_activationcode_changelist")}?batch__id__exact={obj.pk}', "查看本批掩码与兑换状态")
 
     @sensitive_variables("raw_codes", "buffer", "writer", "raw", "response")
     def generate_view(self, request):
@@ -144,11 +147,11 @@ class ActivationCodeAdmin(ReadOnlyBusinessAdmin):
     @admin.display(description="受控操作")
     def action_link(self, obj):
         if obj.state == "unused":
-            return format_html('<a href="{}">预览并禁用此码</a>', reverse("admin:activation_code_disable", args=(obj.pk,)))
+            return action_link(reverse("admin:activation_code_disable", args=(obj.pk,)), "预览并禁用此码", variant="danger")
         if obj.state == "redeemed":
             redemption = ActivationRedemption.objects.filter(code=obj).first()
             if redemption:
-                return format_html('<a href="{}">查看对应权益及误发撤权</a>', reverse("admin:entitlements_entitlementsource_change", args=(redemption.source_id,)))
+                return action_link(reverse("admin:entitlements_entitlementsource_change", args=(redemption.source_id,)), "查看对应权益及误发撤权")
         return "保留历史，不可重新使用"
 
     def disable_view(self, request, code_id):

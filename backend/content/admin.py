@@ -8,11 +8,11 @@ from django.db import transaction
 from django.http import Http404
 from django.template.response import TemplateResponse
 from django.urls import path, reverse
-from django.utils.html import format_html
 from django.utils import timezone
 from import_export.admin import ImportExportModelAdmin
 from unfold.admin import ModelAdmin
 
+from operations.admin_ui import action_link
 from .forms import QuestionAdminForm
 from .importing import QuestionImportMixin
 from .models import Article, Category, LearningConfiguration, Question, QuestionRevision
@@ -103,7 +103,7 @@ class QuestionAdmin(QuestionImportMixin, ImportExportModelAdmin, RetainedContent
         if not obj or obj._state.adding:
             return "保存后可预览"
         url = reverse("admin:content_question_preview", args=(quote(obj.pk),))
-        return format_html('<a href="{}">查看默写 / 背诵效果</a>', url)
+        return action_link(url, "查看默写 / 背诵效果")
 
     def has_publish_permission(self, request):
         try:
