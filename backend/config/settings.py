@@ -178,6 +178,7 @@ UNFOLD = {
     "SITE_SUBHEADER": "专升本语文学习",
     "SHOW_HISTORY": True,
     "SHOW_VIEW_ON_SITE": False,
+    "DASHBOARD_CALLBACK": "operations.admin_dashboard.dashboard_callback",
     "BORDER_RADIUS": "8px",
     "COLORS": {"primary": {
         "50": "rgb(240 253 250)", "100": "rgb(204 251 241)", "200": "rgb(153 246 228)",
