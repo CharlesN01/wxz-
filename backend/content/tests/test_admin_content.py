@@ -92,6 +92,31 @@ class ContentAdminTests(TestCase):
         self.assertEqual(result.status_code, 302)
         self.assertEqual(Question.objects.filter(is_published=True).count(), 1002)
 
+        student = Client().get("/api/student/v1/questions/", {
+            "source": "literature", "categoryId": self.category.pk,
+        })
+        self.assertEqual(student.status_code, 200)
+        self.assertEqual(student.json()["access"]["totalCount"], 1002)
+        self.assertTrue(student.json()["results"])
+
+    def test_all_results_confirmation_rejects_a_new_matching_question(self):
+        self.client.force_login(self.publisher)
+        preview = self.client.post(self.list_url, {
+            "action": "publish_selected", "_selected_action": [self.question.pk],
+            "select_across": "1",
+        })
+        Question.objects.create(
+            id="new-after-confirmation", source="literature", type="fact", category=self.category,
+            stem="新增题目的答案是{{0}}。", answers=["新答案"],
+        )
+        result = self.client.post(self.list_url, {
+            "action": "publish_selected", "_selected_action": ["__publication_token__"],
+            "select_across": "1", "confirm_publication": "publish_selected",
+            "confirmation_token": preview.context["confirmation_token"],
+        })
+        self.assertEqual(result.status_code, 409)
+        self.assertFalse(Question.objects.filter(is_published=True).exists())
+
     def test_preview_requires_view_permission_and_escapes_content(self):
         self.assertEqual(self.client.get(self.preview_url).status_code, 302)
         self.client.force_login(self.no_permissions)
