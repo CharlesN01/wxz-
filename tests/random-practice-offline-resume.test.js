@@ -41,6 +41,105 @@ function baseStore(resume) {
   };
 }
 
+test('旧轮次直达链接在整组内容下架后提示重开，点击前不创建新轮次', async () => {
+  let creations = 0;
+  const reads = [];
+  const api = {
+    auth: { getToken: () => 'updated-round-user' },
+    practice: {
+      createRound: async () => { creations += 1; return { id: 'new-round', groupCount: 1, totalCount: 1 }; },
+      group: async (id, index) => {
+        reads.push([id, index]);
+        return id === 'old-round'
+          ? { groupIndex: index, groupCount: 2, totalCount: 2, results: [], skipped: [{ reason: 'UNAVAILABLE' }, { reason: 'SCOPE_CHANGED' }] }
+          : { groupIndex: 1, groupCount: 1, totalCount: 1, results: [{ ...question('new-question'), state: {} }], skipped: [] };
+      }
+    }
+  };
+  const page = loadPage('pages/random/index.js', {
+    '../../services/api': api, '../../utils/study-store': baseStore(null),
+    '../../services/data-service': {}, '../../utils/safe-top': {}, '../../utils/navigation': {}
+  }, { wx: { request() {} } });
+  page.saveResume = () => {};
+  page.onLoad({ source: 'literature', roundId: 'old-round', groupIndex: 2 });
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(creations, 0);
+  assert.equal(page.data.roundContentUnavailable, true);
+  assert.equal(page.data.questions.length, 0);
+  assert.equal(page.data.hasError, false);
+  assert.equal(JSON.stringify(reads), '[["old-round",2]]');
+  page._groupCache['1'] = [question('stale-cached-question')];
+
+  const restart = page.restartUpdatedRound();
+  assert.equal(page.data.loading, true);
+  assert.equal(page.restartUpdatedRound(), undefined);
+  await restart;
+  assert.equal(creations, 1);
+  assert.equal(page._roundId, 'new-round');
+  assert.equal(page._requestedRoundId, '');
+  assert.equal(page._requestedGroupIndex, 0);
+  assert.equal(page.data.questions[0].id, 'new-question');
+  assert.equal(page.data.roundContentUnavailable, false);
+  assert.equal(page._groupCache['2'], undefined);
+  const template = fs.readFileSync(path.join(root, 'miniprogram/pages/random/index.wxml'), 'utf8');
+  assert.match(template, /roundContentUnavailable\}\}"[^>]*description="题库已更新，请重新开始本轮"[^>]*bindaction="restartUpdatedRound"/);
+});
+
+test('权限不足、混合跳过原因、普通空集及仍有可读题目不会误报题库改版', async () => {
+  const cases = [
+    { results: [], skipped: [{ reason: 'ENTITLEMENT_REQUIRED' }] },
+    { results: [], skipped: [{ reason: 'UNAVAILABLE' }, { reason: 'ENTITLEMENT_REQUIRED' }] },
+    { results: [], skipped: [{ reason: 'UNEXPECTED_REASON' }] },
+    { results: [], skipped: [null] },
+    { results: [], skipped: [] },
+    { results: [] },
+    { results: [{ ...question('still-readable'), state: {} }], skipped: [{ reason: 'UNAVAILABLE' }] }
+  ];
+  for (const payload of cases) {
+    let creations = 0;
+    const page = loadPage('pages/random/index.js', {
+      '../../services/api': {
+        auth: { getToken: () => 'restricted-round-user' },
+        practice: { group: async () => ({ groupIndex: 1, groupCount: 1, ...payload }), createRound: async () => { creations += 1; } }
+      },
+      '../../utils/study-store': baseStore(null), '../../services/data-service': {},
+      '../../utils/safe-top': {}, '../../utils/navigation': {}
+    });
+    page._roundId = 'existing-round'; page._roundIds = []; page._groupCache = {}; page._stateMap = {};
+    page.saveResume = () => {};
+    await page.loadRemoteGroup(1);
+    assert.equal(page.data.roundContentUnavailable, false);
+    page.restartUpdatedRound();
+    assert.equal(creations, 0);
+    if (payload.skipped && payload.skipped.some(row => row && row.reason === 'ENTITLEMENT_REQUIRED')) {
+      assert.match(page.data.personalError, /开通学习权益/);
+    }
+  }
+});
+
+test('旧轮次查组网络或服务端失败保留错误，不能显示题库改版或自动重建', async () => {
+  for (const error of [{ code: 'NETWORK_ERROR' }, { status: 503, message: '服务暂不可用' }]) {
+    let creations = 0;
+    const page = loadPage('pages/random/index.js', {
+      '../../services/api': {
+        auth: { getToken: () => 'failed-round-user' },
+        practice: { group: async () => { throw error; }, createRound: async () => { creations += 1; } }
+      },
+      '../../utils/study-store': baseStore(null), '../../services/data-service': {},
+      '../../utils/safe-top': {}, '../../utils/navigation': {}
+    });
+    page._roundId = 'old-round'; page._roundIds = []; page._groupCache = {}; page._stateMap = {};
+    page.setData({ roundContentUnavailable: true });
+    assert.equal(await page.loadRemoteGroup(1), false);
+    assert.equal(page.data.roundContentUnavailable, false);
+    assert.equal(page.data.hasError, true);
+    assert.ok(page.data.errorMessage);
+    page.restartUpdatedRound();
+    assert.equal(creations, 0);
+    assert.equal(page._roundId, 'old-round');
+  }
+});
+
 test('真实随机轮次按题源规范化旧路由参数，文常不会提交word或文言articleId', async () => {
   for (const [source, requestedType, expectedType] of [
     ['literature', 'word', null],
