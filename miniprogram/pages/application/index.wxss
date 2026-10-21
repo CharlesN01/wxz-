@@ -11,8 +11,9 @@ page { background: #f5f9ff; }
 .reader-theme-warm .hero { border-radius: 42rpx; color: #5b403d; background: linear-gradient(135deg,#e5b5a5 0%,#efcabb 58%,#f3dacb 100%); }
 .reader-theme-warm .hero-foot text { background: rgba(255,255,255,.44); }
 .section-head, .reader-head { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; margin: 24rpx 4rpx 18rpx; }
-.section-title { font-size: 28rpx; font-weight: 700; }
-.theme-switch { display: flex; gap: 8rpx; }
+.section-title { flex-shrink: 0; white-space: nowrap; font-size: 28rpx; font-weight: 700; }
+.theme-switch { display: flex; flex-shrink: 0; gap: 8rpx; }
+.application-page button { width: auto; }
 .theme-option { min-height: 52rpx; padding: 8rpx 16rpx; border: 1px solid var(--reader-border); border-radius: 16rpx; color: var(--reader-muted); background: var(--reader-paper); font-size: 20rpx; }
 .theme-option.active { border-color: var(--reader-primary); color: var(--reader-primary); background: var(--reader-soft); }
 .doc-switch { display: flex; width: 100%; white-space: nowrap; }
