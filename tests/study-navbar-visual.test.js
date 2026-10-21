@@ -63,13 +63,13 @@ test('9 个页面都有导航，文学与两类随机页不再依赖空白占位
   assert.doesNotMatch(read('miniprogram/pages/random/index.wxml'), /random-safe-top|study-navbar wx:if/);
 });
 
-test('应用文详情使用同一导航与分行正文，返回只关闭详情', () => {
+test('应用文同页阅读保留安全导航和分行正文，组件仍支持覆盖详情返回', () => {
   const styles = read('miniprogram/pages/application/index.wxss');
   const template = read('miniprogram/pages/application/index.wxml');
-  assert.match(template, /study-navbar[^>]*custom-back="\{\{true\}\}"[^>]*bind:back="closeDetail"/);
-  assert.match(styles, /\.detail-heading \{[^}]*display: block;/);
-  assert.match(styles, /\.detail-intro \{[^}]*display: block;/);
-  assert.match(styles, /\.detail-item-copy \{[^}]*white-space: pre-wrap;/);
+  assert.match(template, /study-navbar[^>]*back="\{\{true\}\}"/);
+  assert.match(styles, /\.template-content \{[^}]*display: block;[^}]*white-space: pre-wrap;/);
+  assert.match(styles, /\.requirement-body \{[^}]*white-space: pre-wrap;/);
+  assert.doesNotMatch(template, /detail-page|bindtap="openStudy"/);
   let definition;
   vm.runInNewContext(read('miniprogram/components/study-navbar/index.js'), {
     require: () => ({ getNavigationMetrics }),

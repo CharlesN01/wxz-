@@ -33,7 +33,7 @@ test('原生按钮即使只有最小高度，也将文字放在按钮中央', ()
   for (const selector of ['.primary', '.secondary', '.login-button', '.member-row button']) {
     assertCentered(declarations('pages/mine/index.wxss', selector), `mine ${selector}`);
   }
-  assertCentered(declarations('pages/application/index.wxss', '.bottom button'), 'application study');
+  assertCentered(declarations('pages/application/index.wxss', '.page-nav button'), 'application previous/next');
 });
 
 test('模式按钮在父级内边距和边框以内伸展，文字保持居中', () => {

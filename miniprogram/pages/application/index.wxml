@@ -1,20 +1,52 @@
-<view class="application-page">
-  <study-navbar title="应用文" subtitle="格式掌握 · 规范表达 · 真题训练" theme="paper" back="{{true}}" class="page-navbar" />
+<view class="application-page reader-theme-{{theme}}">
+  <study-navbar title="应用文" subtitle="格式速记 · 文种练习" theme="paper" back="{{true}}" class="page-navbar" />
   <view class="application-body">
-    <view class="hero"><text class="eyebrow">山东专升本语文</text><text class="hero-title">应用文写作</text><text class="hero-copy">先记格式，再练表达。把常考文种拆开学，写作更稳。</text></view>
-    <view class="section-title">学习内容</view>
-    <view class="kind-grid"><view wx:for="{{kinds}}" wx:key="id" class="kind-card" data-kind="{{item.id}}" bindtap="chooseKind"><view class="kind-icon">{{item.icon}}</view><text class="kind-title">{{item.label}}</text><text class="kind-description">{{item.description}}</text></view></view>
-    <view wx:if="{{loading}}" class="state">正在加载应用文内容...</view>
-    <view wx:elif="{{error}}" class="state error" bindtap="retry">{{error}}，点击重试</view>
-  </view>
-  <view class="bottom"><button bindtap="openStudy">开始学习</button></view>
-  <view wx:if="{{detailVisible}}" class="detail-page">
-    <study-navbar title="应用文" theme="paper" back="{{true}}" custom-back="{{true}}" bind:back="closeDetail" class="detail-navbar" />
-    <view class="detail-main">
-      <view class="detail-hero"><text class="detail-tag">山东专升本语文</text><text class="detail-heading">{{selectedKindLabel || '应用文'}}</text><text class="detail-intro">{{detailIntro}}</text></view>
-      <view wx:if="{{detailItems.length}}" class="detail-list"><view wx:for="{{detailItems}}" wx:key="id" class="detail-item" data-id="{{item.id}}" bindtap="openItem"><text class="detail-tag">{{item.genreName || item.categoryName || '应用文'}}</text><text class="detail-item-title">{{item.title}}</text><text class="detail-item-copy">{{item.body || item.referenceAnswer || '点击查看该模块内容。'}}</text></view></view>
-      <view wx:else class="detail-note">{{detailFallback ? '这里是应用文学习页面，后续可在此查看学习内容。' : '该模块暂无已发布内容，请稍后再试。'}}</view>
-      <view wx:if="{{detailLoading}}" class="detail-note">正在加载正文...</view><view wx:elif="{{detailError}}" class="detail-note detail-error"><text>{{detailError}}</text><button class="detail-retry" bindtap="retryDetail">重试</button></view><view wx:elif="{{selected && selected.title}}" class="detail-note"><text class="detail-note-title">{{selected.title}}</text><text>{{selected.body || selected.referenceAnswer || '该内容暂未提供正文。'}}</text></view>
+    <view class="hero">
+      <text class="eyebrow">山东专升本语文 · 应用文写作</text>
+      <text class="hero-title">应用文学习</text>
+      <text class="hero-copy">选好文种，直接看写作样例、记要点。写完后可按题目要求自查。</text>
+      <view class="hero-foot"><text>写作样例</text><text>题目要求</text><text>写作要点</text></view>
     </view>
+    <view class="section-head">
+      <text class="section-title">选择文种</text>
+      <view class="theme-switch"><button class="theme-option {{theme === 'blue' ? 'active' : ''}}" data-theme="blue" bindtap="changeTheme" aria-label="蓝色主题">蓝色</button><button class="theme-option {{theme === 'warm' ? 'active' : ''}}" data-theme="warm" bindtap="changeTheme" aria-label="暖色主题">暖色</button></view>
+    </view>
+    <view wx:if="{{loading}}" class="state">正在加载应用文内容…</view>
+    <view wx:elif="{{error}}" class="state error"><text>{{error}}</text><button class="retry-button" bindtap="retry">重新加载</button></view>
+    <view wx:elif="{{!items.length && !restrictedCount}}" class="state"><text>暂无已发布的应用文内容</text><text class="state-copy">发布后可在这里切换文种、查看样例和要点。</text><button class="retry-button" bindtap="retry">刷新内容</button></view>
+    <block wx:else>
+      <view wx:if="{{restrictedCount}}" class="access-note"><text>还有 {{restrictedCount}} 篇内容需开通权益后学习</text><button bindtap="openMembership">查看权益</button></view>
+      <scroll-view wx:if="{{items.length}}" scroll-x="{{true}}" class="doc-switch" enable-flex="{{true}}" show-scrollbar="{{false}}">
+        <button class="doc-tab {{!selectedGenre ? 'active' : ''}}" data-id="" bindtap="chooseGenre">全部</button>
+        <button wx:for="{{genres}}" wx:key="id" class="doc-tab {{selectedGenre === item.id ? 'active' : ''}}" data-id="{{item.id}}" bindtap="chooseGenre">{{item.name}}</button>
+      </scroll-view>
+      <view class="filter-head"><text>切换后在本页学习</text><button class="filter-toggle" bindtap="toggleKinds">{{selectedKindLabel}} · {{kindFilterVisible ? '收起筛选' : '筛选内容'}}</button></view>
+      <view wx:if="{{kindFilterVisible}}" class="kind-filters">
+        <button class="kind-filter {{!selectedKind ? 'active' : ''}}" data-kind="" bindtap="chooseKind">全部</button>
+        <button wx:for="{{kinds}}" wx:key="id" class="kind-filter {{selectedKind === item.id ? 'active' : ''}}" data-kind="{{item.id}}" bindtap="chooseKind">{{item.label}}</button>
+      </view>
+      <view class="reader-head"><text class="reader-title">{{selected.genreName || selected.categoryName || '应用文'}}</text><text class="reader-group">{{selected.categoryName || selectedKindLabel}}</text></view>
+      <view class="mode-row"><button class="mode {{mode === 'template' ? 'active' : ''}}" data-mode="template" bindtap="changeMode">写作样例</button><button class="mode {{mode === 'points' ? 'active' : ''}}" data-mode="points" bindtap="changeMode">写作要点</button></view>
+      <view wx:if="{{detailLoading}}" class="state">正在加载正文…</view>
+      <view wx:elif="{{detailError}}" class="state error"><text>{{detailError}}</text><button class="retry-button" bindtap="retryDetail">重试</button></view>
+      <view wx:elif="{{!detailItems.length}}" class="state">{{restrictedCount && !items.length ? '当前内容需要开通权益，开通后请刷新内容。' : '当前筛选暂无已发布内容，可切换文种或选择全部内容。'}}</view>
+      <view wx:elif="{{selected && reader}}" class="panel">
+        <view class="article-heading"><text class="article-title">{{selected.title}}</text><text class="source-label">{{reader.sourceLabel}}</text></view>
+        <block wx:if="{{mode === 'template'}}">
+          <text class="panel-heading">{{selected.kind === 'exercise' ? '参考答案' : '写作样例'}}</text>
+          <text wx:if="{{reader.sample}}" class="template-content">{{reader.sample}}</text>
+          <text wx:else class="content-empty">该内容未单独提供写作样例，可切换查看写作要点或原文。</text>
+          <view wx:if="{{reader.requirement}}" class="requirement"><text class="requirement-title">题目要求</text><text class="requirement-body">{{reader.requirement}}</text></view>
+        </block>
+        <block wx:else>
+          <text class="panel-heading">写作要点</text>
+          <view wx:if="{{reader.points.length}}" class="steps"><view wx:for="{{reader.points}}" wx:key="*this" class="step"><text class="step-number">{{index + 1}}</text><text class="step-copy">{{item}}</text></view></view>
+          <text wx:else class="content-empty">该内容尚未单独提供写作要点，请查看写作样例或原文。</text>
+        </block>
+        <button class="original-toggle" bindtap="toggleOriginal">{{originalVisible ? '收起原文' : '查看完整原文'}}</button>
+        <text wx:if="{{originalVisible}}" class="original-content">{{reader.original}}</text>
+      </view>
+      <view wx:if="{{detailItems.length}}" class="page-nav"><button disabled="{{selectedIndex <= 0}}" data-direction="-1" bindtap="changePage">‹ 上一篇</button><text class="page-no">第 {{selectedIndex + 1}} / {{detailItems.length}} 篇</text><button disabled="{{selectedIndex >= detailItems.length - 1}}" data-direction="1" bindtap="changePage">下一篇 ›</button></view>
+    </block>
   </view>
 </view>
