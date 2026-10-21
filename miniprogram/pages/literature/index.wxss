@@ -1,5 +1,5 @@
 page { background: #F6F8FB; }
-.literature-page { min-height: 100vh; padding-bottom: calc(156rpx + env(safe-area-inset-bottom)); background: #F6F8FB; color: #18243B; font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif; box-sizing: border-box; }
+.literature-page { min-height: 100vh; padding-bottom: calc(120rpx + 1px + env(safe-area-inset-bottom)); background: #F6F8FB; color: #18243B; font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif; box-sizing: border-box; }
 .literature-writing { background: #F4F7FB; }
 .literature-main { max-width: 430px; margin: 0 auto; padding: 17px 12px 10px; box-sizing: border-box; }
 
