@@ -178,6 +178,17 @@ test('不同题目不串草稿，翻回题目从页面draftAnswers恢复', () =>
   assert.equal(JSON.stringify(card.data.draftAnswers), '["","乙"]');
 });
 
+test('相同题目切换发布修订会清空未同步草稿和答案展示状态', () => {
+  const card = createCard();
+  const original = { id: 'republished-card', revision: 1, stem: '{{0}}', answers: ['答案'] };
+  card.render(original, 'writing');
+  card.input(0, '旧版未同步输入');
+  card.toggleAnswer();
+  card.render({ ...original, revision: 2 }, 'writing');
+  assert.equal(JSON.stringify(card.data.draftAnswers), '[""]');
+  assert.equal(card.data.answerVisible, false);
+});
+
 test('显式掌握操作仍触发掌握事件', () => {
   const card = createCard();
   const question = mock.questions.find((item) => item.id === 'word-rou');

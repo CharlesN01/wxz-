@@ -24,7 +24,11 @@ function accountKey(auth) {
 
 function createStore(auth, storage) {
   function keyFor(question) {
-    return STORAGE_PREFIX + accountKey(auth) + ':' + encodeURIComponent(String(question.id));
+    const key = STORAGE_PREFIX + accountKey(auth) + ':' + encodeURIComponent(String(question.id));
+    // Published revisions are immutable. Never restore unversioned drafts into
+    // remote content, including revision 1; legacy drafts have no proven owner
+    // revision. Local mock questions without a revision keep their existing key.
+    return question.revision == null ? key : key + ':revision-' + encodeURIComponent(String(question.revision));
   }
   return {
     read(question) {

@@ -24,7 +24,7 @@ Component({
       const item = question || {};
       const stem = String(item.stem || '');
       const answers = Array.isArray(item.answers) ? item.answers : [];
-      const questionKey = String(item.id || stem);
+      const questionKey = JSON.stringify([String(item.id || stem), item.revision == null ? null : String(item.revision)]);
       const sameQuestion = this._questionKey === questionKey;
       const providedDraft = Array.isArray(item.draftAnswers) ? item.draftAnswers : null;
       const providedKey = providedDraft ? JSON.stringify(providedDraft) : null;

@@ -54,3 +54,41 @@ test('缓存组题目中的他人draftAnswers不会被当成当前账号的答�
   assert.deepEqual(rows[0].draftAnswers, ['']);
   assert.equal(drafts.progress(rows).answeredCount, 0);
 });
+
+test('题库改版后同一题的草稿按发布修订隔离，旧轮次仍能恢复自己的输入', () => {
+  const { store, saved } = makeStore('revision-draft-user');
+  const original = { id: 'revision-question', revision: 1, stem: '{{0}}', answers: ['旧答案'] };
+  store.save(original, ['旧版输入']);
+  const updated = { ...original, revision: 2, answers: ['新版答案'] };
+  assert.deepEqual(store.read(updated), ['']);
+  store.save(updated, ['新版输入']);
+  assert.deepEqual(store.read(original), ['旧版输入']);
+  assert.deepEqual(store.read(updated), ['新版输入']);
+  assert.equal(saved.size, 2);
+});
+
+test('所有已发布修订均不继承无版本草稿，本地无修订题目保持兼容', () => {
+  const { store } = makeStore('legacy-revision-draft-user');
+  const local = { id: 'legacy-revision-question', stem: '{{0}}', answers: ['答案'] };
+  store.save(local, ['无法确定内容版本的输入']);
+  for (const revision of [1, 2, 20]) {
+    assert.deepEqual(store.read({ ...local, revision }), ['']);
+  }
+  assert.deepEqual(store.read(local), ['无法确定内容版本的输入']);
+});
+
+test('学习状态版本变化不影响相同内容修订的草稿，重建store从持久化记录恢复', () => {
+  const fixture = makeStore('state-version-draft-user');
+  const question = { id: 'state-version-question', revision: 3, version: 1, stem: '{{0}}', answers: ['答案'] };
+  fixture.store.save(question, ['保留输入']);
+  assert.deepEqual(fixture.store.read({ ...question, version: 8 }), ['保留输入']);
+  const persisted = new Map([...fixture.saved.entries()].map(([key, values]) => [
+    key.replace('user-state-version-draft-user', 'user-reloaded-revision-draft-user'), values
+  ]));
+  const restored = drafts.createStore(
+    { getSession: () => ({ user: { id: 'reloaded-revision-draft-user' } }) },
+    { getStorageSync: key => persisted.get(key) }
+  );
+  assert.deepEqual(restored.read(question), ['保留输入']);
+  assert.deepEqual(restored.read({ ...question, revision: 4 }), ['']);
+});
