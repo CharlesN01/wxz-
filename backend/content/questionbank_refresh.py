@@ -143,6 +143,14 @@ def check_baseline(bundle, before, plan):
         return
     baseline = state_map(bundle["baseline_questions"])
     current = state_map([row for row in before["questions"] if row["source"] in bundle["scope_sources"]])
+    wanted = state_map(bundle["questions"])
+    # A previous rollback intentionally retained new rows for learner FKs.
+    # Permit republishing the same bundle only if those extra rows remain
+    # withdrawn and match its complete content; all other drift still fails.
+    for qid in set(current) - set(baseline):
+        row = current[qid]
+        if qid in wanted and not row["is_published"] and all(row[key] == wanted[qid][key] for key in CONTENT_FIELDS):
+            del current[qid]
     if baseline != current:
         raise ValidationError("当前题库与预检生产快照不一致；请重新导出快照并生成题库包，不覆盖期间的人工修改。")
     for name in DIRECTORY_FIELDS:

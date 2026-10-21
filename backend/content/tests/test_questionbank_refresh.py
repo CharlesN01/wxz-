@@ -125,6 +125,15 @@ class QuestionbankRefreshTests(TestCase):
         with self.assertRaisesMessage(ValidationError, "已有人工修改"):
             restore_backup(backup, actor=self.actor)
 
+    def test_same_bundle_can_be_reapplied_after_rollback_without_recreating_retained_rows(self):
+        self.apply()
+        backup = json.loads(self.backup.read_text(encoding="utf-8"))
+        restore_backup(backup, actor=self.actor)
+        plan = apply_bundle(self.validated(), actor=self.actor, backup_path=Path(self.tmp.name) / "second-rollback.json")
+        self.assertEqual(plan["new"], [])
+        self.assertEqual(Question.objects.count(), 4)
+        self.assertEqual(Question.objects.filter(is_published=True).count(), 3)
+
     def test_apply_needs_active_staff_import_and_publish_permissions(self):
         user = get_user_model().objects.create_user(username="viewer")
         with self.assertRaises(PermissionDenied):
