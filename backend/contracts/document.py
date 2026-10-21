@@ -153,6 +153,7 @@ def schemas():
                     "creditedSeconds": INTEGER, "todayStudySeconds": INTEGER,
                     "studyDate": {"type": "string", "format": "date"}, "serverTime": DATE_TIME}),
         "FavoriteItem": obj({"state": ref("QuestionState"), "question": nullable(ref("Question")),
+                    "favoritedAt": nullable(DATE_TIME),
                     "source": nullable(SOURCE), "categoryId": nullable(STRING),
                     "articleId": nullable(STRING), "type": nullable(TYPE),
                     "unavailableReason": nullable({"type": "string", "enum": ["ENTITLEMENT_REQUIRED", "CONTENT_UNAVAILABLE"]})}),
@@ -202,6 +203,9 @@ def schemas():
     for name, item in (("CategoryPage", "Category"), ("ArticlePage", "Article"), ("ProductPage", "Product"),
                        ("Favorites", "FavoriteItem"), ("OrderPage", "Order")):
         definitions[name] = page(ref(item))
+    definitions["Favorites"]["properties"].update({
+        "todayAdded": INTEGER, "studyDate": {"type": "string", "format": "date"},
+    })
     return definitions
 
 

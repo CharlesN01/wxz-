@@ -10,6 +10,7 @@ class QuestionState(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, verbose_name="学员")
     question = models.ForeignKey("content.Question", on_delete=models.PROTECT, verbose_name="题目")
     favorite = models.BooleanField("收藏", default=False)
+    favorited_at = models.DateTimeField("本次收藏时间", null=True, blank=True)
     mastered = models.BooleanField("掌握", default=False)
     version = models.PositiveBigIntegerField("版本", default=0)
     updated_at = models.DateTimeField("更新时间", auto_now=True)

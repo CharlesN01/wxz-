@@ -23,7 +23,7 @@ class ReadonlyLearningAdmin(ModelAdmin):
 class QuestionStateAdmin(ReadonlyLearningAdmin):
     list_display = ("user", "question_identifier", "favorite", "mastered", "version", "updated_at")
     list_filter = ("favorite", "mastered")
-    readonly_fields = ("user", "question_identifier", "favorite", "mastered", "version", "updated_at")
+    readonly_fields = ("user", "question_identifier", "favorite", "favorited_at", "mastered", "version", "updated_at")
     fields = readonly_fields
 
 

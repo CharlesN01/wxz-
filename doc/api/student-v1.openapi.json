@@ -1537,6 +1537,7 @@
                         "version": 1
                       },
                       "question": null,
+                      "favoritedAt": null,
                       "source": null,
                       "categoryId": null,
                       "articleId": null,
@@ -7453,6 +7454,17 @@
               }
             ]
           },
+          "favoritedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "source": {
             "anyOf": [
               {
@@ -7520,6 +7532,7 @@
         "required": [
           "state",
           "question",
+          "favoritedAt",
           "source",
           "categoryId",
           "articleId",
@@ -8480,6 +8493,14 @@
             "items": {
               "$ref": "#/components/schemas/FavoriteItem"
             }
+          },
+          "todayAdded": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "studyDate": {
+            "type": "string",
+            "format": "date"
           }
         },
         "required": [

@@ -87,6 +87,8 @@ def update_question_state(user, question_id, payload, key):
         raise BusinessError("ENTITLEMENT_REQUIRED", "该题当前不可访问，不能新增学习状态。", 403)
     state = state or QuestionState(user=user, question=question)
     was_mastered = state.mastered
+    if "favorite" in payload and payload["favorite"] != state.favorite:
+        state.favorited_at = timezone.now() if payload["favorite"] else None
     for field in ("favorite", "mastered"):
         if field in payload:
             setattr(state, field, payload[field])

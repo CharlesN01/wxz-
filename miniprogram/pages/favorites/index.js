@@ -58,8 +58,8 @@ Page(withStudyTime({
       const result = await settle(this._loadRemoteFavorites());
       this._isLoading = false;
       if (result.ok) { this._remoteLoaded = true; this._remoteRows = result.value.rows; this._renderRemote(result.value); return; }
-      if (result.error && (result.error.status === 401 || result.error.code === 'INVALID_TOKEN')) { this.setData({ loading: false, hasError: true, errorMessage: errorText(result.error), requiresLogin: true, questions: [], hasQuestions: false, pageNumber: 0, pageCount: 0, totalFavorites: 0, dataSource: 'remote' }); return; }
-      if (result.error && result.error.status === 403) { this.setData({ loading: false, hasError: true, errorMessage: errorText(result.error), questions: [], hasQuestions: false, pageNumber: 0, pageCount: 0, totalFavorites: 0, dataSource: 'remote' }); return; }
+      if (result.error && (result.error.status === 401 || result.error.code === 'INVALID_TOKEN')) { this.setData({ loading: false, hasError: true, errorMessage: errorText(result.error), requiresLogin: true, questions: [], hasQuestions: false, pageNumber: 0, pageCount: 0, totalFavorites: 0, todayAdded: 0, dataSource: 'remote' }); return; }
+      if (result.error && result.error.status === 403) { this.setData({ loading: false, hasError: true, errorMessage: errorText(result.error), questions: [], hasQuestions: false, pageNumber: 0, pageCount: 0, totalFavorites: 0, todayAdded: 0, dataSource: 'remote' }); return; }
       if (result.error && result.error.code === 'NETWORK_ERROR') { this._renderLocal(result.error); return; }
       this.setData({ loading: false, hasError: true, errorMessage: errorText(result.error), questions: [], hasQuestions: false, dataSource: 'remote' }); return;
     }
@@ -68,6 +68,7 @@ Page(withStudyTime({
   },
   async _loadRemoteFavorites() {
     let response = await api.learning.favorites({ page: 1 });
+    const summary = { count: Number(response && response.count), todayAdded: Number(response && response.todayAdded) || 0 };
     const rows = this._extractRows(response);
     let next = response && response.next;
     while (next) {
@@ -75,14 +76,14 @@ Page(withStudyTime({
       rows.push(...this._extractRows(response));
       next = response && response.next;
     }
-    return { rows, count: Number(response && response.count) || rows.length };
+    return { rows, count: Number.isFinite(summary.count) ? summary.count : rows.length, todayAdded: summary.todayAdded };
   },
   _extractRows(payload) { const rows = payload && Array.isArray(payload.results) ? payload.results : (Array.isArray(payload) ? payload : []); return rows.map(normalizeFavoriteRow).filter((item) => item.id); },
   _renderRemote(payload) {
     const filtered = answerDrafts.decorate(this._remoteRows.filter((item) => this._matchesCategory(item)).map(decorateFavorite), this.draftStore());
     // 原型在来源筛选下展示该分类的完整收藏列表，页面没有分页控件；不要截断超过 5 条的收藏。
     this._pageIndex = 0;
-    this.setData(Object.assign({ loading: false, hasError: false, errorMessage: '', dataSource: 'remote', personalError: '', mode: studyStore.getMode(), questions: filtered, hasQuestions: filtered.length > 0, pageNumber: filtered.length ? 1 : 0, pageCount: filtered.length ? 1 : 0, totalFavorites: Number(payload && payload.count) || this._remoteRows.length, todayAdded: 0, nextLabel: '下一页' }, answerDrafts.progress(filtered)));
+    this.setData(Object.assign({ loading: false, hasError: false, errorMessage: '', dataSource: 'remote', personalError: '', mode: studyStore.getMode(), questions: filtered, hasQuestions: filtered.length > 0, pageNumber: filtered.length ? 1 : 0, pageCount: filtered.length ? 1 : 0, totalFavorites: Number(payload && payload.count) || this._remoteRows.length, todayAdded: Number(payload && payload.todayAdded) || 0, nextLabel: '下一页' }, answerDrafts.progress(filtered)));
   },
   _matchesCategory(question) {
     if (question.source && question.source !== this._sourceFilter) return false;
@@ -96,7 +97,9 @@ Page(withStudyTime({
     const state = studyStore.getState(); const favoriteIds = new Set(state.favorites); const items = dataService.getQuestions({ source: this._sourceFilter }).filter((question) => favoriteIds.has(question.id)); const questions = dataService.decorateQuestions(items);
     this._pageIndex = 0;
     const decorated = answerDrafts.decorate(questions.map(decorateFavorite), this.draftStore());
-    this.setData(Object.assign({ loading: false, dataSource: 'local', personalError: error ? errorText(error) : '', hasError: false, errorMessage: '', categoryId: this._categoryId, sourceFilter: this._sourceFilter, mode: state.mode, questions: decorated, hasQuestions: questions.length > 0, pageNumber: questions.length ? 1 : 0, pageCount: questions.length ? 1 : 0, totalFavorites: favoriteIds.size, todayAdded: 0, nextLabel: '下一页' }, answerDrafts.progress(decorated)));
+    const today = studyStore.todayKey();
+    const todayAdded = state.favorites.filter((id) => state.favoriteDates && state.favoriteDates[id] === today).length;
+    this.setData(Object.assign({ loading: false, dataSource: 'local', personalError: error ? errorText(error) : '', hasError: false, errorMessage: '', categoryId: this._categoryId, sourceFilter: this._sourceFilter, mode: state.mode, questions: decorated, hasQuestions: questions.length > 0, pageNumber: questions.length ? 1 : 0, pageCount: questions.length ? 1 : 0, totalFavorites: favoriteIds.size, todayAdded, nextLabel: '下一页' }, answerDrafts.progress(decorated)));
   },
   onRetry() { this._refreshFavorites(); },
   draftStore() {
@@ -145,7 +148,7 @@ Page(withStudyTime({
       let result = await settle(api.learning.setQuestionState(id, { [field]: next, baseVersion: current.version }, createWriteOptions()));
       if (!result.ok && result.error && result.error.code === 'VERSION_CONFLICT') { const server = result.error.current || result.error.fields && result.error.fields.current; if (server) result = await settle(api.learning.setQuestionState(id, { [field]: next, baseVersion: normalizeState(server).version }, createWriteOptions())); }
       if (!result.ok) { this.setData({ personalError: errorText(result.error) }); return; }
-      this.setData({ personalError: '' }); this._pageIndex = 0; this._refreshFavorites();
+      this.setData({ personalError: '' }); this._pageIndex = 0; await this._refreshFavorites();
     } finally {
       delete this._stateInFlight[lockKey];
     }

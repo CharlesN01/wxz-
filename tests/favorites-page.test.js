@@ -7,11 +7,38 @@ const path = require('node:path');
 const pagePath = path.join(__dirname, '..', 'miniprogram', 'pages', 'favorites', 'index.js');
 const templatePath = path.join(__dirname, '..', 'miniprogram', 'pages', 'favorites', 'index.wxml');
 
+test('今日新增采用服务端跨分页总数，取消收藏后重新加载立即更新', async () => {
+  let count = 3;
+  let todayAdded = 2;
+  const { page } = createPage('writing', {
+    auth: { getToken: () => 'learner' },
+    createIdempotencyKey: () => 'favorite-counter-test',
+    learning: {
+      favorites: async () => ({ count, todayAdded, next: '/next', results: [{ question: { id: 'l1', source: 'literature' }, state: { favorite: true } }] }),
+      questionState: async () => ({ favorite: true, version: 1 }),
+      setQuestionState: async () => { count = 2; todayAdded = 1; return { favorite: false, version: 2 }; }
+    },
+    pagination: { follow: async () => ({ count, todayAdded: 0, next: null, results: [] }) }
+  });
+  page._categoryId = '';
+  page._sourceFilter = 'literature';
+  await page._refreshFavorites();
+  assert.equal(page.data.todayAdded, 2);
+  assert.equal(page.data.totalFavorites, 3);
+  await page.onFavorite({ detail: { id: 'l1' } });
+  assert.equal(page.data.todayAdded, 1);
+  assert.equal(page.data.totalFavorites, 2);
+  page._sourceFilter = 'classical';
+  await page._refreshFavorites();
+  assert.equal(page.data.todayAdded, 1);
+  assert.equal(page.data.questions.length, 0);
+});
+
 function createPage(mode = 'writing', apiOverrides = {}) {
   let definition;
   const api = Object.assign({ auth: { getToken: () => null } }, apiOverrides);
   const currentMode = mode || 'writing';
-  const studyStore = { getMode: () => currentMode, getState: () => ({ favorites: [], mode: currentMode }) };
+  const studyStore = { getMode: () => currentMode, getState: () => ({ favorites: [], mode: currentMode }), todayKey: () => '2026-10-21' };
   const questionUtils = require('../miniprogram/utils/question-utils');
   const dataService = { getQuestions: () => [], decorateQuestions: (questions) => questions };
   const navigation = { openPage() {} };

@@ -1,3 +1,5 @@
+from datetime import datetime, time, timedelta
+
 from django.utils.cache import patch_vary_headers
 from rest_framework import serializers
 from rest_framework.pagination import PageNumberPagination
@@ -10,7 +12,7 @@ from content.models import LearningConfiguration, Question
 from content.serializers import StudentQuestionSerializer, StrictPositiveIntegerField, validate_query_params
 from .models import QuestionState
 from .serializers import PreferenceInput, QuestionStateInput, StudyTimeInput
-from .services import preference_snapshot, read_question_state, record_study_time, state_snapshot, statistics, update_preferences, update_question_state
+from .services import SHANGHAI, shanghai_today, preference_snapshot, read_question_state, record_study_time, state_snapshot, statistics, update_preferences, update_question_state
 
 
 class NoQuery(serializers.Serializer):
@@ -102,6 +104,7 @@ class FavoritesView(LearningAPIView):
                 "type": getattr(revision, "type", None),
             }
             results.append({
+                "favoritedAt": state.favorited_at.isoformat() if state.favorited_at else None,
                 "state": state_snapshot(state, state.question_id),
                 "question": StudentQuestionSerializer(question, context={
                     "question_states": {str(state.question_id): state_snapshot(state, state.question_id)},
@@ -111,4 +114,11 @@ class FavoritesView(LearningAPIView):
                     "ENTITLEMENT_REQUIRED" if state.question_id in visible_ids else "CONTENT_UNAVAILABLE"
                 ),
             })
-        return paginator.get_paginated_response(results)
+        today = shanghai_today()
+        start = datetime.combine(today, time.min, tzinfo=SHANGHAI)
+        response = paginator.get_paginated_response(results)
+        response.data["todayAdded"] = states.filter(
+            favorited_at__gte=start, favorited_at__lt=start + timedelta(days=1),
+        ).count()
+        response.data["studyDate"] = today.isoformat()
+        return response

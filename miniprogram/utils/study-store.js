@@ -11,7 +11,7 @@ function todayKey(now) {
 }
 
 function freshState() {
-  return { version: 1, favorites: [], mastered: {}, studyDates: [], mode: 'writing', resume: null };
+  return { version: 1, favorites: [], favoriteDates: {}, mastered: {}, studyDates: [], mode: 'writing', resume: null };
 }
 
 function cloneJson(value) {
@@ -57,10 +57,15 @@ function normalize(input) {
     if (validIds.has(id) && /^\d{4}-\d{2}-\d{2}$/.test(input.mastered[id])) mastered[id] = input.mastered[id];
   });
   const favorites = Array.isArray(input.favorites) ? input.favorites.filter((id) => validIds.has(id)) : [];
+  const favoriteDates = {};
+  favorites.forEach((id) => {
+    const day = input.favoriteDates && input.favoriteDates[id];
+    if (typeof day === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(day)) favoriteDates[id] = day;
+  });
   const studyDates = Array.isArray(input.studyDates) ? input.studyDates.filter((day) => /^\d{4}-\d{2}-\d{2}$/.test(day)) : [];
   const allowedPaths = ['/pages/literature/index', '/pages/practice/index', '/pages/random/index'];
   const resume = input.resume && allowedPaths.indexOf(input.resume.path) !== -1 ? normalizeResume(input.resume) : null;
-  return { version: 1, favorites: Array.from(new Set(favorites)), mastered, studyDates: Array.from(new Set(studyDates)), mode: input.mode === 'reciting' ? 'reciting' : 'writing', resume };
+  return { version: 1, favorites: Array.from(new Set(favorites)), favoriteDates, mastered, studyDates: Array.from(new Set(studyDates)), mode: input.mode === 'reciting' ? 'reciting' : 'writing', resume };
 }
 
 function getState() {
@@ -85,8 +90,13 @@ function toggleFavorite(id) {
   if (!validIds.has(id)) return false;
   const state = getState();
   const index = state.favorites.indexOf(id);
-  if (index === -1) state.favorites.push(id);
-  else state.favorites.splice(index, 1);
+  if (index === -1) {
+    state.favorites.push(id);
+    state.favoriteDates[id] = todayKey();
+  } else {
+    state.favorites.splice(index, 1);
+    delete state.favoriteDates[id];
+  }
   save(state);
   return index === -1;
 }

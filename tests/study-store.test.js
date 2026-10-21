@@ -4,6 +4,19 @@ const mock = require('../miniprogram/data/mock');
 const storePath = require.resolve('../miniprogram/utils/study-store');
 const servicePath = require.resolve('../miniprogram/services/data-service');
 
+test('本地收藏记录新增日期，重启保留，取消删除且不猜测旧收藏时间', () => {
+  const { store, read } = createStore();
+  const id = mock.questions[0].id;
+  store.toggleFavorite(id);
+  assert.equal(store.getState().favoriteDates[id], store.todayKey());
+  const reloaded = createStore(read()).store;
+  assert.equal(reloaded.getState().favoriteDates[id], store.todayKey());
+  reloaded.toggleFavorite(id);
+  assert.equal(reloaded.getState().favoriteDates[id], undefined);
+  const legacy = createStore({ version: 1, favorites: [id] }).store;
+  assert.deepEqual(legacy.getState().favoriteDates, {});
+});
+
 function createStore(saved, failSave) {
   let storage = saved;
   const notices = [];
