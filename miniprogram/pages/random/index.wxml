@@ -58,10 +58,10 @@
     <view wx:if="{{!loading && !hasError && questions.length}}" class="study-tip">{{mode === 'reciting' ? '答案直接显示，完成本页后继续复习' : '先回忆答案，再点击“查看答案”核对'}}</view>
   </view>
 
-  <view wx:if="{{source === 'literature'}}" class="bottom-nav">
-    <view class="bottom-nav-item bottom-nav-active" bindtap="openHome" role="button"><text class="bottom-nav-icon">▦</text><text>学习</text></view>
-    <view class="bottom-nav-item" bindtap="openFavorites" role="button"><text class="bottom-nav-icon">☆</text><text>收藏</text></view>
-    <view class="bottom-nav-item" bindtap="openProfile" role="button"><text class="bottom-nav-icon">◎</text><text>我的</text></view>
+  <view wx:if="{{source === 'literature'}}" class="bottom-nav study-bottom-navigation">
+    <view class="bottom-nav-item study-bottom-navigation-item bottom-nav-active" bindtap="openHome" role="button"><text class="bottom-nav-icon study-bottom-navigation-icon">▦</text><text class="study-bottom-navigation-label">学习</text></view>
+    <view class="bottom-nav-item study-bottom-navigation-item" bindtap="openFavorites" role="button"><text class="bottom-nav-icon study-bottom-navigation-icon">☆</text><text class="study-bottom-navigation-label">收藏</text></view>
+    <view class="bottom-nav-item study-bottom-navigation-item" bindtap="openProfile" role="button"><text class="bottom-nav-icon study-bottom-navigation-icon">◎</text><text class="study-bottom-navigation-label">我的</text></view>
   </view>
 
 </view>

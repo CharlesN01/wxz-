@@ -26,10 +26,10 @@
     <view class="continue-card" role="button" bindtap="onContinue" hover-class="continue-pressed"><view class="continue-icon">→</view><view class="continue-copy"><text class="continue-title">继续学习</text><text class="continue-caption">从上次学习的地方继续</text></view><text class="continue-action">进入</text></view>
     <text class="demo-note">当前进度根据已收录考点统计</text>
   </view>
-  <view class="bottom-nav">
-    <navigator class="bottom-nav-item bottom-nav-active" url="/pages/classical/index"><text class="bottom-nav-icon">⌂</text><text>文言文</text></navigator>
-    <navigator class="bottom-nav-item" url="/pages/favorites/index"><text class="bottom-nav-icon">☆</text><text>收藏</text></navigator>
-    <navigator class="bottom-nav-item" url="/pages/mine/index"><text class="bottom-nav-icon">●</text><text>我的</text></navigator>
+  <view class="bottom-nav study-bottom-navigation">
+    <navigator class="bottom-nav-item study-bottom-navigation-item bottom-nav-active" url="/pages/classical/index"><text class="bottom-nav-icon study-bottom-navigation-icon">⌂</text><text class="study-bottom-navigation-label">文言文</text></navigator>
+    <navigator class="bottom-nav-item study-bottom-navigation-item" url="/pages/favorites/index"><text class="bottom-nav-icon study-bottom-navigation-icon">☆</text><text class="study-bottom-navigation-label">收藏</text></navigator>
+    <navigator class="bottom-nav-item study-bottom-navigation-item" url="/pages/mine/index"><text class="bottom-nav-icon study-bottom-navigation-icon">●</text><text class="study-bottom-navigation-label">我的</text></navigator>
   </view>
   <view wx:if="{{modalVisible}}" class="modal-mask" bindtap="onCloseModal" catchtouchmove="stopTap">
     <view class="modal" catchtap="stopTap" role="dialog" aria-label="选择练习专项">

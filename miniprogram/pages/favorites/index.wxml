@@ -33,7 +33,7 @@
     <view wx:if="{{!loading && !hasError && !hasQuestions}}" class="favorites-empty">这里还没有收藏内容</view>
     <text class="favorites-version">文常记 · 山东专升本语文</text>
   </view>
-  <view class="favorites-footer">
-    <view class="bottom-tab" data-page="home" bindtap="onTab"><text class="bottom-icon">⌂</text><text>首页</text></view><view class="bottom-tab bottom-tab-active"><text class="bottom-icon">☆</text><text>收藏</text></view><view class="bottom-tab" data-page="mine" bindtap="onTab"><text class="bottom-icon">◎</text><text>我的</text></view>
+  <view class="favorites-footer study-bottom-navigation">
+    <view class="bottom-tab study-bottom-navigation-item" data-page="home" bindtap="onTab"><text class="bottom-icon study-bottom-navigation-icon">⌂</text><text class="study-bottom-navigation-label">首页</text></view><view class="bottom-tab study-bottom-navigation-item bottom-tab-active"><text class="bottom-icon study-bottom-navigation-icon">☆</text><text class="study-bottom-navigation-label">收藏</text></view><view class="bottom-tab study-bottom-navigation-item" data-page="mine" bindtap="onTab"><text class="bottom-icon study-bottom-navigation-icon">◎</text><text class="study-bottom-navigation-label">我的</text></view>
   </view>
 </view>

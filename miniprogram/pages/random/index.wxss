@@ -1,7 +1,7 @@
 page { background: #f6f8fb; }
 
 .random-page { max-width: 430px; min-height: 100vh; margin: 0 auto; padding-bottom: 20px; color: #18243b; background: #f6f8fb; font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif; box-sizing: border-box; }
-.literature-random { padding-bottom: calc(80px + env(safe-area-inset-bottom)); }
+.literature-random { padding-bottom: calc(156rpx + env(safe-area-inset-bottom)); }
 .random-main { max-width: 430px; margin: 0 auto; padding: 12px 12px 20px; box-sizing: border-box; }
 .random-notice { margin-bottom: 10px; padding: 8px 10px; border-radius: 9px; color: #7b5a22; background: #fff4d8; font-size: 10px; line-height: 1.45; }
 .random-state { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 150px; margin-bottom: 12px; padding: 20px; border: 1px solid #e9eef5; border-radius: 13px; color: #8995a8; background: #fff; font-size: 12px; line-height: 1.5; text-align: center; }
@@ -39,8 +39,6 @@ page { background: #f6f8fb; }
 .page-button.disabled { color: #c9d1dc; background: #f7f9fc; }
 .page-number { color: #8995a8; font-size: 11px; }
 .study-tip { margin: 10px 0 6px; padding: 8px 10px; border-radius: 9px; color: #8995a8; background: #fff; font-size: 10px; line-height: 1.45; }
-.bottom-nav { position: fixed; z-index: 6; right: 0; bottom: 0; left: 0; display: grid; grid-template-columns: repeat(3, 1fr); width: 100%; max-width: 430px; height: 64px; margin: 0 auto; padding-bottom: env(safe-area-inset-bottom); border-top: 1px solid #e9eef5; background: rgba(255,255,255,.96); box-sizing: content-box; }
-.bottom-nav-item { display: flex; align-items: center; justify-content: center; flex-direction: column; color: #a0abb9; font-size: 11px; line-height: 1.2; }
+.bottom-nav-item { color: #a0abb9; }
 .bottom-nav-active { color: #237bea; font-weight: 700; }
-.bottom-nav-icon { display: block; margin-bottom: 3px; font-size: 18px; font-weight: 500; line-height: 1; }
-@media (min-width: 431px) { .literature-random { min-height: calc(100vh - 40px); margin: 20px auto; border-radius: 20px; box-shadow: 0 20px 60px rgba(36,67,109,.12); overflow: hidden; } .literature-random .bottom-nav { bottom: 20px; border-radius: 0 0 20px 20px; } }
+@media (min-width: 431px) { .literature-random { min-height: calc(100vh - 40px); margin: 20px auto; border-radius: 20px; box-shadow: 0 20px 60px rgba(36,67,109,.12); overflow: hidden; } }

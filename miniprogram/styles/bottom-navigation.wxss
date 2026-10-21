@@ -1,0 +1,50 @@
+/* 128rpx 点击行与底部安全区分别占位，图标和文字在点击行内居中。 */
+.study-bottom-navigation {
+  position: fixed;
+  z-index: 6;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  width: 100%;
+  max-width: 430px;
+  height: calc(128rpx + 1px + env(safe-area-inset-bottom));
+  margin: 0 auto;
+  padding: 0 0 env(safe-area-inset-bottom);
+  border-top: 1px solid #E9EEF5;
+  border-radius: 44rpx 44rpx 0 0;
+  background: rgba(255,255,255,.97);
+  box-sizing: border-box;
+}
+.study-bottom-navigation .study-bottom-navigation-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6rpx;
+  min-width: 0;
+  height: 128rpx;
+  margin: 0;
+  padding: 0;
+  font-size: 22rpx;
+  line-height: 28rpx;
+  text-align: center;
+  box-sizing: border-box;
+}
+.study-bottom-navigation .study-bottom-navigation-icon {
+  display: block;
+  flex: 0 0 auto;
+  height: 40rpx;
+  margin: 0;
+  font-size: 38rpx;
+  font-weight: 500;
+  line-height: 40rpx;
+}
+.study-bottom-navigation .study-bottom-navigation-label {
+  display: block;
+  flex: 0 0 auto;
+  margin: 0;
+  font-size: 22rpx;
+  line-height: 28rpx;
+}

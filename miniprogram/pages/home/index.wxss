@@ -45,10 +45,7 @@ page { background: #F5FAFE; }
 .continue-desc { display: block; overflow: hidden; margin-top: 6rpx; color: #8995A8; font-size: 18rpx; text-overflow: ellipsis; white-space: nowrap; }
 .continue-action { display: flex; align-items: center; justify-content: center; line-height: normal; flex-shrink: 0; padding: 14rpx 18rpx; border-radius: 16rpx; color: #FFFFFF; background: #247FEE; font-size: 20rpx; }
 .group-card { display: flex; align-items: center; gap: 18rpx; margin-top: 18rpx; padding: 22rpx; border-radius: 28rpx; background: #F0EDFF; }.group-icon { display: flex; align-items: center; justify-content: center; flex: 0 0 68rpx; height: 68rpx; border-radius: 20rpx; color: #7660DF; background: #E0D9FF; font-size: 22rpx; font-weight: 800; }.group-copy { flex: 1; min-width: 0; }.group-badge { display: inline-block; padding: 4rpx 12rpx; border-radius: 10rpx; color: #7660DF; background: #E0D9FF; font-size: 16rpx; }.group-title { display: block; margin-top: 6rpx; overflow: hidden; font-size: 22rpx; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }.group-desc { display: block; margin-top: 6rpx; overflow: hidden; color: #8B82BA; font-size: 18rpx; text-overflow: ellipsis; white-space: nowrap; }.group-action { display: flex; align-items: center; justify-content: center; line-height: normal; flex-shrink: 0; padding: 14rpx 20rpx; border-radius: 16rpx; color: #FFFFFF; background: #7660DF; font-size: 20rpx; }.personal-note { display: block; margin: 16rpx 4rpx 0; color: #8995A8; font-size: 20rpx; text-align: center; }
-.home-nav { position: fixed; z-index: 30; right: 0; bottom: 0; left: 0; display: grid; grid-template-columns: repeat(3, 1fr); height: calc(128rpx + env(safe-area-inset-bottom)); padding-bottom: env(safe-area-inset-bottom); border-top: 1rpx solid #E9EEF5; background: rgba(255,255,255,.97); }
-.home-nav, .nav-item { min-width: 0; }
-.nav-item { display: flex; flex-direction: column; align-items: center; justify-content: center; color: #A0ABB9; font-size: 20rpx; }
-.nav-symbol { display: block; margin-bottom: 5rpx; font-size: 34rpx; line-height: 1; }
+.nav-item { color: #A0ABB9; }
 .nav-active { color: #247FEE; font-weight: 700; }
 .home-loading, .home-error { display: flex; min-height: 920rpx; padding: 140rpx 54rpx; flex-direction: column; align-items: center; justify-content: flex-start; color: #607184; text-align: center; }
 .loading-spinner { width: 54rpx; height: 54rpx; margin-bottom: 22rpx; border: 5rpx solid #DCE9FB; border-top-color: #247FEE; border-radius: 50%; animation: home-spin 1s linear infinite; }
@@ -115,9 +112,6 @@ page { background: #F5FAFE; }
 .group-title { margin-top: 3px; font-size: 11px; }
 .group-desc { margin-top: 3px; font-size: 9px; }
 .group-action { display: flex; align-items: center; justify-content: center; line-height: normal; padding: 7px 10px; border-radius: 8px; font-size: 10px; }
-.home-nav { height: 64px; padding-bottom: env(safe-area-inset-bottom); }
-.nav-item { font-size: 10px; }
-.nav-symbol { margin-bottom: 3px; font-size: 17px; }
 .group-modal { padding: 16px; }
 .group-modal-card { max-width: 310px; padding: 17px 16px 14px; border-radius: 20px; }
 .group-modal-close { display: flex; align-items: center; justify-content: center; line-height: normal; top: 9px; right: 9px; width: 27px; height: 27px; border-radius: 8px; font-size: 18px; }

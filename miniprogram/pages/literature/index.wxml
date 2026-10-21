@@ -1,6 +1,16 @@
-<view class="literature-page">
+<view class="literature-page literature-{{mode}}">
   <study-navbar title="文学常识" theme="paper" back="{{true}}" class="page-navbar" />
   <view class="literature-main">
+    <view wx:if="{{mode === 'writing'}}" class="literature-hero">
+      <text class="hero-title">文学常识</text>
+      <text class="hero-copy">循时代而读，按脉络而记</text>
+      <text class="hero-count">{{loading ? '加载中' : totalQuestions + ' 题'}}</text>
+    </view>
+    <view wx:else class="reading-banner">
+      <view class="reading-mark">阅</view>
+      <view class="reading-copy"><text class="reading-title">文学常识背诵</text><text class="reading-subtitle">按文学时期整理，边读边记更清晰</text></view>
+      <text class="reading-count">答案版</text>
+    </view>
     <scroll-view wx:if="{{categories.length}}" class="periods" scroll-x="{{true}}" scroll-left="{{categoryScrollLeft}}" scroll-with-animation="{{true}}" enhanced="{{true}}" show-scrollbar="{{false}}">
       <view class="period-row">
         <view wx:for="{{categories}}" wx:key="id" class="period {{categoryId === item.id ? 'period-active' : ''}}" role="button" data-id="{{item.id}}" bindtap="changeCategory" hover-class="period-pressed">{{item.name}}</view>
@@ -53,9 +63,9 @@
     <view class="tip">学习建议：先在“默写自测”中独立作答，再切换“背诵全览”核对答案。完成后可切换下一个时期继续学习。</view>
   </view>
 
-  <view class="bottom-nav">
-    <view class="bottom-nav-item bottom-nav-active" bindtap="openHome" role="button"><text class="bottom-nav-icon">▦</text><text>学习</text></view>
-    <view class="bottom-nav-item" bindtap="openFavorites" role="button"><text class="bottom-nav-icon">☆</text><text>收藏</text></view>
-    <view class="bottom-nav-item" bindtap="openProfile" role="button"><text class="bottom-nav-icon">◎</text><text>我的</text></view>
+  <view class="bottom-nav study-bottom-navigation">
+    <view class="bottom-nav-item study-bottom-navigation-item bottom-nav-active" bindtap="openHome" role="button"><text class="bottom-nav-icon study-bottom-navigation-icon">▦</text><text class="study-bottom-navigation-label">学习</text></view>
+    <view class="bottom-nav-item study-bottom-navigation-item" bindtap="openFavorites" role="button"><text class="bottom-nav-icon study-bottom-navigation-icon">☆</text><text class="study-bottom-navigation-label">收藏</text></view>
+    <view class="bottom-nav-item study-bottom-navigation-item" bindtap="openProfile" role="button"><text class="bottom-nav-icon study-bottom-navigation-icon">◎</text><text class="study-bottom-navigation-label">我的</text></view>
   </view>
 </view>

@@ -71,9 +71,9 @@
     </view>
   </view>
 
-  <view wx:if="{{!loading && !hasError}}" class="home-nav">
-    <view class="nav-item nav-active"><text class="nav-symbol">⌂</text><text>首页</text></view>
-    <view class="nav-item" data-page="favorites" bindtap="openNav"><text class="nav-symbol">☆</text><text>收藏</text></view>
-    <view class="nav-item" data-page="mine" bindtap="openNav"><text class="nav-symbol">◎</text><text>我的</text></view>
+  <view wx:if="{{!loading && !hasError}}" class="home-nav study-bottom-navigation">
+    <view class="nav-item study-bottom-navigation-item nav-active"><text class="nav-symbol study-bottom-navigation-icon">⌂</text><text class="study-bottom-navigation-label">首页</text></view>
+    <view class="nav-item study-bottom-navigation-item" data-page="favorites" bindtap="openNav"><text class="nav-symbol study-bottom-navigation-icon">☆</text><text class="study-bottom-navigation-label">收藏</text></view>
+    <view class="nav-item study-bottom-navigation-item" data-page="mine" bindtap="openNav"><text class="nav-symbol study-bottom-navigation-icon">◎</text><text class="study-bottom-navigation-label">我的</text></view>
   </view>
 </view>

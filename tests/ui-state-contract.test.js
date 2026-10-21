@@ -61,7 +61,7 @@ test('文常随机使用原型底栏，两类随机均保留顶部自定义导�
   const template = fs.readFileSync(path.join(root, 'miniprogram/pages/random/index.wxml'), 'utf8');
   const script = fs.readFileSync(path.join(root, 'miniprogram/pages/random/index.js'), 'utf8');
   assert.match(template, /study-navbar title="\{\{source === 'classical' \? '文言文随机测试' : '文常随机测试'\}\}"/);
-  assert.match(template, /wx:if="\{\{source === 'literature'\}\}" class="bottom-nav"/);
+  assert.match(template, /wx:if="\{\{source === 'literature'\}\}" class="bottom-nav(?: [^"]*)?"/);
   assert.match(script, /openHome\(\)/);
   assert.match(script, /openFavorites\(\)/);
   assert.match(script, /openProfile\(\)/);
