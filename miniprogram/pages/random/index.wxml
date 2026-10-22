@@ -1,4 +1,4 @@
-<view class="random-page {{source === 'literature' ? 'literature-random' : 'classical-random'}}">
+<view class="random-page {{source === 'literature' ? 'literature-random' : 'classical-random'}} theme-{{theme}}">
   <study-navbar title="{{source === 'classical' ? '文言文随机测试' : '文常随机测试'}}" theme="paper" back="{{true}}" class="page-navbar" />
 
   <view class="random-main">

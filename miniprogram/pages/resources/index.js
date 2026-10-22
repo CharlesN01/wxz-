@@ -1,8 +1,10 @@
 const api = require('../../services/api');
 const { resourceImageUrl, retryImageUrl } = require('../../utils/resource-image');
+function currentTheme() { try { return wx.getStorageSync('chinese-study.theme') === 'night' ? 'night' : 'day'; } catch (_) { return 'day'; } }
 
 Page({
   data: {
+    theme: 'day',
     resource: null,
     loading: true,
     error: '',
@@ -19,7 +21,7 @@ Page({
     copiedText: '领取口令已复制'
   },
   onLoad() {},
-  onShow() { this.load(); },
+  onShow() { this.setData({ theme: currentTheme() }); this.load(); },
   onPullDownRefresh() { this.load(); },
   async load(options) {
     this.setData({ loading: true, error: '', qrCode: '', qrLoading: false, qrError: '' });

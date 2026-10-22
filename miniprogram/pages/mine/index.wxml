@@ -1,4 +1,4 @@
-<view class="mine-page">
+<view class="mine-page theme-{{theme}}">
   <study-navbar title="我的" theme="paper" centered="{{true}}" back="{{true}}" />
   <view class="mine-body">
     <view wx:if="{{loading}}" class="state loading-state">正在同步账户信息...</view>

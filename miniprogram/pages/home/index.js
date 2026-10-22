@@ -1,8 +1,11 @@
 const api = require('../../services/api');
 const navigation = require('../../utils/navigation');
 const { learningTrend, minutes } = require('../../utils/learning-trend');
-const { resourceImageUrl, retryImageUrl } = require('../../utils/resource-image');
 const studyTimer = require('../../utils/study-timer').clock;
+const themeStore = require('../../utils/theme');
+const { revealGeometry } = require('../../utils/theme-reveal');
+
+const GROUP_QR_IMAGE = '/assets/group-qr.jpg';
 
 const EMPTY_STATS = {
   masteredCount: 0,
@@ -72,6 +75,12 @@ function getResumePosition(snapshot) {
 
 Page({
   data: {
+    theme: 'day',
+    themeRevealStyle: '',
+    themeTransition: false,
+    revealTheme: 'day',
+    revealContentStyle: '',
+    revealNavbarStyle: '',
     loading: true,
     hasError: false,
     errorMessage: '',
@@ -94,7 +103,7 @@ Page({
     resumeDescription: '从第一个文学分类开始学习',
     resumeAvailable: false,
     groupModalVisible: false,
-    groupQrCode: '',
+    groupQrCode: GROUP_QR_IMAGE,
     groupWechatId: '',
     groupClaimCode: '',
     groupModalCopy: '扫码添加微信，邀请你进群',
@@ -102,7 +111,7 @@ Page({
     groupModalNote: '进群有机会领取免费会员',
     groupResourceError: '',
     groupQrError: '',
-    groupQrLoading: false,
+    groupQrLoading: true,
     trendBars: [],
     trendHasData: false,
     trendHint: '登录后查看学习趋势'
@@ -111,15 +120,73 @@ Page({
   onLoad() {
     this._loadVersion = 0;
     this._loaded = false;
+    this.setData({ theme: themeStore.getTheme() });
     this.loadPublicData();
     this.loadGroupResource();
   },
 
   onShow() {
+    this.syncTheme();
     if (this._loaded) {
       this.refreshLearningConfig().then(() => this.loadPersonalData());
       this.loadGroupResource();
     }
+  },
+
+  syncTheme() {
+    const theme = themeStore.getTheme();
+    if (theme !== this.data.theme) this.setData({ theme });
+  },
+
+  onPageScroll(event) {
+    this._scrollTop = Math.max(0, Number(event.scrollTop) || 0);
+  },
+
+  onHide() { this.finishThemeTransition(); },
+
+  onUnload() {
+    clearTimeout(this._themeStartTimer);
+    clearTimeout(this._themeFinishTimer);
+    this._themeChanging = false;
+  },
+
+  toggleTheme(event) {
+    if (this._themeChanging) return;
+    this._themeChanging = true;
+    const info = typeof wx.getWindowInfo === 'function' ? wx.getWindowInfo() : wx.getSystemInfoSync();
+    const geometry = revealGeometry(event, info, this._scrollTop || 0);
+    this._nextTheme = this.data.theme === 'day' ? 'night' : 'day';
+    const circle = (radius) => `clip-path: circle(${radius}px at ${geometry.x}px ${geometry.y}px);`;
+    // Mount the new palette over the unchanged old page. Offsetting with top
+    // (never transform/scale) keeps viewport-fixed navigation in the same place.
+    this.setData({
+      themeTransition: true,
+      revealTheme: this._nextTheme,
+      themeRevealStyle: circle(0),
+      revealContentStyle: `position: relative; top: -${this._scrollTop || 0}px;`,
+      revealNavbarStyle: `position: relative; top: ${this._scrollTop || 0}px;`
+    }, () => {
+      if (!this._themeChanging) return;
+      this._themeStartTimer = setTimeout(() => {
+        if (!this._themeChanging) return;
+        this.setData({ themeRevealStyle: circle(geometry.radius) + ' transition: clip-path 360ms cubic-bezier(.2,.75,.25,1);' });
+        // Fallback for renderers that do not emit transitionend.
+        this._themeFinishTimer = setTimeout(() => this.finishThemeTransition(), 420);
+      }, 32);
+    });
+  },
+
+  finishThemeTransition() {
+    if (!this._themeChanging) return;
+    clearTimeout(this._themeStartTimer);
+    clearTimeout(this._themeFinishTimer);
+    const theme = themeStore.setTheme(this._nextTheme);
+    this._nextTheme = null;
+    // Commit the lower page before removing its fully revealed upper copy.
+    this.setData({ theme }, () => {
+      this.setData({ themeTransition: false, themeRevealStyle: '' });
+      this._themeChanging = false;
+    });
   },
 
   async refreshLearningConfig() {
@@ -261,7 +328,7 @@ Page({
   },
 
   openGroupModal() {
-    this.setData({ groupModalVisible: true });
+    this.setData({ groupModalVisible: true, groupQrLoading: true, groupQrError: '' });
     this.loadGroupResource();
   },
 
@@ -276,20 +343,17 @@ Page({
     }
     const resource = result.value && result.value.enabled ? result.value : {};
     const claimCode = resource.claimCode || '';
-    const groupQrCode = resourceImageUrl(resource.groupQrCode);
+    const groupQrCode = GROUP_QR_IMAGE;
     const changed = groupQrCode !== this.data.groupQrCode;
     this.setData({
       groupQrCode,
       groupQrLoading: Boolean(groupQrCode) && (changed || this.data.groupQrLoading),
-      groupQrError: resource.groupQrCode && !groupQrCode ? '二维码地址不可用，请联系管理员检查图片配置'
-        : (changed ? '' : this.data.groupQrError),
+      groupQrError: changed ? '' : this.data.groupQrError,
       groupWechatId: resource.wechatId || '',
       groupClaimCode: claimCode,
-      groupModalCopy: resource.wechatId
-        ? '微信号：' + resource.wechatId + '，扫码添加微信'
-        : '扫码添加微信，邀请你进群',
-      groupModalTip: resource.description || '每日更新最新资料',
-      groupModalNote: resource.announcement || (claimCode ? '领取口令：' + claimCode : '进群有机会领取免费会员'),
+      groupModalCopy: '截图扫一扫，邀请你进群',
+      groupModalTip: '每日更新最新资料',
+      groupModalNote: '进群有机会领取免费会员',
       groupResourceError: ''
     });
     return true;
@@ -318,7 +382,7 @@ Page({
 
   async retryGroupQr() {
     const loaded = await this.loadGroupResource();
-    if (loaded && this.data.groupQrCode) this.setData({ groupQrCode: retryImageUrl(this.data.groupQrCode), groupQrLoading: true, groupQrError: '' });
+    if (loaded && this.data.groupQrCode) this.setData({ groupQrLoading: true, groupQrError: '' });
   },
 
   closeGroupModal() {

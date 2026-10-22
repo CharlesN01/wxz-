@@ -1,5 +1,6 @@
 const api = require('../../services/api');
 const navigation = require('../../utils/navigation');
+function currentTheme() { try { return wx.getStorageSync('chinese-study.theme') === 'night' ? 'night' : 'day'; } catch (_) { return 'day'; } }
 const agentAttribution = require('../../utils/agent-attribution');
 const { orderView } = require('../../utils/order-view');
 
@@ -20,6 +21,7 @@ function apiMessage(error, fallback) {
 
 Page({
   data: {
+    theme: 'day',
     loggedIn: false, userId: '', entitlement: null, stats: null, product: null,
     orders: [], loading: false, error: '', feedbackTypes, feedbackType: 'feature',
     activationVisible: false, feedbackVisible: false, ordersVisible: false,
@@ -29,7 +31,7 @@ Page({
     feedbackContent: '', feedbackContact: '', busy: false
   },
 
-  onShow() { this.refresh(); },
+  onShow() { this.setData({ theme: currentTheme() }); this.refresh(); },
   onHide() { this.clearOrderExpiryTimer(); },
   onUnload() { this.clearOrderExpiryTimer(); },
 

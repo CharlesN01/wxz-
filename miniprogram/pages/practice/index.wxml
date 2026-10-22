@@ -1,4 +1,4 @@
-<view class="practice-page">
+<view class="practice-page theme-{{theme}}">
   <study-navbar title="{{typeLabel}}" theme="paper" back="{{true}}" class="page-navbar" />
 
   <view class="practice-main">

@@ -1,4 +1,4 @@
-<view class="application-page reader-theme-{{theme}}">
+<view class="application-page theme-{{globalTheme}} reader-theme-{{theme}}">
   <study-navbar title="应用文" subtitle="格式速记 · 文种练习" theme="paper" back="{{true}}" class="page-navbar" />
   <view class="application-body">
     <view class="hero">

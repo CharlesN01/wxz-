@@ -1,4 +1,4 @@
-<view class="classical-page">
+<view class="classical-page theme-{{theme}}">
   <study-navbar title="文言文背诵" theme="paper" centered="{{true}}" back="{{true}}" />
   <view class="classical-main">
     <view wx:if="{{loading}}" class="remote-state remote-loading"><view class="state-spinner"></view><text>正在同步文言目录...</text></view>
@@ -7,11 +7,11 @@
     <view wx:if="{{personalError && dataSource === 'local'}}" class="remote-note"><text>{{personalError}}</text></view>
     <view class="hero">
       <view class="hero-copy"><text class="eyebrow">山东专升本 · 文言研习</text><text class="hero-title">循序精读，温故知新</text><text class="hero-caption">{{articleTotal}} 篇核心篇目 · {{completionPercent}}% 已完成</text></view>
-      <view class="ring" style="background: conic-gradient(#237BEA {{completionPercent}}%, #E9EEF4 0);"><view class="ring-content"><text class="ring-value">{{learnedCount}}</text><text class="ring-total">/ {{articleTotal}} 篇</text></view></view>
+      <view class="ring" style="background: conic-gradient({{theme === 'day' ? '#bb6a5d' : '#237BEA'}} {{completionPercent}}%, {{theme === 'day' ? '#f1e6df' : '#E9EEF4'}} 0);"><view class="ring-content"><text class="ring-value">{{learnedCount}}</text><text class="ring-total">/ {{articleTotal}} 篇</text></view></view>
     </view>
     <view class="quick-grid">
-      <view role="button" class="quick-card" data-type="word" bindtap="onSpecialty" hover-class="quick-pressed"><view class="quick-icon quick-icon-word"><study-icon name="book" size="{{34}}" color="#159C72" /></view><view class="quick-copy"><text class="quick-title">重点字词</text><text class="quick-caption">知词义，通文意</text></view><text class="quick-chevron">›</text></view>
-      <view role="button" class="quick-card" data-type="translation" bindtap="onSpecialty" hover-class="quick-pressed"><view class="quick-icon quick-icon-translation"><study-icon name="translate" size="{{34}}" color="#D58734" /></view><view class="quick-copy"><text class="quick-title">重点翻译</text><text class="quick-caption">读原句，明其意</text></view><text class="quick-chevron">›</text></view>
+      <view role="button" class="quick-card" data-type="word" bindtap="onSpecialty" hover-class="quick-pressed"><view class="quick-icon quick-icon-word"><study-icon name="book" size="{{34}}" color="{{theme === 'day' ? '#779176' : '#159C72'}}" /></view><view class="quick-copy"><text class="quick-title">重点字词</text><text class="quick-caption">知词义，通文意</text></view><text class="quick-chevron">›</text></view>
+      <view role="button" class="quick-card" data-type="translation" bindtap="onSpecialty" hover-class="quick-pressed"><view class="quick-icon quick-icon-translation"><study-icon name="translate" size="{{34}}" color="{{theme === 'day' ? '#bd865a' : '#D58734'}}" /></view><view class="quick-copy"><text class="quick-title">重点翻译</text><text class="quick-caption">读原句，明其意</text></view><text class="quick-chevron">›</text></view>
     </view>
     <view class="section-head"><text class="section-title">篇目目录</text><text class="section-count">共 {{articleTotal}} 篇</text></view>
     <view class="filters"><view wx:for="{{filters}}" wx:key="value" role="button" class="filter {{filterStatus === item.value ? 'filter-active' : ''}}" data-status="{{item.value}}" bindtap="onFilter" aria-label="{{item.label}}篇目">{{item.label}}</view></view>
@@ -36,7 +36,7 @@
       <view class="modal-top"><view role="button" class="modal-close" bindtap="onCloseModal" aria-label="关闭弹窗">×</view></view>
       <text class="modal-kicker">选择一项，开始温习</text><text class="modal-title">{{selectedArticle.placeholder ? selectedArticle.title : '《' + selectedArticle.title + '》'}}</text><text class="modal-sub">字词与译句，循序学习</text>
       <view class="choice choice-primary" data-type="word" bindtap="onChooseType" role="button" hover-class="choice-pressed"><study-icon name="book" size="{{36}}" color="#FFFFFF" /><view class="choice-copy"><text class="choice-title">重点字词专项</text><text class="choice-caption">知词义 · 通文意</text></view><text class="choice-arrow">→</text></view>
-      <view class="choice" data-type="translation" bindtap="onChooseType" role="button" hover-class="choice-pressed"><study-icon name="translate" size="{{36}}" color="#175F4B" /><view class="choice-copy"><text class="choice-title">重点翻译专项</text><text class="choice-caption">读原句 · 明其意</text></view><text class="choice-arrow">→</text></view>
+      <view class="choice" data-type="translation" bindtap="onChooseType" role="button" hover-class="choice-pressed"><study-icon name="translate" size="{{36}}" color="{{theme === 'day' ? '#779176' : '#175F4B'}}" /><view class="choice-copy"><text class="choice-title">重点翻译专项</text><text class="choice-caption">读原句 · 明其意</text></view><text class="choice-arrow">→</text></view>
       <text class="modal-tip">完成专项后，可继续进行背诵自测</text>
     </view>
   </view>

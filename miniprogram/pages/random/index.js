@@ -8,6 +8,7 @@ const answerDrafts = require('../../utils/answer-drafts');
 
 const GROUP_SIZE = 6;
 const PAGE_PATH = '/pages/random/index';
+function currentTheme() { try { return wx.getStorageSync('chinese-study.theme') === 'night' ? 'night' : 'day'; } catch (_) { return 'day'; } }
 function settle(promise) { return Promise.resolve(promise).then((value) => ({ ok: true, value }), (error) => ({ ok: false, error })); }
 function getToken() { try { return api.auth && api.auth.getToken && api.auth.getToken() || ''; } catch (_) { return ''; } }
 function hasToken() { return Boolean(getToken()); }
@@ -37,7 +38,7 @@ function compatibleType(source, type) {
 }
 
 Page(withStudyTime({
-  data: { loading: true, hasError: false, errorMessage: '', dataSource: 'local', personalError: '', roundContentUnavailable: false, source: 'literature', safeTop: 0, typeFilter: 'word', mode: 'writing', sourceName: '文学常识', subtitle: '8 类混合随机 · 每页 6 题', questions: [], groupNumber: 0, groupCount: 0, roundQuestionCount: 0, groupPageSize: GROUP_SIZE, progressPercent: 0, answeredCount: 0, answerProgressPercent: 0, pageQuestionCount: 0, nextLabel: '下一组' },
+  data: { theme: 'day', loading: true, hasError: false, errorMessage: '', dataSource: 'local', personalError: '', roundContentUnavailable: false, source: 'literature', safeTop: 0, typeFilter: 'word', mode: 'writing', sourceName: '文学常识', subtitle: '8 类混合随机 · 每页 6 题', questions: [], groupNumber: 0, groupCount: 0, roundQuestionCount: 0, groupPageSize: GROUP_SIZE, progressPercent: 0, answeredCount: 0, answerProgressPercent: 0, pageQuestionCount: 0, nextLabel: '下一组' },
 
   onLoad(options = {}) {
     this._source = options.source === 'classical' ? 'classical' : 'literature';
@@ -78,6 +79,7 @@ Page(withStudyTime({
   },
 
   onShow() {
+    this.setData({ theme: currentTheme() });
     if (this.data.loading || !this._ready && !this.data.hasError) return;
     if (typeof wx !== 'undefined' && typeof wx.request === 'function' && hasToken()) {
       if (this._contentAccountKey !== getAccountKey()) {

@@ -5,6 +5,7 @@ const questionUtils = require('../../utils/question-utils');
 const api = require('../../services/api');
 const navigation = require('../../utils/navigation');
 const answerDrafts = require('../../utils/answer-drafts');
+function currentTheme() { try { return wx.getStorageSync('chinese-study.theme') === 'night' ? 'night' : 'day'; } catch (_) { return 'day'; } }
 
 function settle(promise) { return Promise.resolve(promise).then((value) => ({ ok: true, value }), (error) => ({ ok: false, error })); }
 function hasToken() { try { return Boolean(api.auth && api.auth.getToken && api.auth.getToken()); } catch (_) { return false; } }
@@ -41,9 +42,9 @@ function decorateFavorite(question) {
 }
 
 Page(withStudyTime({
-  data: { categoryRows: [], categoryId: '', activeCategoryElement: '', activeCategoryRow: 'literature', sourceFilter: 'literature', mode: 'writing', questions: [], hasQuestions: false, pageNumber: 0, pageCount: 0, totalFavorites: 0, todayAdded: 0, nextLabel: '下一页', loading: true, hasError: false, errorMessage: '', dataSource: 'local', personalError: '', requiresLogin: false },
+  data: { theme: 'day', categoryRows: [], categoryId: '', activeCategoryElement: '', activeCategoryRow: 'literature', sourceFilter: 'literature', mode: 'writing', questions: [], hasQuestions: false, pageNumber: 0, pageCount: 0, totalFavorites: 0, todayAdded: 0, nextLabel: '下一页', loading: true, hasError: false, errorMessage: '', dataSource: 'local', personalError: '', requiresLogin: false },
   onLoad(options = {}) { this._categories = dataService.getCategories('favorites'); this._pageIndex = 0; this._categoryId = options.categoryId || ''; this._sourceFilter = options.source === 'classical' ? 'classical' : 'literature'; this._remoteRows = []; this._remoteLoaded = false; this._stateInFlight = Object.create(null); this._ready = true; this._setupCategories(); this._refreshFavorites(); },
-  onShow() { if (this._ready) this._refreshFavorites(); },
+  onShow() { this.setData({ theme: currentTheme() }); if (this._ready) this._refreshFavorites(); },
   _setupCategories() {
     const localState = studyStore.getState(); const favorites = new Set(localState.favorites);
     if (this._categoryId && !this._categories.some((category) => category.id === this._categoryId)) this._categoryId = '';
