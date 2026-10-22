@@ -43,8 +43,7 @@
           <view wx:if="{{reader.points.length}}" class="steps"><view wx:for="{{reader.points}}" wx:key="*this" class="step"><text class="step-number">{{index + 1}}</text><text class="step-copy">{{item}}</text></view></view>
           <text wx:else class="content-empty">该内容尚未单独提供写作要点，请查看写作样例或原文。</text>
         </block>
-        <button class="original-toggle" bindtap="toggleOriginal">{{originalVisible ? '收起原文' : '查看完整原文'}}</button>
-        <text wx:if="{{originalVisible}}" class="original-content">{{reader.original}}</text>
+        <text wx:if="{{reader.original}}" class="original-content">{{reader.original}}</text>
       </view>
       <view wx:if="{{detailItems.length}}" class="page-nav"><button disabled="{{selectedIndex <= 0}}" data-direction="-1" bindtap="changePage">‹ 上一篇</button><text class="page-no">第 {{selectedIndex + 1}} / {{detailItems.length}} 篇</text><button disabled="{{selectedIndex >= detailItems.length - 1}}" data-direction="1" bindtap="changePage">下一篇 ›</button></view>
     </block>

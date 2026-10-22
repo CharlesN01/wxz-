@@ -17,7 +17,7 @@ page { background: #f5f9ff; }
 .theme-option { min-height: 52rpx; padding: 8rpx 16rpx; border: 1px solid var(--reader-border); border-radius: 16rpx; color: var(--reader-muted); background: var(--reader-paper); font-size: 20rpx; }
 .theme-option.active { border-color: var(--reader-primary); color: var(--reader-primary); background: var(--reader-soft); }
 .doc-switch { display: flex; width: 100%; white-space: nowrap; }
-.doc-tab { display: inline-flex; flex-shrink: 0; min-height: 64rpx; margin-right: 14rpx; padding: 14rpx 24rpx; border: 1px solid var(--reader-border); border-radius: 18rpx; color: var(--reader-muted); background: var(--reader-paper); font-size: 20rpx; }
+.doc-tab { display: inline-flex; flex: 0 0 auto; min-height: 0; margin-right: 14rpx; padding: 16rpx 24rpx; border: 1px solid var(--reader-border); border-radius: 18rpx; color: var(--reader-muted); background: var(--reader-paper); font-size: 20rpx; line-height: 1.4; }
 .doc-tab.active { border-color: var(--reader-primary); color: var(--reader-primary); background: var(--reader-soft); font-weight: 700; }
 .filter-head { display: flex; align-items: center; justify-content: space-between; gap: 12rpx; margin: 16rpx 4rpx 0; color: var(--reader-muted); font-size: 18rpx; }
 .filter-toggle { min-height: 52rpx; color: var(--reader-primary); font-size: 18rpx; }
@@ -28,7 +28,7 @@ page { background: #f5f9ff; }
 .reader-title { flex: 1; min-width: 0; font-size: 28rpx; font-weight: 700; }
 .reader-group { max-width: 42%; color: var(--reader-muted); font-size: 20rpx; text-align: right; }
 .mode-row { display: flex; gap: 12rpx; margin-bottom: 18rpx; padding: 6rpx; border-radius: 20rpx; background: var(--reader-track); }
-.mode { flex: 1; min-height: 68rpx; padding: 16rpx; border-radius: 16rpx; color: var(--reader-muted); font-size: 22rpx; }
+.mode { flex: 1; min-height: 0; padding: 16rpx 10rpx; border-radius: 16rpx; color: var(--reader-muted); font-size: 22rpx; line-height: 1.4; }
 .mode.active { color: var(--reader-primary); background: var(--reader-paper); font-weight: 700; box-shadow: 0 4rpx 12rpx rgba(32,74,116,.07); }
 .panel { padding: 28rpx; border: 1px solid var(--reader-border); border-radius: 24rpx; background: var(--reader-paper); overflow: hidden; }
 .article-heading { margin-bottom: 20rpx; }
