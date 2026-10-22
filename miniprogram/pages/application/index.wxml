@@ -33,10 +33,10 @@
       <view wx:elif="{{selected && reader}}" class="panel">
         <view class="article-heading"><text class="article-title">{{selected.title}}</text><text class="source-label">{{reader.sourceLabel}}</text></view>
         <block wx:if="{{mode === 'template'}}">
+          <view wx:if="{{reader.requirement}}" class="requirement"><text class="requirement-title">题目要求</text><text class="requirement-body">{{reader.requirement}}</text></view>
           <text class="panel-heading">{{selected.kind === 'exercise' ? '参考答案' : '写作样例'}}</text>
           <text wx:if="{{reader.sample}}" class="template-content">{{reader.sample}}</text>
           <text wx:else class="content-empty">该内容未单独提供写作样例，可切换查看写作要点或原文。</text>
-          <view wx:if="{{reader.requirement}}" class="requirement"><text class="requirement-title">题目要求</text><text class="requirement-body">{{reader.requirement}}</text></view>
         </block>
         <block wx:else>
           <text class="panel-heading">写作要点</text>
