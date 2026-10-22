@@ -98,6 +98,19 @@ test('article catalogs carry the learner session for aggregated progress while g
   assert.equal(calls[1].header.Authorization, 'Bearer article-learner');
 });
 
+test('application-writing lists and details carry the learner session while guests stay public', async () => {
+  const calls = installWx((options) => respond(options, 200, { results: [] }));
+  await api.content.writings({ page: 1 });
+  await api.content.writing('writing-001');
+  assert.equal(calls[0].header.Authorization, undefined);
+  assert.equal(calls[1].header.Authorization, undefined);
+  session.saveSession({ token: 'writing-learner', expiresAt: '' });
+  await api.content.writings({ page: 1 });
+  await api.content.writing('writing-001');
+  assert.equal(calls[2].header.Authorization, 'Bearer writing-learner');
+  assert.equal(calls[3].header.Authorization, 'Bearer writing-learner');
+});
+
 test('app extension configuration overrides the configured API origin', async () => {
   const calls = installWx((options) => respond(options, 200, { pageSize: 20 }));
   global.wx.getExtConfigSync = () => ({ apiBaseUrl: 'https://student-api.example' });

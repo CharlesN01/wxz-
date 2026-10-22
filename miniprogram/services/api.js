@@ -59,8 +59,8 @@ const api = {
     articles: (params, options) => query('GET', ROOT + '/articles/', params, Object.assign({ auth: 'optional' }, options || {})),
     questions: (params, options) => query('GET', ROOT + '/questions/', params, Object.assign({ auth: 'optional' }, options || {})),
     question: (id, options) => query('GET', ROOT + '/questions/' + encodeId(id) + '/', null, Object.assign({ auth: 'optional' }, options || {})),
-    writings: (params, options) => query('GET', ROOT + '/writings/', params, options),
-    writing: (id, options) => query('GET', ROOT + '/writings/' + encodeId(id) + '/', null, options)
+    writings: (params, options) => query('GET', ROOT + '/writings/', params, Object.assign({ auth: 'optional' }, options || {})),
+    writing: (id, options) => query('GET', ROOT + '/writings/' + encodeId(id) + '/', null, Object.assign({ auth: 'optional' }, options || {}))
   },
 
   learning: {
