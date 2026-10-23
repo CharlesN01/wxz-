@@ -69,11 +69,17 @@ def generate_agent_qr(actor, agent_id):
     try:
         with urlopen(request, timeout=8) as response:
             content = response.read(2 * 1024 * 1024 + 1)
-        if len(content) > 2 * 1024 * 1024 or not content.startswith(b"\x89PNG"):
+        if len(content) > 2 * 1024 * 1024:
+            raise ValueError()
+        if content.startswith(b"\x89PNG"):
+            filename = "agent-" + profile.agent_code + ".png"
+        elif content.startswith(b"\xff\xd8\xff"):
+            filename = "agent-" + profile.agent_code + ".jpg"
+        else:
             raise ValueError()
     except Exception as error:
         raise BusinessError("AGENT_QRCODE_FAILED", "微信小程序码生成失败，请稍后重试。", 503) from error
-    profile.qr_image.save("agent-" + profile.agent_code + ".png", ContentFile(content), save=False)
+    profile.qr_image.save(filename, ContentFile(content), save=False)
     profile.save(_service=True)
     _audit("agent_qrcode_generated", actor=actor, agentId=str(profile.pk), scene=profile.scene)
     return profile
