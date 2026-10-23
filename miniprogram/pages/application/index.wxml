@@ -7,10 +7,7 @@
       <text class="hero-copy">选好文种，直接看写作样例、记要点。写完后可按题目要求自查。</text>
       <view class="hero-foot"><text>写作样例</text><text>题目要求</text><text>写作要点</text></view>
     </view>
-    <view class="section-head">
-      <text class="section-title">选择文种</text>
-      <view class="theme-switch"><button class="theme-option {{theme === 'blue' ? 'active' : ''}}" data-theme="blue" bindtap="changeTheme" aria-label="蓝色主题">蓝色</button><button class="theme-option {{theme === 'warm' ? 'active' : ''}}" data-theme="warm" bindtap="changeTheme" aria-label="暖色主题">暖色</button></view>
-    </view>
+    <view class="section-head"><text class="section-title">选择文种</text></view>
     <view wx:if="{{loading}}" class="state">正在加载应用文内容…</view>
     <view wx:elif="{{error}}" class="state error"><text>{{error}}</text><button class="retry-button" bindtap="retry">重新加载</button></view>
     <view wx:elif="{{!items.length && !restrictedCount}}" class="state"><text>暂无已发布的应用文内容</text><text class="state-copy">发布后可在这里切换文种、查看样例和要点。</text><button class="retry-button" bindtap="retry">刷新内容</button></view>
