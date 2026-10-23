@@ -13,8 +13,8 @@ page { background: #f5f9ff; }
 .section-head, .reader-head { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; margin: 24rpx 4rpx 18rpx; }
 .section-title { flex-shrink: 0; white-space: nowrap; font-size: 28rpx; font-weight: 700; }
 .application-page button { width: auto; }
-.doc-switch { display: flex; width: 100%; white-space: nowrap; }
-.doc-tab { display: inline-flex; flex: 0 0 auto; width: auto; min-width: 0; min-height: 0; margin-right: 14rpx; padding: 16rpx 24rpx; border: 1px solid var(--reader-border); border-radius: 18rpx; color: var(--reader-muted); background: var(--reader-paper); font-size: 20rpx; line-height: 1.4; }
+.doc-switch { display: flex; width: 100%; gap: 14rpx; padding: 2rpx 0 10rpx; white-space: nowrap; }
+.doc-tab { flex: none; padding: 16rpx 24rpx; border: 1px solid var(--reader-border); border-radius: 18rpx; color: var(--reader-muted); background: var(--reader-paper); font-size: 20rpx; line-height: 1.4; white-space: nowrap; }
 .doc-tab.active { border-color: var(--reader-primary); color: var(--reader-primary); background: var(--reader-soft); font-weight: 700; }
 .filter-head { display: flex; align-items: center; justify-content: space-between; gap: 12rpx; margin: 16rpx 4rpx 0; color: var(--reader-muted); font-size: 18rpx; }
 .filter-toggle { min-height: 52rpx; color: var(--reader-primary); font-size: 18rpx; }
