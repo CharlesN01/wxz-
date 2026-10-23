@@ -280,7 +280,7 @@ Page({
     }
     const info = {
       refund: ['退费规则', '具体退费规则待公布，请在购买前阅读完整说明。'],
-      customer: ['联系客服', '客服入口暂未配置，请通过已公布的官方渠道联系。']
+      customer: ['联系客服', '如有使用问题，请通过本小程序公布的官方渠道联系我们，我们会尽快处理。']
     }[kind];
     this.setData({ infoTitle: info[0], infoText: info[1], infoKind: kind, infoVisible: true });
   },
