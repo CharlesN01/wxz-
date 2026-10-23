@@ -265,9 +265,21 @@ Page({
 
   openInfo(event) {
     const kind = event.currentTarget.dataset.kind;
+    if (kind === 'agreement') {
+      if (typeof wx.openPrivacyContract === 'function') {
+        wx.openPrivacyContract({
+          fail: (error) => {
+            const message = error && error.errMsg ? String(error.errMsg) : '';
+            if (!/cancel/i.test(message)) showToast('隐私协议暂时无法打开，请稍后重试');
+          }
+        });
+        return;
+      }
+      showToast('当前微信版本不支持查看隐私协议');
+      return;
+    }
     const info = {
       refund: ['退费规则', '具体退费规则待公布，请在购买前阅读完整说明。'],
-      agreement: ['服务协议与隐私', '服务协议与隐私政策尚未配置。正式上线前应展示经确认的完整文本。'],
       customer: ['联系客服', '客服入口暂未配置，请通过已公布的官方渠道联系。']
     }[kind];
     this.setData({ infoTitle: info[0], infoText: info[1], infoKind: kind, infoVisible: true });
