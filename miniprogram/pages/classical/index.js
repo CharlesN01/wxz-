@@ -3,6 +3,8 @@ const studyStore = require('../../utils/study-store');
 const navigation = require('../../utils/navigation');
 const api = require('../../services/api');
 
+function currentTheme() { try { return wx.getStorageSync('chinese-study.theme') === 'night' ? 'night' : 'day'; } catch (_) { return 'day'; } }
+
 function canRequest() {
   return typeof wx !== 'undefined' && typeof wx.request === 'function';
 }
@@ -38,6 +40,7 @@ function readableCount(article) {
 
 Page({
   data: {
+    theme: 'day',
     loading: true,
     hasError: false,
     errorMessage: '',
@@ -74,6 +77,7 @@ Page({
   },
 
   onShow() {
+    this.setData({ theme: currentTheme() });
     if (canRequest() && this._loadingPromise) return this.loadRemote();
     if (canRequest() && this._remoteLoaded && (this._contentToken !== getToken()
       || this._needsRemoteRefresh || this.data.dataSource === 'local')) return this.loadRemote();

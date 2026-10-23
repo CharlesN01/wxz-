@@ -1,14 +1,14 @@
 page {
-  background: #f6f8fb;
-  color: #18243b;
+  background: var(--theme-background, #f6f8fb);
+  color: var(--theme-ink, #18243b);
 }
 
 .practice-page {
   max-width: 430px;
   margin: 0 auto;
   min-height: 100vh;
-  background: #f6f8fb;
-  color: #18243b;
+  background: var(--theme-background, #f6f8fb);
+  color: var(--theme-ink, #18243b);
   font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
 }
 
@@ -21,10 +21,10 @@ page {
   align-items: flex-start;
   margin-bottom: 18rpx;
   padding: 16rpx 20rpx;
-  border: 1rpx solid #d9e8fb;
+  border: 1rpx solid var(--theme-border, #d9e8fb);
   border-radius: 18rpx;
-  background: #f4f8ff;
-  color: #486487;
+  background: var(--theme-soft, #f4f8ff);
+  color: var(--theme-answer-ink, #486487);
   font-size: 23rpx;
   line-height: 1.55;
 }
@@ -51,7 +51,7 @@ page {
   margin: 2rpx 12rpx 0 0;
   border-radius: 50%;
   background: currentColor;
-  color: #ffffff;
+  color: var(--theme-paper, #ffffff);
   font-size: 20rpx;
   font-weight: 700;
   line-height: 1;
@@ -65,10 +65,10 @@ page {
   display: flex;
   align-items: center;
   padding: 10px 12px;
-  border: 1rpx solid #edf1f6;
+  border: 1rpx solid var(--theme-border, #edf1f6);
   border-radius: 26rpx;
-  background: #ffffff;
-  box-shadow: 0 10rpx 36rpx rgba(45, 91, 155, .06);
+  background: var(--theme-paper, #ffffff);
+  box-shadow: 0 10rpx 36rpx rgba(var(--theme-shadow-rgb, 45,91,155),.06);
 }
 
 .info-icon {
@@ -80,8 +80,8 @@ page {
   height: 64rpx;
   margin-right: 18rpx;
   border-radius: 20rpx;
-  background: #edf5ff;
-  color: #237bea;
+  background: var(--theme-soft, #edf5ff);
+  color: var(--theme-accent, #237bea);
   font-size: 29rpx;
   font-weight: 700;
 }
@@ -90,7 +90,7 @@ page {
 .info-title {
   display: block;
   overflow: hidden;
-  color: #18243b;
+  color: var(--theme-ink, #18243b);
   font-size: 29rpx;
   font-weight: 700;
   line-height: 1.35;
@@ -102,7 +102,7 @@ page {
   display: block;
   margin-top: 6rpx;
   overflow: hidden;
-  color: #8995a8;
+  color: var(--theme-muted, #8995a8);
   font-size: 21rpx;
   line-height: 1.35;
   text-overflow: ellipsis;
@@ -114,8 +114,8 @@ page {
   margin-left: 16rpx;
   padding: 8rpx 14rpx;
   border-radius: 16rpx;
-  background: #edf5ff;
-  color: #237bea;
+  background: var(--theme-soft, #edf5ff);
+  color: var(--theme-accent, #237bea);
   font-size: 22rpx;
   font-weight: 700;
   line-height: 1.2;
@@ -131,7 +131,7 @@ page {
 
 .question-hint {
   flex-shrink: 0;
-  color: #8995a8;
+  color: var(--theme-muted, #8995a8);
   font-size: 22rpx;
   line-height: 1.4;
 }
@@ -147,14 +147,14 @@ page {
   margin-bottom: 20rpx;
   overflow: hidden;
   border-radius: 10rpx;
-  background: #e9f0f8;
+  background: var(--theme-border, #e9f0f8);
 }
 
 .progress-fill {
   height: 100%;
   min-width: 0;
   border-radius: inherit;
-  background: #237bea;
+  background: var(--theme-accent, #237bea);
   transition: width .2s ease;
 }
 
@@ -173,10 +173,10 @@ page {
   justify-content: center;
   min-height: 300rpx;
   padding: 34rpx 24rpx;
-  border: 1rpx solid #e3ecf7;
+  border: 1rpx solid var(--theme-border, #e3ecf7);
   border-radius: 22rpx;
-  background: #ffffff;
-  color: #6d7b90;
+  background: var(--theme-paper, #ffffff);
+  color: var(--theme-muted, #6d7b90);
   font-size: 25rpx;
   line-height: 1.6;
   text-align: center;
@@ -191,8 +191,8 @@ page {
   width: 46rpx;
   height: 46rpx;
   margin-bottom: 18rpx;
-  border: 5rpx solid #dceafa;
-  border-top-color: #237bea;
+  border: 5rpx solid var(--theme-border, #dceafa);
+  border-top-color: var(--theme-accent, #237bea);
   border-radius: 50%;
   animation: practice-spin 1s linear infinite;
 }
@@ -223,15 +223,15 @@ page {
   margin-top: 20rpx;
   padding: 14rpx 24rpx;
   border-radius: 16rpx;
-  background: #237bea;
-  color: #ffffff;
+  background: var(--theme-accent, #237bea);
+  color: var(--theme-paper, #ffffff);
   font-size: 25rpx;
 }
 
 .practice-empty {
-  border: 1rpx solid #edf1f6;
+  border: 1rpx solid var(--theme-border, #edf1f6);
   border-radius: 22rpx;
-  background: #ffffff;
+  background: var(--theme-paper, #ffffff);
 }
 
 .pagination {
@@ -249,18 +249,18 @@ page {
   line-height: normal;
   width: 68rpx;
   height: 60rpx;
-  border: 1rpx solid #e9eef5;
+  border: 1rpx solid var(--theme-border, #e9eef5);
   border-radius: 16rpx;
-  background: #ffffff;
-  color: #6d7b90;
+  background: var(--theme-paper, #ffffff);
+  color: var(--theme-muted, #6d7b90);
   font-size: 40rpx;
 }
 
-.page-button-pressed { background: #edf5ff; color: #237bea; }
-.page-disabled { color: #c9d1dc; background: #f7f9fc; }
+.page-button-pressed { background: var(--theme-soft, #edf5ff); color: var(--theme-accent, #237bea); }
+.page-disabled { color: var(--theme-disabled, #c9d1dc); background: var(--theme-background, #f7f9fc); }
 
 .page-number {
-  color: #8995a8;
+  color: var(--theme-muted, #8995a8);
   font-size: 24rpx;
   line-height: 1.4;
   white-space: nowrap;
@@ -268,7 +268,7 @@ page {
 
 .practice-tip {
   display: block;
-  color: #8995a8;
+  color: var(--theme-muted, #8995a8);
   font-size: 20rpx;
   line-height: 1.5;
   text-align: center;

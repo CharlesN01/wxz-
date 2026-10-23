@@ -1,0 +1,40 @@
+.theme-day {
+  --theme-paper: #fffdf9;
+  --theme-background: #fcf7f1;
+  --theme-ink: #30282a;
+  --theme-muted: #918487;
+  --theme-accent: #bb6a5d;
+  --theme-accent-light: #e5b5a5;
+  --theme-accent-border: #d7a79a;
+  --theme-soft: #f9ebe4;
+  --theme-border: #eee1d8;
+  --theme-answer-ink: #725b58;
+  --theme-disabled: #c4b8b5;
+  --theme-green: #779176;
+  --theme-green-soft: #eef3eb;
+  --theme-orange: #bd865a;
+  --theme-orange-soft: #fbf1e3;
+  --theme-purple: #a8756d;
+  --theme-purple-soft: #f5ebea;
+  --theme-shadow-rgb: 90,62,48;
+  --theme-accent-rgb: 187,106,93;
+}
+
+/* Palette only: layout, typography, interactions and API calls stay in each page. */
+.theme-day.home-page, .theme-day.application-page, .theme-day.classical-page,
+.theme-day.favorites-page, .theme-day.literature-page, .theme-day.mine-page,
+.theme-day.practice-page, .theme-day.random-page, .theme-day.resources-page {
+  color: #30282a;
+  background: #fcf7f1;
+}
+.theme-day.mine-page .profile { color: #5b403d; background: linear-gradient(135deg,#f1cfc0,#f8e7dc); }
+.theme-day.mine-page .status { color: #76524d; background: rgba(255,255,255,.44); }
+.theme-day.mine-page .avatar { background: rgba(255,255,255,.44); }
+.theme-day.mine-page .member-row { border-color: rgba(149,91,77,.18); }
+.theme-day.mine-page .mask, .theme-day.classical-page .modal-mask { background: rgba(54,43,42,.4); }
+.theme-day.resources-page .hero, .theme-day.application-page .hero,
+.theme-day.favorites-page .favorites-summary {
+  color: #5b403d;
+  background: linear-gradient(135deg,#e5b5a5 0%,#efcabb 58%,#f3dacb 100%);
+}
+.theme-day.literature-page .reading-banner { background: linear-gradient(120deg,#fffdf9,#fff7f1); }

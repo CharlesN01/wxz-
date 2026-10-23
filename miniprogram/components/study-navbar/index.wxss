@@ -1,11 +1,11 @@
 :host { display: block; position: sticky; top: 0; z-index: 40; }
-.navbar { color: #FFFFFF; background: #12345B; }
+.navbar { color: var(--theme-paper, #FFFFFF); background: var(--theme-ink, #12345B); }
 .bar { position: relative; display: flex; align-items: center; }
 .back-hit { position: absolute; top: 0; bottom: 0; left: 8rpx; width: 88rpx; display: flex; align-items: center; justify-content: center; z-index: 2; }
 .chevron { width: 20rpx; height: 20rpx; border-bottom: 4rpx solid currentColor; border-left: 4rpx solid currentColor; transform: rotate(45deg); }
 .header-copy { display: flex; flex: 1; flex-direction: column; justify-content: center; align-items: flex-start; min-width: 0; width: 100%; box-sizing: border-box; }
 .header-copy-centered { align-items: center; text-align: center; }
 .brand-title { display: block; max-width: 100%; color: inherit; font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif; font-size: 34rpx; line-height: 1.35; font-weight: 700; overflow-wrap: break-word; word-break: break-all; }
-.brand-subtitle { display: block; max-width: 100%; margin-top: 6rpx; color: #8492A8; font-size: 20rpx; line-height: 1.35; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.theme-paper { color: #18243B; background: #FFFFFF; border-bottom: 1px solid #E5EDF7; }
-.region { color: #1B5E91; }
+.brand-subtitle { display: block; max-width: 100%; margin-top: 6rpx; color: var(--theme-muted, #8492A8); font-size: 20rpx; line-height: 1.35; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.theme-paper { color: var(--theme-ink, #18243B); background: var(--theme-paper, #FFFFFF); border-bottom: 1px solid var(--theme-border, #E5EDF7); }
+.region { color: var(--theme-accent, #1B5E91); }

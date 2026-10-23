@@ -1,5 +1,6 @@
-<view class="home-page">
-  <study-navbar title="专升本语文" subtitle="山东专升本文学与文言文" theme="paper" back="{{false}}" />
+<template name="home-content">
+<view class="home-page theme-{{theme}}" style="{{layerStyle}}">
+  <study-navbar class="home-navbar" style="{{navbarStyle}}" title="专升本语文" subtitle="山东专升本文学与文言文" theme="paper" back="{{false}}" />
   <view wx:if="{{loading}}" class="home-loading"><view class="loading-spinner"></view><text>正在加载学习内容...</text></view>
   <view wx:elif="{{hasError}}" class="home-error">
     <view class="error-icon">!</view>
@@ -9,7 +10,7 @@
   </view>
   <view wx:else class="home-body">
     <view class="dashboard-card">
-      <view class="dashboard-head"><text>山东专升本考试倒计时</text><text class="target-pill">{{targetLabel}}</text></view>
+      <view class="dashboard-head"><text>山东专升本考试倒计时</text><view class="dashboard-head-actions"><button class="theme-toggle" bindtap="toggleTheme" aria-label="{{theme === 'day' ? '切换夜间模式' : '切换白天模式'}}"><text>{{theme === 'day' ? '切换夜间模式' : '切换白天模式'}}</text></button></view></view>
       <view class="countdown-line"><text class="countdown-number">{{countdown}}</text><text class="countdown-unit">天</text></view>
       <text class="dashboard-caption">{{config.examDate ? '每天进步一点，稳步走向上岸' : '考试日期待设置'}}</text>
       <view class="dashboard-stats">
@@ -76,4 +77,11 @@
     <view class="nav-item study-bottom-navigation-item" data-page="favorites" bindtap="openNav"><text class="nav-symbol study-bottom-navigation-icon">☆</text><text class="study-bottom-navigation-label">收藏</text></view>
     <view class="nav-item study-bottom-navigation-item" data-page="mine" bindtap="openNav"><text class="nav-symbol study-bottom-navigation-icon">◎</text><text class="study-bottom-navigation-label">我的</text></view>
   </view>
+</view>
+</template>
+
+<template is="home-content" data="{{theme, loading, hasError, errorMessage, countdown, config, statsReady, stats, resumeLabel, resumeDescription, trendHint, trendBars, trendHasData, personalError, groupModalVisible, groupModalCopy, groupQrCode, groupResourceError, groupQrLoading, groupQrError, groupModalTip, groupModalNote, layerStyle: '', navbarStyle: ''}}" />
+<!-- Only the temporary upper viewport is clipped; both copies use the same layout. -->
+<view wx:if="{{themeTransition}}" class="theme-reveal" style="{{themeRevealStyle}}" catchtap="noop" catchtouchmove="noop" bindtransitionend="finishThemeTransition" aria-hidden="true">
+  <template is="home-content" data="{{theme, loading, hasError, errorMessage, countdown, config, statsReady, stats, resumeLabel, resumeDescription, trendHint, trendBars, trendHasData, personalError, groupModalVisible, groupModalCopy, groupQrCode, groupResourceError, groupQrLoading, groupQrError, groupModalTip, groupModalNote, theme: revealTheme, layerStyle: revealContentStyle, navbarStyle: revealNavbarStyle}}" />
 </view>

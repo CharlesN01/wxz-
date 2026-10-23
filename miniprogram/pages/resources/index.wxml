@@ -1,4 +1,4 @@
-<view class="resources-page">
+<view class="resources-page theme-{{theme}}">
   <study-navbar title="备考资料领取" theme="paper" back="{{true}}" />
   <view class="resources-body">
     <view class="hero">

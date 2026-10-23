@@ -7,6 +7,7 @@ const answerDrafts = require('../../utils/answer-drafts');
 
 const UI_PAGE_SIZE = 6;
 const SOURCE = 'literature';
+function currentTheme() { try { return wx.getStorageSync('chinese-study.theme') === 'night' ? 'night' : 'day'; } catch (_) { return 'day'; } }
 
 function settle(promise) {
   return Promise.resolve(promise).then(
@@ -73,6 +74,7 @@ function formatQuestionProgress(startIndex, total) {
 
 Page(withStudyTime({
   data: {
+    theme: 'day',
     loading: true,
     hasError: false,
     errorMessage: '',
@@ -122,6 +124,7 @@ Page(withStudyTime({
   },
 
   onShow() {
+    this.setData({ theme: currentTheme() });
     if (!this._loaded || this.data.loading) return;
     // Returning from membership/activation must refetch the accessible count
     // and pages; refreshing question state alone retains the free-only cache.

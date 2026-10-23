@@ -1,4 +1,4 @@
-<view class="literature-page literature-{{mode}}">
+<view class="literature-page literature-{{mode}} theme-{{theme}}">
   <study-navbar title="文学常识" theme="paper" back="{{true}}" class="page-navbar" />
   <view class="literature-main">
     <view wx:if="{{mode === 'writing'}}" class="literature-hero">

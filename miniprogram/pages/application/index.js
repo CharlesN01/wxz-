@@ -9,20 +9,25 @@ const kinds = [
   { id: 'past_exam', label: '历年真题' },
   { id: 'exercise', label: '专项练习' }
 ];
+function readGlobalTheme() {
+  try {
+    const value = wx.getStorageSync('chinese-study.theme');
+    return value === 'day' || value === 'night' ? value : '';
+  } catch (_) { return ''; }
+}
 
 Page(withStudyTime({
   data: {
     kinds, items: [], genres: [], detailItems: [], selectedGenre: '', selectedKind: '', selectedKindLabel: '全部内容',
-    selected: null, selectedIndex: 0, reader: null, mode: 'template', theme: 'blue', kindFilterVisible: false,
+    selected: null, selectedIndex: 0, reader: null, mode: 'template', theme: 'warm', globalTheme: 'day', kindFilterVisible: false,
     originalVisible: false, detailVisible: false, detailLoading: false, detailError: '', loading: true, error: '', restrictedCount: 0
   },
   onLoad() {
-    try {
-      if (wx.getStorageSync('application-reader-theme') === 'warm') this.setData({ theme: 'warm' });
-    } catch (_) { /* Storage is optional; reading remains available. */ }
+    this.syncTheme(true);
     return this.load();
   },
   onShow() {
+    this.syncTheme(true);
     if (!this._refreshOnShow) return;
     this._refreshOnShow = false;
     return this.load();
@@ -38,6 +43,13 @@ Page(withStudyTime({
   onUnload() {
     this._listRequest = (this._listRequest || 0) + 1;
     this._detailRequest = (this._detailRequest || 0) + 1;
+  },
+  syncTheme(allowLegacy) {
+    const globalTheme = readGlobalTheme() || (allowLegacy && (() => {
+      try { return wx.getStorageSync('application-reader-theme') === 'blue' ? 'night' : 'day'; } catch (_) { return 'day'; }
+    })()) || 'day';
+    const theme = globalTheme === 'day' ? 'warm' : 'blue';
+    if (this.data.globalTheme !== globalTheme || this.data.theme !== theme) this.setData({ globalTheme, theme });
   },
   async loadWritings(params) {
     let response = await api.content.writings(params);
@@ -148,8 +160,10 @@ Page(withStudyTime({
   changeTheme(event) {
     const theme = event.currentTarget.dataset.theme;
     if (theme !== 'blue' && theme !== 'warm') return;
-    this.setData({ theme });
+    const globalTheme = theme === 'warm' ? 'day' : 'night';
+    try { wx.setStorageSync('chinese-study.theme', globalTheme); } catch (_) { /* Theme still applies to this visit. */ }
     try { wx.setStorageSync('application-reader-theme', theme); } catch (_) { /* Theme still applies to this visit. */ }
+    this.setData({ theme, globalTheme });
   },
   toggleKinds() { this.setData({ kindFilterVisible: !this.data.kindFilterVisible }); },
   toggleOriginal() { this.setData({ originalVisible: !this.data.originalVisible }); },

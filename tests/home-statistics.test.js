@@ -147,10 +147,13 @@ test('统计失败清除旧趋势并显示失败提示，不保留伪造的趋�
   assert.equal(fixture.page.data.growthHint, '学习统计暂不可用');
 });
 
-test('首页二维码相对URL规范为HTTPS，加载成功和失败状态真实可见', async () => {
+test('首页群弹窗固定显示上传的二维码和指定文案，点击仍可预览并显示图片状态', async () => {
   const { page, calls } = createHome({ token: '', resource: { enabled: true, groupQrCode: '/media/resources/group/test.png' } });
   await page.loadGroupResource();
-  assert.equal(page.data.groupQrCode, 'https://zsbzy.com/media/resources/group/test.png');
+  assert.equal(page.data.groupQrCode, '/assets/group-qr.jpg');
+  assert.equal(page.data.groupModalCopy, '截图扫一扫，邀请你进群');
+  assert.equal(page.data.groupModalTip, '每日更新最新资料');
+  assert.equal(page.data.groupModalNote, '进群有机会领取免费会员');
   assert.equal(page.data.groupQrLoading, true);
   page.onGroupQrLoad({ currentTarget: { dataset: { src: page.data.groupQrCode } } });
   assert.equal(page.data.groupQrLoading, false);
@@ -166,16 +169,16 @@ test('首页二维码相对URL规范为HTTPS，加载成功和失败状态真实
   assert.match(template, /wx:if="\{\{groupQrLoading\}\}"/);
 });
 
-test('二维码重试重新取配置并刷新src，旧图片回调不覆盖当前加载状态', async () => {
+test('二维码重试仍使用上传的本地图片，旧图片回调不覆盖当前加载状态', async () => {
   const fixture = createHome({ resource: { enabled: true, groupQrCode: 'http://zsbzy.com/media/resources/group/old.png' } });
   await fixture.page.loadGroupResource();
-  assert.equal(fixture.page.data.groupQrCode, 'https://zsbzy.com/media/resources/group/old.png');
-  const oldUrl = fixture.page.data.groupQrCode;
+  assert.equal(fixture.page.data.groupQrCode, '/assets/group-qr.jpg');
+  const oldUrl = '/assets/old-group-qr.jpg';
   fixture.page.onGroupQrError({ currentTarget: { dataset: { src: oldUrl } } });
   fixture.setResource({ enabled: true, groupQrCode: '/media/resources/group/new.png' });
   await fixture.page.retryGroupQr();
   assert.equal(fixture.calls.resource, 2);
-  assert.match(fixture.page.data.groupQrCode, /^https:\/\/zsbzy\.com\/media\/resources\/group\/new\.png\?qr_retry=/);
+  assert.equal(fixture.page.data.groupQrCode, '/assets/group-qr.jpg');
   assert.equal(fixture.page.data.groupQrLoading, true);
   assert.equal(fixture.page.data.groupQrError, '');
   fixture.page.onGroupQrError({ currentTarget: { dataset: { src: oldUrl } } });
@@ -183,19 +186,18 @@ test('二维码重试重新取配置并刷新src，旧图片回调不覆盖当�
   assert.equal(fixture.page.data.groupQrError, '');
 });
 
-test('资料群关闭清除二维码，接口失败有明确错误，未配置无法预览', async () => {
+test('资料群二维码不再受服务端配置开关影响，接口失败仍保留本地二维码', async () => {
   const fixture = createHome({ resource: { enabled: true, groupQrCode: '/media/old.png' } });
   await fixture.page.loadGroupResource();
   fixture.setResource({ enabled: false, groupQrCode: '/media/old.png' });
   await fixture.page.loadGroupResource();
-  assert.equal(fixture.page.data.groupQrCode, '');
-  assert.equal(fixture.page.data.groupQrLoading, false);
+  assert.equal(fixture.page.data.groupQrCode, '/assets/group-qr.jpg');
   fixture.page.previewGroupQr();
-  assert.equal(fixture.calls.preview.length, 0);
-  assert.equal(fixture.calls.toast[0].title, '二维码暂未配置');
+  assert.equal(fixture.calls.preview[0].urls[0], '/assets/group-qr.jpg');
   fixture.setResource(null, { code: 'NETWORK_ERROR' });
   await fixture.page.loadGroupResource();
   assert.match(fixture.page.data.groupResourceError, /网络暂不可用/);
+  assert.equal(fixture.page.data.groupQrCode, '/assets/group-qr.jpg');
 });
 
 test('二维码重试时配置接口失败保留图片错误，不把旧图片伪装成重新加载', async () => {
@@ -206,21 +208,20 @@ test('二维码重试时配置接口失败保留图片错误，不把旧图片�
   const imageError = fixture.page.data.groupQrError;
   fixture.setResource(null, { code: 'NETWORK_ERROR' });
   await fixture.page.retryGroupQr();
-  assert.equal(fixture.page.data.groupQrCode, failedUrl);
+  assert.equal(fixture.page.data.groupQrCode, '/assets/group-qr.jpg');
   assert.equal(fixture.page.data.groupQrLoading, false);
   assert.equal(fixture.page.data.groupQrError, imageError);
   assert.match(fixture.page.data.groupResourceError, /网络暂不可用/);
 });
 
-test('已配置但不可访问的二维码地址显示配置错误，重试不会清除错误或留下白框', async () => {
+test('服务端二维码地址不覆盖本地图片，预览和重试始终使用上传文件', async () => {
   const fixture = createHome({ resource: { enabled: true, groupQrCode: 'http://localhost:8000/media/resources/group/qr.png' } });
   await fixture.page.loadGroupResource();
-  assert.equal(fixture.page.data.groupQrCode, '');
-  assert.equal(fixture.page.data.groupQrLoading, false);
-  assert.match(fixture.page.data.groupQrError, /地址不可用.*管理员/);
+  assert.equal(fixture.page.data.groupQrCode, '/assets/group-qr.jpg');
+  assert.equal(fixture.page.data.groupQrError, '');
+  fixture.page.previewGroupQr();
+  assert.equal(fixture.calls.preview[0].urls[0], '/assets/group-qr.jpg');
   await fixture.page.retryGroupQr();
-  assert.equal(fixture.page.data.groupQrCode, '');
-  assert.equal(fixture.page.data.groupQrLoading, false);
-  assert.match(fixture.page.data.groupQrError, /地址不可用.*管理员/);
-  assert.equal(fixture.calls.preview.length, 0);
+  assert.equal(fixture.page.data.groupQrCode, '/assets/group-qr.jpg');
+  assert.equal(fixture.page.data.groupQrError, '');
 });

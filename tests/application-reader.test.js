@@ -114,7 +114,7 @@ test('详情失败停止计时并支持重试，无权空列表保留权益数�
   assert.equal(empty.ready(), false);
 });
 
-test('主题恢复与切换只保存主题，存储失败不阻断阅读', async () => {
+test('应用文主题与全局白天夜间状态同步，存储失败不阻断阅读', async () => {
   const saved = [];
   const { page } = pageWith({ content: { writings: async () => ({ results: [] }) } }, {
     getStorageSync: () => 'warm', setStorageSync: (...args) => saved.push(args)
@@ -122,7 +122,7 @@ test('主题恢复与切换只保存主题，存储失败不阻断阅读', async
   await page.onLoad();
   assert.equal(page.data.theme, 'warm');
   page.changeTheme(event({ theme: 'blue' }));
-  assert.deepEqual(saved, [['application-reader-theme', 'blue']]);
+  assert.deepEqual(saved, [['chinese-study.theme', 'night'], ['application-reader-theme', 'blue']]);
   page.changeTheme(event({ theme: 'unknown' }));
   assert.equal(page.data.theme, 'blue');
 });
