@@ -19,6 +19,38 @@ function apiMessage(error, fallback) {
   return error && error.message ? error.message : fallback;
 }
 
+const paymentErrorMessages = {
+  '-15001': '支付参数错误，请稍后重试',
+  '-15002': '原订单号已使用，请重新下单',
+  '-15004': '支付币种配置错误，请联系管理员',
+  '-15005': '微信登录状态已失效，请重新登录',
+  '-15006': '支付签名校验失败，请重新登录后重试',
+  '-15007': '微信支付会话已过期，请重新登录',
+  '-15008': '虚拟支付商户签约尚未完成，请在微信公众平台检查',
+  '-15010': '微信平台商品尚未发布，请先发布商品 VIP',
+  '-15011': '正式环境不能使用沙箱支付参数，请联系管理员',
+  '-15012': '微信已关闭原订单，请重新下单',
+  '-15013': '商品价格与微信平台不一致，请检查商品价格',
+  '-15014': '商品发布尚未生效，请等待约10分钟后重试',
+  '-15016': '支付参数格式错误，请联系管理员',
+  '-15017': '商家收款能力受限，请在微信支付商家助手查看',
+  '-15018': '微信商品审核未通过，请检查商品状态',
+  '-15019': '商家支付能力受限，请在微信支付商家助手查看',
+  '-15020': '操作过快，请稍后再试',
+  '-15021': '当前支付频率受限，请稍后再试',
+  '-4': '支付被微信风控拦截，请检查账号和设备状态',
+  '-5': '微信支付签约结果待确认，请稍后重试'
+};
+
+function paymentMessage(error, fallback) {
+  const code = error && Number(error.errCode);
+  if (Number.isFinite(code) && Object.prototype.hasOwnProperty.call(paymentErrorMessages, String(code))) {
+    return paymentErrorMessages[String(code)];
+  }
+  if (Number.isFinite(code)) return `微信支付失败（错误码 ${code}），请稍后重试`;
+  return apiMessage(error, fallback);
+}
+
 Page({
   data: {
     theme: 'day',
@@ -241,8 +273,8 @@ Page({
       await this.completePayment(order);
     } catch (error) {
       await this.refresh();
-      const cancelled = error && /cancel/i.test(error.errMsg || '');
-      showToast(cancelled ? '已取消支付，订单2分钟超时自动取消' : apiMessage(error, '支付未完成，请稍后重试'));
+      const cancelled = error && (Number(error.errCode) === -2 || /cancel/i.test(error.errMsg || ''));
+      showToast(cancelled ? '已取消支付，订单2分钟超时自动取消' : paymentMessage(error, '支付未完成，请稍后重试'));
     } finally { this.setData({ busy: false }); }
   },
 
@@ -265,8 +297,8 @@ Page({
       await this.completePayment(order);
     } catch (error) {
       await this.refresh();
-      const cancelled = error && /cancel/i.test(error.errMsg || '');
-      showToast(cancelled ? '已取消支付，订单2分钟超时自动取消' : apiMessage(error, '购买未完成，可在订单中查看状态'));
+      const cancelled = error && (Number(error.errCode) === -2 || /cancel/i.test(error.errMsg || ''));
+      showToast(cancelled ? '已取消支付，订单2分钟超时自动取消' : paymentMessage(error, '购买未完成，可在订单中查看状态'));
     } finally { this.setData({ busy: false }); }
   },
 
