@@ -21,3 +21,31 @@ page { background: var(--theme-background, #f5f9ff); }
 .voucher-code { display:block; margin:16rpx 0 20rpx; padding:24rpx 18rpx; border:1rpx dashed #c9b79f; border-radius:14rpx; color:#463c32; background:#f7f2e9; text-align:center; font-family:monospace; font-size:30rpx; letter-spacing:1rpx; word-break:break-all; }.voucher-actions { display:flex; flex-direction:column; }.secondary { display: flex; align-items: center; justify-content: center; line-height: normal; width:100%; min-height:84rpx; margin-top:20rpx; border:1rpx solid var(--theme-accent, #247fee); border-radius:18rpx; color:var(--theme-accent, #247fee); background:var(--theme-paper, #fff); font-size:24rpx; font-weight:700; }
 .mine-page { padding-bottom: calc(120rpx + 1px + env(safe-area-inset-bottom)); }.mine-body { padding: 12px; }.login-card { margin-bottom: 10px; padding: 13px; border-radius: 13px; }.login-title { font-size: 13px; }.login-copy { margin-top: 4px; font-size: 10px; }.login-button { display: flex; align-items: center; justify-content: center; line-height: normal; margin-top: 9px; height: 36px; border-radius: 9px; font-size: 12px; }.state.error-state,.state.loading-state { margin-bottom: 10px; padding: 10px; border-radius: 10px; font-size: 10px; }.profile { padding: 15px; border-radius: 16px; }.profile-head { gap: 11px; }.avatar { width: 44px; height: 44px; border-width: 2px; font-size: 18px; }.profile-title { font-size: 15px; }.profile-subtitle { margin-top: 4px; font-size: 10px; }.status { padding: 5px 8px; border-radius: 8px; font-size: 9px; }.member-row { gap: 10px; margin-top: 14px; padding-top: 12px; }.member-title { font-size: 12px; }.member-subtitle { margin-top: 3px; font-size: 9px; }.member-row button { display: flex; align-items: center; justify-content: center; line-height: normal; min-width: 62px; height: 28px; padding: 0 11px; border-radius: 9px; font-size: 10px; }.quick { gap: 8px; margin-top: 10px; }.quick-item { min-height: 74px; padding: 10px 5px; border-radius: 13px; }.quick-icon { width: 31px; height: 31px; margin-bottom: 6px; border-radius: 9px; font-size: 11px; }.quick-title { font-size: 10px; }.quick-subtitle { margin-top: 3px; font-size: 8px; }.section-title { margin: 15px 2px 7px; font-size: 14px; }.menu { border-radius: 14px; }.item { min-height: 51px; padding: 0 12px; }.item-icon { width: 30px; height: 30px; border-radius: 9px; font-size: 11px; }.item-copy { margin-left: 10px; }.item-title { font-size: 11px; }.item-subtitle { margin-top: 3px; font-size: 9px; }.arrow { font-size: 17px; }.version { margin: 15px 0; font-size: 9px; }.mask { padding: 0; background: rgba(21,40,68,.4); }.sheet { padding: 17px 14px calc(17px + env(safe-area-inset-bottom)); border-radius: 16px 16px 0 0; }.sheet-head { font-size: 17px; }.close { display: flex; align-items: center; justify-content: center; line-height: normal; width: 30px; height: 30px; border-radius: 9px; font-size: 19px; }.sheet-copy { margin: 10px 0; font-size: 10px; }.text-input,.text-area { margin-top: 9px; padding: 10px; border-radius: 9px; font-size: 11px; }.text-input { height: 42px; }.text-area { height: 110px; }.primary { display: flex; align-items: center; justify-content: center; line-height: normal; min-height: 42px; margin-top: 10px; border-radius: 9px; font-size: 12px; }.type-list { gap: 6px; margin-top: 11px; }.type-pill { display: flex; align-items: center; justify-content: center; line-height: normal; padding: 7px 9px; border-radius: 13px; font-size: 10px; }.orders-list { margin-top: 9px; }.order-row { padding: 10px 0; font-size: 11px; }.order-meta { margin-top: 4px; font-size: 9px; }
 .order-action { display: block; margin-top: 5px; color: var(--theme-accent, #247fee); font-size: 9px; font-weight: 700; }.order-payment { margin-top: 3px; }
+
+/* 工作区文字层级：只放大内容文字，底部导航沿用公共 22rpx/28rpx。 */
+.mine-page .login-title,
+.mine-page .profile-title { font-size: 18px; }
+.mine-page .login-copy,
+.mine-page .state.error-state,
+.mine-page .state.loading-state,
+.mine-page .profile-subtitle,
+.mine-page .member-subtitle,
+.mine-page .item-subtitle,
+.mine-page .order-meta { font-size: 12px; }
+.mine-page .login-button,
+.mine-page .member-row button,
+.mine-page .quick-title,
+.mine-page .item-title,
+.mine-page .type-pill,
+.mine-page .order-action { font-size: 14px; }
+.mine-page .status,
+.mine-page .quick-subtitle,
+.mine-page .version { font-size: 11px; }
+.mine-page .section-title { font-size: 16px; }
+.mine-page .sheet-head { font-size: 19px; }
+.mine-page .sheet-copy { font-size: 12px; }
+.mine-page .text-input,
+.mine-page .text-area { font-size: 13px; }
+.mine-page .primary,
+.mine-page .secondary { font-size: 14px; }
+.mine-page .order-row { font-size: 14px; }

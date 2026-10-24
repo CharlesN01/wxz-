@@ -27,8 +27,8 @@
   height: 96rpx;
   margin: 0;
   padding: 0;
-  font-size: 36rpx;
-  line-height: 36rpx;
+  font-size: 22rpx;
+  line-height: 28rpx;
   text-align: center;
   box-sizing: border-box;
 }
@@ -45,6 +45,6 @@
   display: block;
   flex: 0 0 auto;
   margin: 0;
-  font-size: 36rpx;
-  line-height: 36rpx;
+  font-size: 22rpx;
+  line-height: 28rpx;
 }

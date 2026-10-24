@@ -278,3 +278,15 @@ page {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
 }
+
+/* 工作区文字层级：只放大内容文字，底部导航沿用公共 22rpx/28rpx。 */
+.practice-page .notice-card { font-size: 26rpx; }
+.practice-page .info-title { font-size: 32rpx; }
+.practice-page .info-subtitle,
+.practice-page .info-score,
+.practice-page .question-hint { font-size: 24rpx; }
+.practice-page .practice-state { font-size: 28rpx; }
+.practice-page .state-title { font-size: 32rpx; }
+.practice-page .state-retry { font-size: 28rpx; }
+.practice-page .page-number { font-size: 26rpx; }
+.practice-page .practice-tip { font-size: 24rpx; }

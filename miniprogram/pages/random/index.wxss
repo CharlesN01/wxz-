@@ -42,3 +42,19 @@ page { background: var(--theme-background, #f6f8fb); }
 .bottom-nav-item { color: var(--theme-muted, #a0abb9); }
 .bottom-nav-active { color: var(--theme-accent, #237bea); font-weight: 700; }
 @media (min-width: 431px) { .literature-random { min-height: calc(100vh - 40px); margin: 20px auto; border-radius: 20px; box-shadow: 0 20px 60px rgba(var(--theme-shadow-rgb, 45,91,155),.12); overflow: hidden; } }
+
+/* 工作区文字层级：只放大内容文字，底部导航沿用公共 22rpx/28rpx。 */
+.random-page .random-notice,
+.random-page .random-state,
+.random-page .overview-subtitle,
+.random-page .type-filter,
+.random-page .toolbar-subtitle,
+.random-page .round-caption,
+.random-page .page-number,
+.random-page .study-tip { font-size: 13px; }
+.random-page .state-title { font-size: 17px; }
+.random-page .state-retry { font-size: 14px; }
+.random-page .overview-title { font-size: 17px; }
+.random-page .overview-status,
+.random-page .overview-badge { font-size: 12px; }
+.random-page .toolbar-title { font-size: 18px; }

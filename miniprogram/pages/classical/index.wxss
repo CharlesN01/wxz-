@@ -73,3 +73,32 @@ page { background: var(--theme-background, #F6F8FB); }
 @media (min-width: 431px) {
   .classical-page { min-height: calc(100vh - 40px); margin: 20px auto; border-radius: 20px; box-shadow: 0 20px 60px rgba(var(--theme-shadow-rgb, 45,91,155),.12); overflow: hidden; }
 }
+
+/* 工作区文字层级：只放大内容文字，底部导航沿用公共 22rpx/28rpx。 */
+.classical-page .remote-state { font-size: 15px; }
+.classical-page .state-title { font-size: 18px; }
+.classical-page .state-retry,
+.classical-page .remote-note,
+.classical-page .eyebrow,
+.classical-page .hero-caption,
+.classical-page .ring-total,
+.classical-page .quick-caption,
+.classical-page .section-count,
+.classical-page .filter,
+.classical-page .article-meta,
+.classical-page .article-status,
+.classical-page .continue-caption,
+.classical-page .demo-note,
+.classical-page .modal-sub,
+.classical-page .choice-caption,
+.classical-page .modal-tip { font-size: 12px; }
+.classical-page .hero-title,
+.classical-page .ring-value,
+.classical-page .modal-title { font-size: 24px; }
+.classical-page .article-title { font-size: 18px; }
+.classical-page .quick-title,
+.classical-page .continue-title,
+.classical-page .choice-title { font-size: 16px; }
+.classical-page .section-title { font-size: 19px; }
+.classical-page .continue-action { font-size: 13px; }
+.classical-page .modal-kicker { font-size: 14px; }

@@ -136,3 +136,20 @@ page { background: var(--theme-soft, #eaf2fb); }
   .qr, .qr-placeholder { width: 175px; height: 175px; }
   .benefit { min-height: 46px; }
 }
+
+/* 工作区文字层级：只放大内容文字，底部导航沿用公共 22rpx/28rpx。 */
+.resources-page .eyebrow,
+.resources-page .hero-copy,
+.resources-page .benefit-note,
+.resources-page .qr-copy,
+.resources-page .qr-placeholder-line,
+.resources-page .qr-note,
+.resources-page .wechat,
+.resources-page .announcement,
+.resources-page .trust,
+.resources-page .bottom-note { font-size: 12px; }
+.resources-page .hero-title { font-size: 24px; }
+.resources-page .benefit-name,
+.resources-page .qr-placeholder-title { font-size: 14px; }
+.resources-page .qr-title { font-size: 16px; }
+.resources-page .bottom button { font-size: 14px; }

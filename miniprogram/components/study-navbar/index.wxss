@@ -9,3 +9,6 @@
 .brand-subtitle { display: block; max-width: 100%; margin-top: 6rpx; color: var(--theme-muted, #8492A8); font-size: 20rpx; line-height: 1.35; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .theme-paper { color: var(--theme-ink, #18243B); background: var(--theme-paper, #FFFFFF); border-bottom: 1px solid var(--theme-border, #E5EDF7); }
 .region { color: var(--theme-accent, #1B5E91); }
+
+/* 顶部工作区说明文字放大；底部导航不受此规则影响。 */
+.brand-subtitle { font-size: 24rpx; }

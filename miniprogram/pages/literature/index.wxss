@@ -68,3 +68,26 @@ page { background: var(--theme-background, #F6F8FB); }
 @media (min-width: 431px) {
   .literature-page { min-height: calc(100vh - 40px); margin: 20px auto; border-radius: 20px; box-shadow: 0 20px 60px rgba(var(--theme-shadow-rgb, 45,91,155),.12); overflow: hidden; }
 }
+
+/* 工作区文字层级：只放大内容文字，底部导航沿用公共 22rpx/28rpx。 */
+.literature-page .hero-title { font-size: 44rpx; }
+.literature-page .hero-copy,
+.literature-page .hero-count,
+.literature-page .reading-count,
+.literature-page .reading-subtitle { font-size: 24rpx; }
+.literature-page .period,
+.literature-page .notice-card,
+.literature-page .section-page,
+.literature-page .mode,
+.literature-page .question-index,
+.literature-page .answer-button,
+.literature-page .page-number,
+.literature-page .tip,
+.literature-page .access-note { font-size: 13px; }
+.literature-page .section-title,
+.literature-page .error-title { font-size: 18px; }
+.literature-page .question-text { font-size: 16px; }
+.literature-page .answer { font-size: 15px; }
+.literature-page .answer-input { font-size: 30rpx; }
+.literature-page .error-copy,
+.literature-page .retry-button { font-size: 14px; }

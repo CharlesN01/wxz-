@@ -57,3 +57,31 @@ page { background: #f5f9ff; }
 .retry-button { min-height: 68rpx; margin-top: 20rpx; border-radius: 16rpx; color: var(--reader-primary); background: var(--reader-soft); font-size: 22rpx; }
 .access-note { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; margin-bottom: 20rpx; padding: 16rpx; border-radius: 16rpx; color: var(--reader-primary); background: var(--reader-soft); font-size: 20rpx; }
 .access-note button { flex-shrink: 0; min-height: 56rpx; padding: 8rpx 14rpx; border: 1px solid var(--reader-primary); border-radius: 14rpx; color: var(--reader-primary); font-size: 20rpx; }
+
+/* 工作区文字层级：只放大内容文字，底部导航沿用公共 22rpx/28rpx。 */
+.application-page .eyebrow { font-size: 22rpx; }
+.application-page .hero-copy,
+.application-page .hero-foot text,
+.application-page .filter-head,
+.application-page .filter-toggle,
+.application-page .kind-filter,
+.application-page .reader-group,
+.application-page .source-label,
+.application-page .original-toggle,
+.application-page .page-no,
+.application-page .access-note,
+.application-page .access-note button { font-size: 24rpx; }
+.application-page .section-title,
+.application-page .reader-title,
+.application-page .panel-heading,
+.application-page .article-title { font-size: 30rpx; }
+.application-page .doc-tab,
+.application-page .mode,
+.application-page .page-nav button { font-size: 24rpx; }
+.application-page .template-content,
+.application-page .step-copy,
+.application-page .content-empty,
+.application-page .original-content,
+.application-page .state,
+.application-page .retry-button { font-size: 26rpx; }
+.application-page .requirement { font-size: 24rpx; }
