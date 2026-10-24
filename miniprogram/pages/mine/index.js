@@ -196,6 +196,56 @@ Page({
     return platform === 'android' || platform === 'ios' ? platform : '';
   },
 
+  async completePayment(order) {
+    const prepared = await api.orders.preparePayment(order.id);
+    if (!prepared || !prepared.payment) {
+      const latest = orderView(prepared && (prepared.order || prepared) || order);
+      this.setData({ selectedOrder: latest, orderDetailLoading: false });
+      await this.refresh();
+      showToast(latest && latest.status === 'expired'
+        ? '订单已超时取消，请重新下单'
+        : '订单暂时不能支付，请刷新订单状态');
+      return null;
+    }
+    if (typeof wx.requestVirtualPayment !== 'function') throw new Error('当前微信环境不支持虚拟支付');
+    await new Promise((resolve, reject) => wx.requestVirtualPayment({
+      ...api.payment.toVirtualPaymentArgs(prepared.payment),
+      success: resolve,
+      fail: reject
+    }));
+    const queried = await api.orders.queryPayment(order.id);
+    const queriedOrder = queried && (queried.order || queried);
+    if (queriedOrder && ['code_pending', 'code_issued'].indexOf(queriedOrder.status) >= 0) {
+      if (queriedOrder.status === 'code_pending') {
+        const revealed = await api.orders.revealActivationCode(order.id);
+        this.setData({ voucherVisible: true, voucherCode: revealed.activationCode || '', voucherMask: revealed.mask || '', voucherOrderId: order.id, voucherError: '' });
+      } else {
+        this.setData({ voucherVisible: true, voucherCode: '', voucherMask: queriedOrder.activationCode && queriedOrder.activationCode.mask || '', voucherOrderId: order.id, voucherError: '激活码已展示过，服务端只保留掩码，请使用已复制的原码兑换。' });
+      }
+    }
+    await this.refresh();
+    showToast(this.data.entitlement && this.data.entitlement.active ? '权益已开通'
+      : queriedOrder && queriedOrder.status === 'expired' ? '订单已超时取消，扣款结果将自动同步' : '支付已提交，正在确认');
+    return queriedOrder;
+  },
+
+  async continuePayment() {
+    const order = this.data.selectedOrder;
+    if (this.data.busy || !order) return;
+    if (!['created', 'preparing'].includes(order.status)) {
+      showToast(order.status === 'expired' ? '订单已超时取消，请重新下单' : '当前订单不需要支付');
+      return;
+    }
+    this.setData({ busy: true, orderDetailError: '' });
+    try {
+      await this.completePayment(order);
+    } catch (error) {
+      await this.refresh();
+      const cancelled = error && /cancel/i.test(error.errMsg || '');
+      showToast(cancelled ? '已取消支付，订单2分钟超时自动取消' : apiMessage(error, '支付未完成，请稍后重试'));
+    } finally { this.setData({ busy: false }); }
+  },
+
   async purchase() {
     if (this.data.busy) return;
     if (!this.data.loggedIn) { await this.login(); if (!api.auth.getToken()) return; }
@@ -212,32 +262,7 @@ Page({
       const created = await api.orders.create({ productId: product.id, channel, agentScene: agentAttribution.read() });
       const order = created && created.order;
       if (!order || !order.id) throw new Error('订单创建结果无效');
-      const prepared = await api.orders.preparePayment(order.id);
-      if (!prepared || !prepared.payment) {
-        await this.refresh();
-        showToast(prepared && prepared.order && prepared.order.status === 'expired'
-          ? '订单已超时取消，请重新下单' : '请查看订单状态');
-        return;
-      }
-      if (typeof wx.requestVirtualPayment !== 'function') throw new Error('当前微信环境不支持虚拟支付');
-      await new Promise((resolve, reject) => wx.requestVirtualPayment({
-        ...api.payment.toVirtualPaymentArgs(prepared.payment),
-        success: resolve,
-        fail: reject
-      }));
-      const queried = await api.orders.queryPayment(order.id);
-      const queriedOrder = queried && (queried.order || queried);
-      if (queriedOrder && ['code_pending', 'code_issued'].indexOf(queriedOrder.status) >= 0) {
-        if (queriedOrder.status === 'code_pending') {
-          const revealed = await api.orders.revealActivationCode(order.id);
-          this.setData({ voucherVisible: true, voucherCode: revealed.activationCode || '', voucherMask: revealed.mask || '', voucherOrderId: order.id, voucherError: '' });
-        } else {
-          this.setData({ voucherVisible: true, voucherCode: '', voucherMask: queriedOrder.activationCode && queriedOrder.activationCode.mask || '', voucherOrderId: order.id, voucherError: '激活码已展示过，服务端只保留掩码，请使用已复制的原码兑换。' });
-        }
-      }
-      await this.refresh();
-      showToast(this.data.entitlement && this.data.entitlement.active ? '权益已开通'
-        : queriedOrder && queriedOrder.status === 'expired' ? '订单已超时取消，扣款结果将自动同步' : '支付已提交，正在确认');
+      await this.completePayment(order);
     } catch (error) {
       await this.refresh();
       const cancelled = error && /cancel/i.test(error.errMsg || '');

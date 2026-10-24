@@ -70,6 +70,28 @@ test('超时订单不再弹起支付，显示重新下单提示', async () => {
   assert.match(messages.at(-1), /超时取消.*重新下单/);
 });
 
+test('订单详情为待支付时提供继续支付入口并恢复支付', async () => {
+  const calls = [];
+  const page = load('pages/mine/index.js', {
+    orders: {
+      detail: async (id) => ({ id, status: 'preparing', priceFen: 100 }),
+      preparePayment: async (id) => { calls.push(['prepare', id]); return { payment: { mode: 'x' } }; },
+      queryPayment: async (id) => { calls.push(['query', id]); return { order: { id, status: 'paid' } }; }
+    },
+    payment: { toVirtualPaymentArgs: () => ({}) }
+  }, {}, { wx: { showToast() {}, requestVirtualPayment: ({ success }) => success() } });
+  page.data.orders = [{ id: 'pending-order', status: 'preparing', priceFen: 100 }];
+  page.refresh = async () => {};
+  await page.openOrder({ currentTarget: { dataset: { id: 'pending-order' } } });
+  assert.equal(page.data.selectedOrder.status, 'preparing');
+  await page.continuePayment();
+  assert.deepEqual(calls, [['prepare', 'pending-order'], ['query', 'pending-order']]);
+  assert.equal(page.data.busy, false);
+  const template = fs.readFileSync(path.join(root, 'miniprogram/pages/mine/index.wxml'), 'utf8');
+  assert.match(template, /bindtap="continuePayment"/);
+  assert.match(template, /点击继续支付/);
+});
+
 test('取消支付只提示两分钟自动取消，不发起平台查单', async () => {
   const messages = [];
   let queries = 0;
