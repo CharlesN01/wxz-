@@ -1,6 +1,6 @@
 const STORAGE_KEY = 'agent-attribution-v1';
 const TTL_MS = 30 * 24 * 60 * 60 * 1000;
-const SCENE_RE = /^A=[A-Z0-9][A-Z0-9_-]{2,31}$/;
+const SCENE_RE = /^a=[A-Z0-9][A-Z0-9_-]{2,31}$/;
 
 function decodeScene(value) {
   const raw = String(value || '').trim();
@@ -16,7 +16,13 @@ function decodeScene(value) {
 }
 
 function normalize(value) {
-  const scene = decodeScene(value).toUpperCase();
+  const decoded = decodeScene(value);
+  // Keep the "a=" prefix lowercase (matches backend regex and stored scene);
+  // only the agent code portion is uppercase.
+  const match = /^a=(.+)$/i.exec(decoded);
+  if (!match) return '';
+  const code = match[1].toUpperCase();
+  const scene = 'a=' + code;
   return SCENE_RE.test(scene) ? scene : '';
 }
 
