@@ -41,11 +41,11 @@
         </view>
         <view class="question-text">
           <block wx:for="{{item.parts}}" wx:for-item="part" wx:key="key">
-            <input wx:if="{{mode === 'writing' && part.isBlank}}" class="blank answer-input" value="{{item.draftAnswers[part.answerIndex] || ''}}" data-id="{{item.id}}" data-index="{{part.answerIndex}}" bindinput="onBlankInput" maxlength="-1" placeholder="填写答案" aria-label="第 {{part.answerIndex + 1}} 空" />
+            <input wx:if="{{mode === 'writing' && part.isBlank}}" class="blank answer-input" value="{{item.draftAnswers[part.answerIndex] || ''}}" data-id="{{item.id}}" data-index="{{part.answerIndex}}" bindinput="onBlankInput" maxlength="-1" aria-label="第 {{part.answerIndex + 1}} 空" />
             <text wx:else class="{{part.isFilled ? 'filled-answer' : ''}}">{{part.text}}</text>
           </block>
         </view>
-        <input wx:if="{{mode === 'writing' && !item.hasInlineBlanks && item.hasAnswerInput}}" class="answer-input standalone-answer-input" value="{{item.draftAnswers[0] || ''}}" data-id="{{item.id}}" data-index="0" bindinput="onBlankInput" maxlength="-1" placeholder="填写答案" aria-label="填写本题答案" />
+        <input wx:if="{{mode === 'writing' && !item.hasInlineBlanks && item.hasAnswerInput}}" class="answer-input standalone-answer-input" value="{{item.draftAnswers[0] || ''}}" data-id="{{item.id}}" data-index="0" bindinput="onBlankInput" maxlength="-1" aria-label="填写本题答案" />
         <view wx:if="{{mode === 'writing' && item.answerVisible}}" class="answer"><text class="answer-label">答案：</text><text>{{item.answerText}}</text></view>
         <view wx:if="{{mode === 'writing'}}" class="question-foot">
           <text></text><view class="answer-button" data-id="{{item.id}}" bindtap="toggleAnswer" role="button">{{item.answerVisible ? '收起答案' : '查看答案'}}</view>

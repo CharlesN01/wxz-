@@ -37,6 +37,12 @@ test('真实正文仅按明确章节拆分，保留全文且不编造缺失要�
   assert.equal(readingContent({ body: '正文只有范文' }).sample, '正文只有范文');
 });
 
+test('应用文正文不再把同一份原文附加到已展示的写作样例下方', () => {
+  const template = fs.readFileSync(path.join(__dirname, '../miniprogram/pages/application/index.wxml'), 'utf8');
+  assert.doesNotMatch(template, /class="original-content"/);
+  assert.match(template, /class="template-content"/);
+});
+
 test('专项练习将真实题目和参考答案分区，文种缺失兼容实际分类', () => {
   const value = readingContent({ kind: 'exercise', body: '写一封申请书', referenceAnswer: '申请书\n尊敬的老师：' });
   assert.equal(value.requirement, '写一封申请书');

@@ -161,7 +161,7 @@ def schemas():
                     "totalCount": INTEGER, "groupCount": INTEGER, "createdAt": DATE_TIME}),
         "RoundGroup": obj({"roundId": UUID, "groupIndex": POSITIVE, "groupCount": POSITIVE,
                     "totalCount": INTEGER, "pageSize": CAPACITY, "mode": MODE,
-                    "results": {"type": "array", "items": obj({**QUESTION, "position": POSITIVE})},
+                    "results": {"type": "array", "items": obj({**QUESTION, "articleTitle": nullable(STRING), "position": POSITIVE})},
                     "skipped": {"type": "array", "items": obj({"position": POSITIVE,
                     "reason": {"type": "string", "enum": ["UNAVAILABLE", "SCOPE_CHANGED", "ENTITLEMENT_REQUIRED"]}})}}),
         "ResumePosition": obj({**SCOPE, "mode": MODE, "questionId": STRING, "roundId": nullable(UUID), "groupIndex": nullable(POSITIVE)}),

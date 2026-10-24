@@ -191,89 +191,89 @@ page { background: #F5FAFE; }
 .home-page.theme-night .group-modal-note { color: #778AA3; }
 
 /* 工作区文字层级：只放大内容文字，底部导航沿用公共 22rpx/28rpx。 */
-.home-page .dashboard-head { font-size: 12px; }
-.home-page .target-pill { font-size: 11px; }
-.home-page .countdown-number { font-size: 30px; }
+.home-page .dashboard-head { font-size: 20rpx; }
+.home-page .target-pill { font-size: 18rpx; }
+.home-page .countdown-number { font-size: 54rpx; }
 .home-page .countdown-unit,
-.home-page .dashboard-caption { font-size: 12px; }
-.home-page .stat-number { font-size: 19px; }
+.home-page .dashboard-caption { font-size: 20rpx; }
+.home-page .stat-number { font-size: 34rpx; }
 .home-page .stat-label,
-.home-page .growth-value,
-.home-page .trend-column { font-size: 11px; }
-.home-page .growth-title { font-size: 14px; }
-.home-page .section-title { font-size: 16px; }
+.home-page .trend-column { font-size: 18rpx; }
+.home-page .growth-value { font-size: 20rpx; }
+.home-page .growth-title { font-size: 28rpx; }
+.home-page .section-title { font-size: 28rpx; }
 .home-page .module-name,
-.home-page .group-title { font-size: 14px; }
+.home-page .group-title { font-size: 22rpx; }
 .home-page .module-desc,
 .home-page .continue-desc,
-.home-page .group-desc { font-size: 11px; }
-.home-page .continue-title { font-size: 14px; }
+.home-page .group-desc { font-size: 18rpx; }
+.home-page .continue-title { font-size: 24rpx; }
 .home-page .continue-action,
-.home-page .group-action { font-size: 12px; }
-.home-page .group-badge { font-size: 10px; }
-.home-page .group-modal-kicker { font-size: 11px; }
-.home-page .group-modal-title { font-size: 18px; }
+.home-page .group-action { font-size: 20rpx; }
+.home-page .group-badge { font-size: 20rpx; }
+.home-page .group-modal-kicker { font-size: 22rpx; }
+.home-page .group-modal-title { font-size: 36rpx; }
 .home-page .group-modal-copy,
 .home-page .group-qr-text,
-.home-page .group-modal-tip { font-size: 12px; }
-.home-page .group-qr-heading { font-size: 14px; }
-.home-page .group-modal-note { font-size: 11px; }
+.home-page .group-modal-tip { font-size: 24rpx; }
+.home-page .group-qr-heading { font-size: 28rpx; }
+.home-page .group-modal-note { font-size: 22rpx; }
 
 /* 430px prototype baseline; keep the same geometry across simulator widths. */
 .home-body { padding: 12px; }
 .dashboard-card { padding: 12px 16px; border-radius: 17px; }
-.dashboard-head { font-size: 10px; }
-.target-pill { padding: 5px 8px; border-radius: 8px; font-size: 9px; }
+.dashboard-head { font-size: 20rpx; }
+.target-pill { padding: 5px 8px; border-radius: 8px; font-size: 18rpx; }
 .countdown-line { margin-top: 9px; }
-.countdown-number { font-size: 27px; }
-.countdown-unit { margin-left: 5px; font-size: 10px; }
-.dashboard-caption { margin-top: 7px; font-size: 10px; }
+.countdown-number { font-size: 54rpx; }
+.countdown-unit { margin-left: 5px; font-size: 20rpx; }
+.dashboard-caption { margin-top: 7px; font-size: 20rpx; }
 .dashboard-stats { gap: 8px; margin-top: 11px; }
 .dashboard-stat { padding: 8px 7px; border-radius: 11px; }
-.stat-number { font-size: 17px; }
-.stat-label { margin-top: 3px; font-size: 9px; }
+.stat-number { font-size: 34rpx; }
+.stat-label { margin-top: 3px; font-size: 18rpx; }
 .growth-card { margin-top: 10px; padding: 10px 12px; border-radius: 13px; }
-.growth-title { font-size: 12px; }
-.growth-value { font-size: 10px; }
+.growth-title { font-size: 24rpx; }
+.growth-value { font-size: 20rpx; }
 .trend-bars { height: 57px; margin-top: 7px; padding: 0 5px; }
-.trend-column { gap: 3px; font-size: 8px; }
+.trend-column { gap: 3px; font-size: 16rpx; }
 .trend-bar { width: 17px; max-height: 44px; border-radius: 5px 5px 0 0; }
-.section-title { margin: 15px 2px 8px; font-size: 14px; }
+.section-title { margin: 15px 2px 8px; font-size: 28rpx; }
 .module-grid { gap: 8px; }
 .module-card, .module-wide { min-height: 74px; padding: 11px; border-radius: 13px; }
-.module-icon, .continue-icon { width: 31px; height: 31px; border-radius: 9px; font-size: 11px; }
+.module-icon, .continue-icon { width: 31px; height: 31px; border-radius: 9px; font-size: 22rpx; }
 .module-copy { margin-left: 9px; }
-.module-name { font-size: 11px; }
-.module-desc { margin-top: 3px; font-size: 9px; }
-.module-arrow { font-size: 18px; }
+.module-name { font-size: 22rpx; }
+.module-desc { margin-top: 3px; font-size: 18rpx; }
+.module-arrow { font-size: 36rpx; }
 .continue-card { gap: 10px; margin-top: 11px; padding: 12px; border-radius: 14px; }
-.continue-title { font-size: 12px; }
-.continue-desc { margin-top: 3px; font-size: 9px; }
-.continue-action { display: flex; align-items: center; justify-content: center; line-height: normal; padding: 7px 9px; border-radius: 8px; font-size: 10px; }
+.continue-title { font-size: 24rpx; }
+.continue-desc { margin-top: 3px; font-size: 18rpx; }
+.continue-action { display: flex; align-items: center; justify-content: center; line-height: normal; padding: 7px 9px; border-radius: 8px; font-size: 20rpx; }
 .group-card { gap: 9px; margin-top: 9px; padding: 11px; border-radius: 14px; }
-.group-icon { flex-basis: 34px; height: 34px; border-radius: 10px; font-size: 11px; }
-.group-badge { padding: 2px 6px; border-radius: 5px; font-size: 8px; }
-.group-title { margin-top: 3px; font-size: 11px; }
-.group-desc { margin-top: 3px; font-size: 9px; }
-.group-action { display: flex; align-items: center; justify-content: center; line-height: normal; padding: 7px 10px; border-radius: 8px; font-size: 10px; }
+.group-icon { flex-basis: 34px; height: 34px; border-radius: 10px; font-size: 22rpx; }
+.group-badge { padding: 2px 6px; border-radius: 5px; font-size: 16rpx; }
+.group-title { margin-top: 3px; font-size: 22rpx; }
+.group-desc { margin-top: 3px; font-size: 18rpx; }
+.group-action { display: flex; align-items: center; justify-content: center; line-height: normal; padding: 7px 10px; border-radius: 8px; font-size: 20rpx; }
 .group-modal { padding: 16px; }
 .group-modal-card { max-width: 310px; padding: 17px 16px 14px; border-radius: 20px; }
-.group-modal-close { display: flex; align-items: center; justify-content: center; line-height: normal; top: 9px; right: 9px; width: 27px; height: 27px; border-radius: 8px; font-size: 18px; }
-.group-modal-kicker { padding: 4px 8px; border-radius: 7px; font-size: 9px; }
-.group-modal-title { margin-top: 8px; font-size: 16px; }
-.group-modal-copy { margin-top: 3px; font-size: 10px; }
+.group-modal-close { display: flex; align-items: center; justify-content: center; line-height: normal; top: 9px; right: 9px; width: 27px; height: 27px; border-radius: 8px; font-size: 36rpx; }
+.group-modal-kicker { padding: 4px 8px; border-radius: 7px; font-size: 18rpx; }
+.group-modal-title { margin-top: 8px; font-size: 32rpx; }
+.group-modal-copy { margin-top: 3px; font-size: 20rpx; }
 .group-qr { width: 126px; height: 126px; margin: 10px auto 7px; border-radius: 11px; }
 .group-qr::before, .group-qr::after { width: 18px; height: 18px; border-width: 3px; }
 .group-qr::before { top: 10px; left: 10px; }
 .group-qr::after { right: 10px; bottom: 10px; }
-.group-qr-text { font-size: 10px; }
-.group-qr-heading { margin-bottom: 4px; font-size: 11px; }
-.group-modal-tip { font-size: 10px; }
-.group-modal-note { margin-top: 5px; font-size: 9px; }
+.group-qr-text { font-size: 20rpx; }
+.group-qr-heading { margin-bottom: 4px; font-size: 22rpx; }
+.group-modal-tip { font-size: 20rpx; }
+.group-modal-note { margin-top: 5px; font-size: 18rpx; }
 
 /* This layer exists only during the reveal; no screenshot canvas or per-frame JS. */
 .theme-reveal { position: fixed; inset: 0; z-index: 100; overflow: hidden; isolation: isolate; will-change: clip-path; }
 .theme-reveal .home-page { width: 100%; pointer-events: none; }
 .dashboard-head-actions { flex: 0 0 auto; width: auto; }
-.dashboard-head-actions .theme-toggle { flex: 0 0 auto; width: 180rpx; min-height: 0; padding-right: 10rpx; padding-left: 10rpx; box-shadow: none; }
+.dashboard-head-actions .theme-toggle { flex: 0 0 auto; width: auto; min-width: 110px; min-height: 88rpx; padding: 0 10px; font-size: 20rpx; line-height: 1.2; box-shadow: none; }
 .home-page.theme-night .theme-toggle { box-shadow: none; }

@@ -4947,6 +4947,7 @@
                       "sortOrder": 0,
                       "revision": 1,
                       "state": null,
+                      "articleTitle": null,
                       "position": 1
                     }
                   ],
@@ -7734,6 +7735,16 @@
                     }
                   ]
                 },
+                "articleTitle": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
                 "position": {
                   "type": "integer",
                   "minimum": 1
@@ -7751,6 +7762,7 @@
                 "sortOrder",
                 "revision",
                 "state",
+                "articleTitle",
                 "position"
               ],
               "additionalProperties": false

@@ -60,6 +60,7 @@ class PracticeAPITests(StudentContentFixture):
         self.assertNotIn("answers", str(created.data))
         response = self.group(created.data["id"])
         self.assertEqual([q["id"] for q in response.data["results"]], [self.first.pk, self.second.pk])
+        self.assertTrue(all(q["articleTitle"] == self.article.title for q in response.data["results"]))
         self.assertEqual(response.data["skipped"], [])
         self.create_round({**self.scope, "type": "translation"}, key="p08-translation", expected=403)
         word = self.create_round({**self.scope, "type": "word"}, key="p08-word-key")

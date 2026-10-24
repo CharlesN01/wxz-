@@ -139,3 +139,8 @@ test('文言随机题卡字号对齐原型 11/12，且不缩小文常随机题�
   assert.match(styles, /\.classical-random-card \.answer-box\s*\{[^}]*font-size:\s*18rpx/s);
   assert.match(styles, /\.variant-random \.stem[^}]*font-size:\s*26rpx/);
 });
+
+test('文言随机题卡模板保留后端篇名出处展示', () => {
+  const card = fs.readFileSync(path.join(__dirname, '../miniprogram/components/question-card/index.wxml'), 'utf8');
+  assert.match(card, /question\.articleTitle \? ' · 《' \+ question\.articleTitle \+ '》'/);
+});

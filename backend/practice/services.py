@@ -113,7 +113,8 @@ def read_group(user, round_id, group_index):
     if not 1 <= group_index <= round_.group_count:
         raise BusinessError("NOT_FOUND", "组号不存在。", 404)
     first = (group_index - 1) * round_.group_size + 1
-    items = list(round_.items.filter(position__gte=first, position__lt=first + round_.group_size).select_related("revision"))
+    items = list(round_.items.filter(position__gte=first, position__lt=first + round_.group_size)
+                 .select_related("revision__article"))
     context = scope_context(round_)
     allowed = set(accessible_questions(user, _query(context).filter(pk__in=[item.question_id for item in items])).values_list("pk", flat=True))
     state_context = {"question_states": batch_question_states(user, allowed)}
@@ -125,7 +126,9 @@ def read_group(user, round_id, group_index):
             continue
         # The historical revision is serialized only after CURRENT access in SQL.
         fixed = SimpleNamespace(id=item.question_id, published_revision=item.revision)
-        results.append({**StudentQuestionSerializer(fixed, context=state_context).data, "position": item.position})
+        results.append({**StudentQuestionSerializer(fixed, context=state_context).data,
+                        "articleTitle": item.revision.article.title if item.revision.article_id else None,
+                        "position": item.position})
     return {"roundId": str(round_.pk), "groupIndex": group_index,
             "groupCount": round_.group_count, "totalCount": round_.item_count,
             "pageSize": round_.group_size, "mode": round_.mode, "results": results, "skipped": skipped}

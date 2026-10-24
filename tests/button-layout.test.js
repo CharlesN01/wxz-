@@ -29,7 +29,7 @@ test('原生按钮即使只有最小高度，也将文字放在按钮中央', ()
   const copy = declarations('pages/resources/index.wxss', '.bottom button');
   assertCentered(copy, 'resource copy');
   assert.equal(copy['min-height'], '42px');
-  assert.equal(copy['font-size'], '12px');
+  assert.equal(copy['font-size'], '24rpx');
   for (const selector of ['.primary', '.secondary', '.login-button', '.member-row button']) {
     assertCentered(declarations('pages/mine/index.wxss', selector), `mine ${selector}`);
   }

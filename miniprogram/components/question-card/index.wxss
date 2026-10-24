@@ -73,28 +73,28 @@
 .translation-input { display: block; width: 100%; min-height: 92rpx; margin: 0; padding: 12rpx 14rpx; border: 1px solid var(--theme-accent-border, #B9D4F5); border-radius: 10rpx; background: var(--theme-soft, #F4F8FF); color: var(--theme-accent, #237BEA); font-size: 26rpx; line-height: 1.65; white-space: pre-wrap; word-break: break-all; box-sizing: border-box; }
 
 /* 工作区文字层级：放大题目与答案文字，不改变题卡、输入框或操作区尺寸。 */
-.variant-random .question-index,
+.variant-random .question-index { font-size: 22rpx; }
 .variant-practice-word .question-index,
 .variant-practice-translation .question-index { font-size: 26rpx; }
-.variant-random .stem,
+.variant-random .stem { font-size: 26rpx; }
 .variant-practice-word .stem,
 .variant-practice-translation .stem { font-size: 30rpx; }
-.variant-random .tag,
+.variant-random .tag { font-size: 20rpx; }
 .variant-practice-word .tag,
 .variant-practice-translation .tag { font-size: 24rpx; }
-.variant-random .translation-text,
+.variant-random .translation-text { font-size: 26rpx; }
 .variant-practice-word .translation-text,
 .variant-practice-translation .translation-text { font-size: 30rpx; }
-.variant-random .answer-caption,
+.variant-random .answer-caption { font-size: 20rpx; }
 .variant-practice-word .answer-caption,
 .variant-practice-translation .answer-caption { font-size: 24rpx; }
-.variant-random .answer-toggle,
+.variant-random .answer-toggle { font-size: 22rpx; }
 .variant-practice-word .answer-toggle,
 .variant-practice-translation .answer-toggle { font-size: 24rpx; }
-.variant-random .answer-box,
+.variant-random .answer-box { font-size: 24rpx; }
 .variant-practice-word .answer-box,
 .variant-practice-translation .answer-box { font-size: 26rpx; }
-.variant-random .answer-box .answer-label,
+.variant-random .answer-box .answer-label { font-size: 24rpx; }
 .variant-practice-word .answer-box .answer-label,
 .variant-practice-translation .answer-box .answer-label { font-size: 24rpx; }
 .classical-random-card .question-index { font-size: 24rpx; }
