@@ -73,11 +73,14 @@ class PaymentPreparationTests(TestCase):
         self.assertTrue(OpeningReservation.objects.get(user=self.session.user).is_active)
         self.assertNotIn(packet['signature'],repr(list(IdempotencyRecord.objects.values('response'))))
 
-    def test_new_key_does_not_reissue_prepared_order_or_cancel_reservation(self):
-        first=self.new_order(); prepare_payment(self.session.user,self.session,first,'payment-key-123')
-        with self.assertRaises(BusinessError) as error:
-            prepare_payment(self.session.user,self.session,first,'different-payment-key')
-        self.assertEqual(str(error.exception.detail['error']['code']),'PAYMENT_ALREADY_PREPARED')
+    def test_new_key_reuses_prepared_packet_without_reissuing_or_extending_order(self):
+        first=self.new_order(); original=prepare_payment(self.session.user,self.session,first,'payment-key-123')
+        order=Order.objects.get(pk=first)
+        deadline=order.payment_expires_at
+        resumed=prepare_payment(self.session.user,self.session,first,'different-payment-key')
+        self.assertEqual(resumed['payment'],original['payment'])
+        self.assertEqual(Order.objects.get(pk=first).payment_expires_at,deadline)
+        self.assertEqual(PaymentTask.objects.count(),1)
         self.assertTrue(OpeningReservation.objects.get(user=self.session.user).is_active)
 
     def test_corrupt_session_key_rolls_back_all_preparation(self):
