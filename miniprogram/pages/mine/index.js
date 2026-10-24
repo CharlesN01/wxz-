@@ -42,7 +42,7 @@ const paymentErrorMessages = {
   '-5': '微信支付签约结果待确认，请稍后重试'
 };
 
-function paymentMessage(error, fallback) {
+function paymentErrorCode(error) {
   let code = error && Number(error.errCode);
   if (!Number.isFinite(code) && error && error.code != null) code = Number(error.code);
   if (!Number.isFinite(code)) {
@@ -50,11 +50,21 @@ function paymentMessage(error, fallback) {
     const match = message.match(/(?:^|[^\d])(-\d{1,6})(?:\D|$)/);
     if (match) code = Number(match[1]);
   }
+  return code;
+}
+
+function paymentMessage(error, fallback) {
+  const code = paymentErrorCode(error);
   if (Number.isFinite(code) && Object.prototype.hasOwnProperty.call(paymentErrorMessages, String(code))) {
     return paymentErrorMessages[String(code)];
   }
   if (Number.isFinite(code)) return `微信支付失败（错误码 ${code}），请稍后重试`;
   return apiMessage(error, fallback);
+}
+
+function needsWechatSessionRefresh(error) {
+  const code = paymentErrorCode(error);
+  return code === -15005 || code === -15007;
 }
 
 Page({
@@ -267,6 +277,16 @@ Page({
     return queriedOrder;
   },
 
+  async completePaymentWithSessionRefresh(order) {
+    try {
+      return await this.completePayment(order);
+    } catch (error) {
+      if (!needsWechatSessionRefresh(error)) throw error;
+      await api.auth.login();
+      return this.completePayment(order);
+    }
+  },
+
   async continuePayment() {
     const order = this.data.selectedOrder;
     if (this.data.busy || !order) return;
@@ -276,7 +296,7 @@ Page({
     }
     this.setData({ busy: true, orderDetailError: '' });
     try {
-      await this.completePayment(order);
+      await this.completePaymentWithSessionRefresh(order);
     } catch (error) {
       await this.refresh();
       const cancelled = error && (Number(error.errCode) === -2 || /cancel/i.test(error.errMsg || ''));
@@ -300,7 +320,7 @@ Page({
       const created = await api.orders.create({ productId: product.id, channel, agentScene: agentAttribution.read() });
       const order = created && created.order;
       if (!order || !order.id) throw new Error('订单创建结果无效');
-      await this.completePayment(order);
+      await this.completePaymentWithSessionRefresh(order);
     } catch (error) {
       await this.refresh();
       const cancelled = error && (Number(error.errCode) === -2 || /cancel/i.test(error.errMsg || ''));
