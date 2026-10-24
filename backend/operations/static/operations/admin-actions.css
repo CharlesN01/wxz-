@@ -44,25 +44,25 @@ a.admin-action:visited { color: var(--action-fg); }
 
 /* Global admin density: keep text readable while using the available canvas. */
 body {
-    font-size: 1rem;
+    font-size: 1.125rem;
 }
 
 /* Unfold uses small utility text in tables, filters, forms and the sidebar.
    Raise those utility sizes together so pages remain visually consistent. */
 body :is(.text-xs, .text-sm) {
-    font-size: 1rem !important;
+    font-size: 1.125rem !important;
     line-height: 1.45;
 }
 body .text-xs {
-    font-size: .9375rem !important;
+    font-size: 1.125rem !important;
 }
 body :is(button, input, select, textarea) {
-    font-size: 1rem;
+    font-size: 1.125rem;
 }
 #nav-sidebar :is(.text-xs, .text-sm),
 #nav-sidebar a,
 #nav-sidebar button {
-    font-size: 1rem !important;
+    font-size: 1.125rem !important;
     line-height: 1.4;
 }
 
