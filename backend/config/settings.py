@@ -185,7 +185,7 @@ UNFOLD = {
     "SHOW_VIEW_ON_SITE": False,
     "DASHBOARD_CALLBACK": "operations.admin_dashboard.dashboard_callback",
     "BORDER_RADIUS": "8px",
-    "STYLES": [lambda request: static("operations/admin-actions.css") + "?v=2"],
+    "STYLES": [lambda request: static("operations/admin-actions.css") + "?v=3"],
     "COLORS": {"primary": {
         "50": "rgb(240 253 250)", "100": "rgb(204 251 241)", "200": "rgb(153 246 228)",
         "300": "rgb(94 234 212)", "400": "rgb(45 212 191)", "500": "rgb(20 184 166)",

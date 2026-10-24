@@ -42,6 +42,53 @@ a.admin-action:visited { color: var(--action-fg); }
 .dark .admin-action-form textarea { border-color: #64748b; }
 @media (prefers-reduced-motion: reduce) { .admin-action { transition: none; } }
 
+/* Global admin density: keep text readable while using the available canvas. */
+body {
+    font-size: 1rem;
+}
+
+/* Unfold uses small utility text in tables, filters, forms and the sidebar.
+   Raise those utility sizes together so pages remain visually consistent. */
+body :is(.text-xs, .text-sm) {
+    font-size: .9375rem !important;
+    line-height: 1.45;
+}
+body .text-xs {
+    font-size: .875rem !important;
+}
+body :is(button, input, select, textarea) {
+    font-size: .9375rem;
+}
+#nav-sidebar :is(.text-xs, .text-sm),
+#nav-sidebar a,
+#nav-sidebar button {
+    font-size: .9375rem !important;
+    line-height: 1.4;
+}
+
+/* Reduce unused vertical padding without shrinking controls or headings. */
+#content-main :is(.gap-8, .gap-6) { gap: 1rem !important; }
+#content-main .gap-4 { gap: .75rem !important; }
+#content-main :is(.p-6, .p-5) { padding: 1rem !important; }
+#content-main .py-6 { padding-top: 1rem !important; padding-bottom: 1rem !important; }
+#content-main .py-5 { padding-top: .875rem !important; padding-bottom: .875rem !important; }
+#content-main .py-24 { padding-top: 3.5rem !important; padding-bottom: 3.5rem !important; }
+#content-main .py-16 { padding-top: 3rem !important; padding-bottom: 3rem !important; }
+#content-main .mt-8 { margin-top: 1rem !important; }
+#content-main .mb-8 { margin-bottom: 1rem !important; }
+#content-main .mb-6 { margin-bottom: 1rem !important; }
+
+/* Keep list and form rows compact while preserving a comfortable reading line. */
+#result_list th,
+#result_list td {
+    padding-top: .625rem;
+    padding-bottom: .625rem;
+}
+#changelist .result-list-wrapper,
+#change-form .aligned {
+    min-height: 0;
+}
+
 /* Record links must be recognizable before hover, including native Django links. */
 :is(#result_list tbody .data-row > :is(th, td), .readonly) > a:not(.admin-action):not(.related-widget-wrapper-link):not([data-popup-opener]) {
     --record-link: #0f766e;
