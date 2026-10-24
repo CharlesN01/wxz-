@@ -46,8 +46,22 @@ function read() {
 }
 
 function capture(options) {
+  // options is supplied by App onLaunch/onShow or page onLoad. When the user
+  // enters via an agent QR code the scene parameter is present — save it.
+  // When the user enters through any other path (direct link, official test
+  // QR, weixin public platform) there is no scene, which means this is NOT
+  // an agent-attributed session. Clear any previously cached scene so a prior
+  // scan does not silently attribute future orders to that agent.
+  if (options === undefined || options === null) {
+    // Called without arguments — just read whatever was already saved by a
+    // previous capture(options) call in this session; do not touch storage.
+    return read();
+  }
   const scene = extractScene(options);
-  if (!scene) return read();
+  if (!scene) {
+    try { wx.removeStorageSync(STORAGE_KEY); } catch (_) {}
+    return '';
+  }
   try { wx.setStorageSync(STORAGE_KEY, { scene, expiresAt: Date.now() + TTL_MS }); } catch (_) {}
   return scene;
 }

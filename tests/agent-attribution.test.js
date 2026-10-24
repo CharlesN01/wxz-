@@ -55,15 +55,32 @@ describe('agent-attribution', () => {
     Date.now = now;
   });
 
-  it('capture 无参数时返回已保存的 scene', () => {
+  it('capture(null) 不清除缓存，read 仍返回本次已保存的 scene', () => {
     agentAttribution.capture({ scene: 'a%3DFIRST' });
     const scene = agentAttribution.capture(null);
     assert.equal(scene, 'a=FIRST');
+    assert.equal(agentAttribution.read(), 'a=FIRST');
   });
 
   it('新 scene 会覆盖旧 scene', () => {
     agentAttribution.capture({ scene: 'a%3DFIRST' });
     agentAttribution.capture({ scene: 'a%3DSECOND' });
     assert.equal(agentAttribution.read(), 'a=SECOND');
+  });
+
+  it('非代理路径进入（无 scene）会清除已缓存的代理 scene', () => {
+    // 先扫代理码存入 scene
+    agentAttribution.capture({ scene: 'a%3DTEST' });
+    assert.equal(agentAttribution.read(), 'a=TEST');
+    // 再从非代理路径进入（公众平台体验码、直链等，options 不含 scene）
+    const result = agentAttribution.capture({});
+    assert.equal(result, '');
+    assert.equal(agentAttribution.read(), '');
+  });
+
+  it('非代理路径进入清除缓存后，下单时 read() 返回空', () => {
+    agentAttribution.capture({ scene: 'a%3DTEST' });
+    agentAttribution.capture({});      // 非代理路径覆盖
+    assert.equal(agentAttribution.read(), '');
   });
 });
