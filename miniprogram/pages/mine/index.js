@@ -43,7 +43,13 @@ const paymentErrorMessages = {
 };
 
 function paymentMessage(error, fallback) {
-  const code = error && Number(error.errCode);
+  let code = error && Number(error.errCode);
+  if (!Number.isFinite(code) && error && error.code != null) code = Number(error.code);
+  if (!Number.isFinite(code)) {
+    const message = String(error && (error.errMsg || error.message) || '');
+    const match = message.match(/(?:^|[^\d])(-\d{1,6})(?:\D|$)/);
+    if (match) code = Number(match[1]);
+  }
   if (Number.isFinite(code) && Object.prototype.hasOwnProperty.call(paymentErrorMessages, String(code))) {
     return paymentErrorMessages[String(code)];
   }
