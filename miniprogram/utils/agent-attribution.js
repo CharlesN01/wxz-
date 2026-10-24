@@ -45,20 +45,24 @@ function read() {
   } catch (_) { return ''; }
 }
 
-function capture(options) {
+function capture(options, { preserveOnEmpty = false } = {}) {
   // options is supplied by App onLaunch/onShow or page onLoad. When the user
   // enters via an agent QR code the scene parameter is present — save it.
   // When the user enters through any other path (direct link, official test
   // QR, weixin public platform) there is no scene, which means this is NOT
   // an agent-attributed session. Clear any previously cached scene so a prior
   // scan does not silently attribute future orders to that agent.
+  //
+  // preserveOnEmpty: onShow fires on every resume from background with no
+  // scene in options. That is NOT a new entry decision — the user just came
+  // back. Preserve the scene saved at onLaunch so an agent-scan session keeps
+  // its attribution across background/foreground switches.
   if (options === undefined || options === null) {
-    // Called without arguments — just read whatever was already saved by a
-    // previous capture(options) call in this session; do not touch storage.
     return read();
   }
   const scene = extractScene(options);
   if (!scene) {
+    if (preserveOnEmpty) return read();
     try { wx.removeStorageSync(STORAGE_KEY); } catch (_) {}
     return '';
   }

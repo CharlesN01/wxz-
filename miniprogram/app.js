@@ -8,7 +8,10 @@ App({
     agentAttribution.capture(options || (wx.getLaunchOptionsSync ? wx.getLaunchOptionsSync() : null));
   },
   onShow(options) {
-    agentAttribution.capture(options);
+    // onShow fires on every resume from background without a scene in options;
+    // preserve the scene captured at onLaunch so an agent-scan session keeps
+    // its attribution across background/foreground switches.
+    agentAttribution.capture(options, { preserveOnEmpty: true });
     studyTimer.onAppShow();
   },
   onHide() { studyTimer.onAppHide(); }

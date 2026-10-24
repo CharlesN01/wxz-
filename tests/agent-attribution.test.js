@@ -37,11 +37,11 @@ describe('agent-attribution', () => {
   });
 
   it('scene 格式要求：a= 开头，后接 3-32 个字母数字下划线连字符', () => {
-    assert.equal(agentAttribution.normalize('a=AB'), '');  // 太短
+    assert.equal(agentAttribution.normalize('a=AB'), '');
     assert.equal(agentAttribution.normalize('a=ABC'), 'a=ABC');
     assert.equal(agentAttribution.normalize('a=ABC-123_XYZ'), 'a=ABC-123_XYZ');
     assert.equal(agentAttribution.normalize('a=' + 'X'.repeat(32)), 'a=' + 'X'.repeat(32));
-    assert.equal(agentAttribution.normalize('a=' + 'X'.repeat(33)), '');  // 太长
+    assert.equal(agentAttribution.normalize('a=' + 'X'.repeat(33)), '');
   });
 
   it('scene 保存后 30 天有效，过期自动清除', () => {
@@ -68,19 +68,35 @@ describe('agent-attribution', () => {
     assert.equal(agentAttribution.read(), 'a=SECOND');
   });
 
-  it('非代理路径进入（无 scene）会清除已缓存的代理 scene', () => {
-    // 先扫代理码存入 scene
+  it('非代理路径进入（onLaunch 无 scene）会清除已缓存的代理 scene', () => {
     agentAttribution.capture({ scene: 'a%3DTEST' });
     assert.equal(agentAttribution.read(), 'a=TEST');
-    // 再从非代理路径进入（公众平台体验码、直链等，options 不含 scene）
+    // 公众平台体验码、直链等 onLaunch，无 scene
     const result = agentAttribution.capture({});
     assert.equal(result, '');
     assert.equal(agentAttribution.read(), '');
   });
 
+  it('onShow 从后台恢复（preserveOnEmpty）保留已缓存的代理 scene', () => {
+    // 扫代理码进入，scene 被 onLaunch 保存
+    agentAttribution.capture({ scene: 'a%3DTEST' });
+    assert.equal(agentAttribution.read(), 'a=TEST');
+    // 切后台再回来，onShow 没有 scene，用 preserveOnEmpty: true
+    const result = agentAttribution.capture({}, { preserveOnEmpty: true });
+    assert.equal(result, 'a=TEST');
+    assert.equal(agentAttribution.read(), 'a=TEST');
+  });
+
+  it('onShow 有新 scene 时（扫不同代理码唤起）仍然更新 scene', () => {
+    agentAttribution.capture({ scene: 'a%3DFIRST' });
+    // onShow 收到新 scene（用户从另一个代理码唤起）
+    agentAttribution.capture({ scene: 'a%3DSECOND' }, { preserveOnEmpty: true });
+    assert.equal(agentAttribution.read(), 'a=SECOND');
+  });
+
   it('非代理路径进入清除缓存后，下单时 read() 返回空', () => {
     agentAttribution.capture({ scene: 'a%3DTEST' });
-    agentAttribution.capture({});      // 非代理路径覆盖
+    agentAttribution.capture({});      // 非代理 onLaunch 清除
     assert.equal(agentAttribution.read(), '');
   });
 });
