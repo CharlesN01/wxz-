@@ -46,6 +46,7 @@ const api = {
   auth: {
     login: authService.login,
     logout: authService.logout,
+    ensureFreshSession: authService.ensureFreshSession,
     getSession: require('../utils/session').getSession,
     getToken: require('../utils/session').getToken
   },

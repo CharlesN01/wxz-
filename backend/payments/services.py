@@ -105,9 +105,11 @@ def _prepare_payment(user, session, order_id, key):
         raise BusinessError("ALREADY_ACTIVATED","已激活",409)
     if order.status == 'preparing':
         # The first request has already reserved the order and persisted the
-        # signed payload. Reuse that exact payload so a cancelled or
-        # interrupted client can reopen the original platform payment. Do not
-        # create another platform order, extend the deadline, or add a task.
+        # signed payload (sign_data). Reuse that exact manifest so a cancelled or
+        # interrupted client can reopen the original platform payment. The packet
+        # is always re-signed with the CURRENT session_key (see payment_packet),
+        # which matters when the user re-logged in and WeChat rotated the key.
+        # Do not extend the deadline or add another task.
         configuration=channel_configuration(order.channel); _session(session,locked,configuration)
         require_channel_price(order.channel, order.price_fen)
         if order.identity_id!=session.identity_id:
@@ -121,6 +123,11 @@ def _prepare_payment(user, session, order_id, key):
             raise BusinessError("PRICE_CHANGED","商品已变更，请重新获取商品并创建订单。",409)
         if not order.sign_data:
             raise BusinessError("PAYMENT_ALREADY_PREPARED","订单已进入平台处理，请查询原订单结果。",409,fields={"order":order_payload(order)})
+        # Keep prepared_session pointing at the session that actually signed the
+        # resumed packet, so audit/query reflects the key WeChat will verify.
+        if order.prepared_session_id != session.pk:
+            order.prepared_session = session
+            order.save(_service=True)
         return {"order":order_payload(order),"payment":payment_packet(order,session,configuration),"entitlement":entitlement_snapshot(locked)}
     if not previous and order.status!='created':
         raise BusinessError("PAYMENT_ALREADY_PREPARED","订单已进入平台处理，请查询原订单结果。",409,fields={"order":order_payload(order)})

@@ -73,6 +73,7 @@ test('超时订单不再弹起支付，显示重新下单提示', async () => {
 test('订单详情为待支付时提供继续支付入口并恢复支付', async () => {
   const calls = [];
   const page = load('pages/mine/index.js', {
+    auth: { ensureFreshSession: async () => {} },
     orders: {
       detail: async (id) => ({ id, status: 'preparing', priceFen: 100 }),
       preparePayment: async (id) => { calls.push(['prepare', id]); return { payment: { mode: 'x' } }; },
@@ -110,6 +111,33 @@ test('取消支付只提示两分钟自动取消，不发起平台查单', async
   assert.equal(queries, 0);
   assert.match(messages.at(-1), /已取消支付.*2分钟/);
   assert.equal(page.data.busy, false);
+});
+
+test('购买和继续支付前主动校验微信会话，失效时提前刷新', async () => {
+  const calls = [];
+  let loginCount = 0;
+  const page = load('pages/mine/index.js', {
+    auth: {
+      getToken() { return loginCount > 0 ? 'some-token' : ''; },
+      login() { loginCount += 1; calls.push('login'); return Promise.resolve(); },
+      ensureFreshSession() { calls.push('ensure'); return Promise.resolve(); }
+    },
+    orders: {
+      create: async () => { calls.push('create'); return { order: { id: 'new-order' } }; },
+      preparePayment: async () => { calls.push('prepare'); return { payment: {} }; },
+      queryPayment: async () => { calls.push('query'); return { order: { status: 'paid' } }; }
+    },
+    payment: { toVirtualPaymentArgs: () => ({}) }
+  }, {}, { wx: { showToast() {}, requestVirtualPayment: ({ success }) => success() } });
+  page.data.product = { id: 'all-chinese', purchaseAvailable: true, paymentChannels: { android: true } };
+  page.channelForDevice = () => 'android';
+  page.refresh = async () => {};
+  await page.purchase();
+  assert.deepEqual(calls, ['login', 'ensure', 'create', 'prepare', 'query']);
+  page.data.selectedOrder = { id: 'new-order', status: 'preparing' };
+  calls.length = 0;
+  await page.continuePayment();
+  assert.deepEqual(calls, ['ensure', 'prepare', 'query']);
 });
 
 test('订单到期自动刷新，隐藏页面时清理计时器', async () => {

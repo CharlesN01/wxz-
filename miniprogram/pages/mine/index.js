@@ -296,6 +296,7 @@ Page({
     }
     this.setData({ busy: true, orderDetailError: '' });
     try {
+      await api.auth.ensureFreshSession();
       await this.completePaymentWithSessionRefresh(order);
     } catch (error) {
       await this.refresh();
@@ -307,6 +308,8 @@ Page({
   async purchase() {
     if (this.data.busy) return;
     if (!this.data.loggedIn) { await this.login(); if (!api.auth.getToken()) return; }
+    try { await api.auth.ensureFreshSession(); } catch (_) { /* fall through; payment path still retries on -15005. */ }
+    if (!this.data.loggedIn && api.auth.getToken()) await this.refresh();
     const product = this.data.product;
     if (this.data.entitlement && this.data.entitlement.active) { showToast('已激活'); return; }
     const channel = this.channelForDevice();
