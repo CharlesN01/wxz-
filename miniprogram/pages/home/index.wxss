@@ -221,15 +221,15 @@ page { background: #F5FAFE; }
 
 /* 430px prototype baseline; keep the same geometry across simulator widths. */
 .home-body { padding: 12px; }
-.dashboard-card { padding: 12px 16px; border-radius: 17px; }
+.dashboard-card { padding: 9px 14px; border-radius: 15px; }
 .dashboard-head { font-size: 20rpx; }
-.target-pill { padding: 5px 8px; border-radius: 8px; font-size: 18rpx; }
-.countdown-line { margin-top: 9px; }
+.target-pill { padding: 4px 7px; border-radius: 7px; font-size: 18rpx; }
+.countdown-line { margin-top: 7px; }
 .countdown-number { font-size: 54rpx; }
 .countdown-unit { margin-left: 5px; font-size: 20rpx; }
-.dashboard-caption { margin-top: 7px; font-size: 20rpx; }
-.dashboard-stats { gap: 8px; margin-top: 11px; }
-.dashboard-stat { padding: 8px 7px; border-radius: 11px; }
+.dashboard-caption { margin-top: 5px; font-size: 20rpx; }
+.dashboard-stats { gap: 7px; margin-top: 8px; }
+.dashboard-stat { padding: 6px 6px; border-radius: 10px; }
 .stat-number { font-size: 34rpx; }
 .stat-label { margin-top: 3px; font-size: 18rpx; }
 .growth-card { margin-top: 10px; padding: 10px 12px; border-radius: 13px; }
@@ -239,10 +239,10 @@ page { background: #F5FAFE; }
 .trend-column { gap: 3px; font-size: 16rpx; }
 .trend-bar { width: 17px; max-height: 44px; border-radius: 5px 5px 0 0; }
 .section-title { margin: 15px 2px 8px; font-size: 28rpx; }
-.module-grid { gap: 8px; }
-.module-card, .module-wide { min-height: 74px; padding: 11px; border-radius: 13px; }
-.module-icon, .continue-icon { width: 31px; height: 31px; border-radius: 9px; font-size: 22rpx; }
-.module-copy { margin-left: 9px; }
+.module-grid { gap: 7px; }
+.module-card, .module-wide { min-height: 64px; padding: 9px; border-radius: 11px; }
+.module-icon, .continue-icon { width: 29px; height: 29px; border-radius: 8px; font-size: 22rpx; }
+.module-copy { margin-left: 8px; }
 .module-name { font-size: 22rpx; }
 .module-desc { margin-top: 3px; font-size: 18rpx; }
 .module-arrow { font-size: 36rpx; }
@@ -275,5 +275,5 @@ page { background: #F5FAFE; }
 .theme-reveal { position: fixed; inset: 0; z-index: 100; overflow: hidden; isolation: isolate; will-change: clip-path; }
 .theme-reveal .home-page { width: 100%; pointer-events: none; }
 .dashboard-head-actions { flex: 0 0 auto; width: auto; }
-.dashboard-head-actions .theme-toggle { flex: 0 0 auto; width: auto; min-width: 110px; min-height: 88rpx; padding: 0 10px; font-size: 20rpx; line-height: 1.2; box-shadow: none; }
+.dashboard-head-actions .theme-toggle { flex: 0 0 auto; width: auto; min-width: 110px; min-height: 72rpx; padding: 0 10px; font-size: 20rpx; line-height: 1.2; box-shadow: none; }
 .home-page.theme-night .theme-toggle { box-shadow: none; }
