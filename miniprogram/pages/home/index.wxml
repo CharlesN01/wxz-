@@ -10,7 +10,7 @@
   </view>
   <view wx:else class="home-body">
     <view class="dashboard-card">
-      <view class="dashboard-head"><text>山东专升本考试倒计时</text><view class="dashboard-head-actions"><button class="theme-toggle" bindtap="toggleTheme" aria-label="{{theme === 'day' ? '切换夜间模式' : '切换白天模式'}}"><text>{{theme === 'day' ? '切换夜间模式' : '切换白天模式'}}</text></button></view></view>
+      <view class="dashboard-head"><text>山东专升本考试倒计时</text><view class="dashboard-head-actions"><button class="theme-toggle" bindtap="toggleTheme" aria-label="{{theme === 'day' ? '切换蓝色模式' : '切换暖色模式'}}"><text>{{theme === 'day' ? '切换蓝色模式' : '切换暖色模式'}}</text></button></view></view>
       <view class="countdown-line"><text class="countdown-number">{{countdown}}</text><text class="countdown-unit">天</text></view>
       <text class="dashboard-caption">{{config.examDate ? '每天进步一点，稳步走向上岸' : '考试日期待设置'}}</text>
       <view class="dashboard-stats">
