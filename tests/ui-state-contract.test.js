@@ -32,13 +32,50 @@ function jsonCopy(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
-test('9 个原生路由承载 16 个原型状态所需页面均已注册', () => {
+test('10 个原生路由承载 16 个原型状态所需页面均已注册', () => {
   const config = JSON.parse(fs.readFileSync(path.join(root, 'miniprogram/app.json'), 'utf8'));
   assert.deepEqual(config.pages, [
     'pages/home/index', 'pages/literature/index', 'pages/classical/index',
-    'pages/practice/index', 'pages/random/index', 'pages/favorites/index',
+    'pages/practice/index', 'pages/random/index', 'pages/favorites/index', 'pages/orders/index',
     'pages/application/index', 'pages/mine/index', 'pages/resources/index'
   ]);
+});
+
+test('订单中心登记为无参数主路径并从我的订单入口直达', () => {
+  const config = JSON.parse(fs.readFileSync(path.join(root, 'miniprogram/app.json'), 'utf8'));
+  assert.ok(config.pages.includes('pages/orders/index'));
+  const mine = fs.readFileSync(path.join(root, 'miniprogram/pages/mine/index.js'), 'utf8');
+  assert.match(mine, /openOrders\(\)\s*\{\s*navigation\.openPage\('\/pages\/orders\/index'\);\s*\}/);
+});
+
+test('订单中心直接进入时，未登录留在订单路径并可原地登录', async () => {
+  let session = null;
+  const api = {
+    auth: { getSession: () => session, async login() { session = { token: 'test-session' }; } },
+    orders: { async list() { return { results: [], next: null }; } }
+  };
+  const page = loadPage('pages/orders/index.js', { '../../services/api': api, '../../utils/order-view': { orderView: (order) => order } }, {
+    wx: { showToast() {} }
+  });
+  await page.onShow();
+  assert.equal(page.data.loggedIn, false);
+  assert.equal(page.data.loading, false);
+  assert.match(fs.readFileSync(path.join(root, 'miniprogram/pages/orders/index.wxml'), 'utf8'), /bindtap="login"/);
+  assert.equal(page.data.detailVisible, false);
+  await page.login();
+  assert.equal(page.data.loggedIn, true);
+  assert.equal(page.data.detailVisible, false);
+});
+
+test('订单详情有明确返回列表操作，返回后仍处于订单中心', () => {
+  const page = loadPage('pages/orders/index.js', { '../../services/api': { auth: {}, orders: {} } }, { wx: {} });
+  page.data.detailVisible = true;
+  page.data.selectedOrder = { id: 'order-1' };
+  page.backToList();
+  assert.equal(page.data.detailVisible, false);
+  assert.equal(page.data.selectedOrder, null);
+  const template = fs.readFileSync(path.join(root, 'miniprogram/pages/orders/index.wxml'), 'utf8');
+  assert.match(template, /bindtap="backToList"/);
 });
 
 test('自测题卡提供查看答案控件，背诵模式显示完整答案', () => {

@@ -188,8 +188,7 @@ Page({
     if (page === 'favorites') navigation.openPage('/pages/favorites/index');
   },
   openOrders() {
-    if (!this.data.loggedIn) { showToast('请先登录'); return; }
-    this.setData({ ordersVisible: true });
+    navigation.openPage('/pages/orders/index');
   },
   closeOrders() { this.setData({ ordersVisible: false }); },
   async openOrder(event) {

@@ -6,6 +6,7 @@
     "pages/practice/index",
     "pages/random/index",
     "pages/favorites/index",
+    "pages/orders/index",
     "pages/application/index",
     "pages/mine/index",
     "pages/resources/index"
