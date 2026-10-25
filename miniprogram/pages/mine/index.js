@@ -19,6 +19,15 @@ function apiMessage(error, fallback) {
   return error && error.message ? error.message : fallback;
 }
 
+// Keep per-request failure isolation without relying on Promise.allSettled,
+// which is unavailable in some WeChat Developer Tools runtimes.
+function settleTask(task) {
+  return Promise.resolve(task).then(
+    (value) => ({ status: 'fulfilled', value }),
+    (reason) => ({ status: 'rejected', reason })
+  );
+}
+
 const paymentErrorMessages = {
   '-15001': '支付参数错误，请稍后重试',
   '-15002': '原订单号已使用，请重新下单',
@@ -124,9 +133,9 @@ Page({
       this.setData({ product: products && products.results && products.results[0] || null, loading: false });
       return;
     }
-    const results = await Promise.allSettled([
+    const results = await Promise.all([
       api.entitlements.current(), api.learning.statistics(), api.learning.preferences(), this.loadOrders()
-    ]);
+    ].map(settleTask));
     const products = await productTask;
     const product = products && products.results && products.results[0] || null;
     const failed = results.filter((result) => result.status === 'rejected');

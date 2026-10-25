@@ -1,4 +1,12 @@
 const utils = require('../../utils/question-utils');
+const dataService = require('../../services/data-service');
+
+function originLabel(question) {
+  const item = question || {};
+  const fallback = dataService.getArticleTitle ? dataService.getArticleTitle(item.articleId) : '';
+  const title = String(item.articleTitle || fallback || '').trim().replace(/^《|》$/g, '');
+  return title ? `《${title}》` : '文言文';
+}
 
 function translationPrompt(stem) {
   // Remove only the answer placeholder and its trailing instruction. A quote
@@ -18,7 +26,7 @@ Component({
     variant: { type: String, value: 'green' },
     showTag: { type: Boolean, value: false }
   },
-  data: { segments: [], isTranslation: false, translationStem: '', translationAnswer: '', wordStem: '', isWordExplanation: false, standaloneAnswer: false, answerVisible: false, answerText: '', draftAnswers: [] },
+  data: { segments: [], isTranslation: false, translationStem: '', translationAnswer: '', wordStem: '', isWordExplanation: false, standaloneAnswer: false, answerVisible: false, answerText: '', originLabel: '', draftAnswers: [] },
   observers: {
     'question, mode'(question, mode) {
       const item = question || {};
@@ -34,6 +42,8 @@ Component({
       const draftAnswers = utils.normalizeDraftAnswers(item, sourceDraft);
       const renderKey = JSON.stringify([questionKey, stem, answers, item.type, mode]);
       const update = {};
+      const label = originLabel(item);
+      if (label !== this.data.originLabel) update.originLabel = label;
 
       // Favorite/mastered changes replace question objects. Keep the existing
       // input nodes and values when their content has not changed.

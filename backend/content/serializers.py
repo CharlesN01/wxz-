@@ -80,6 +80,9 @@ class PublishedQuestionSerializer(serializers.ModelSerializer):
     articleId = serializers.CharField(
         source="published_revision.article_id", allow_null=True, read_only=True
     )
+    articleTitle = serializers.CharField(
+        source="published_revision.article.title", allow_null=True, read_only=True
+    )
     type = serializers.CharField(source="published_revision.type", read_only=True)
     tag = serializers.CharField(source="published_revision.tag", read_only=True)
     stem = serializers.CharField(source="published_revision.stem", read_only=True)
@@ -91,7 +94,7 @@ class PublishedQuestionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Question
         fields = (
-            "id", "source", "categoryId", "articleId", "type", "tag", "stem",
+            "id", "source", "categoryId", "articleId", "articleTitle", "type", "tag", "stem",
             "answers", "sortOrder", "revision",
         )
         read_only_fields = fields

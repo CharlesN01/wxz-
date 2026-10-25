@@ -4,7 +4,7 @@
 .number { flex-shrink: 0; min-width: 42rpx; height: 48rpx; margin-top: 3rpx; margin-right: 18rpx; border-radius: 10rpx; background: var(--theme-soft, #EAF4FB); color: var(--theme-accent, #1B5E91); font-family: "Songti SC", STSong, SimSun, serif; font-size: 30rpx; font-weight: 700; line-height: 48rpx; text-align: center; }
 .question-content { flex: 1; min-width: 0; }
 .stem { color: var(--theme-ink, #242A27); font-size: 32rpx; line-height: 1.75; word-break: break-all; white-space: pre-line; }
-.answer { padding: 2rpx 9rpx; border-bottom: 1px solid var(--theme-accent, #3A86B9); border-radius: 6rpx; background: var(--theme-soft, #EAF4FB); color: var(--theme-accent, #1B5E91); font-weight: 600; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
+.answer { padding: 2rpx 9rpx; border-bottom: 1px solid var(--theme-accent, #3A86B9); border-radius: 6rpx; background: var(--theme-soft, #F4F8FF); color: var(--theme-accent, #1B5E91); font-weight: 600; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
 .answer-blank { display: inline-block; width: 140rpx; max-width: 100%; height: .95em; margin: 0 4rpx; border-bottom: 1px solid var(--theme-accent-border, #86B8F4); border-radius: 4rpx 4rpx 0 0; background: var(--theme-soft, #F4F8FF); color: transparent; line-height: .95em; vertical-align: baseline; white-space: nowrap; }
 .answer-compact { white-space: nowrap; }
 .star-hit { position: absolute; top: 8rpx; right: 2rpx; width: 88rpx; height: 88rpx; display: flex; align-items: center; justify-content: center; color: var(--theme-muted, #B8BDB8); }
@@ -54,7 +54,7 @@
 .blank { display: inline-block; flex: 0 0 140rpx; width: 140rpx; height: 34rpx; min-height: 0; margin-left: 8rpx; padding: 0 4rpx; border: 0; border-bottom: 1px solid var(--theme-accent-border, #86B8F4); border-radius: 0; background: var(--theme-soft, #F4F8FF); color: var(--theme-accent, #237BEA); font-size: 22rpx; line-height: 32rpx; text-align: center; }
 .write-hint { margin: 12rpx 0 8rpx; color: var(--theme-muted, #8995A8); font-size: 20rpx; line-height: 1.45; }
 .write-line { height: 40rpx; border-bottom: 1px solid var(--theme-accent-border, #9BBDE8); }
-.answer-line { display: flex; align-items: baseline; flex-wrap: wrap; gap: 8rpx 14rpx; margin-top: 14rpx; padding: 14rpx 16rpx; border-radius: 16rpx; background: var(--theme-soft, #EAF4FB); color: var(--theme-accent, #1B5E91); font-size: 22rpx; line-height: 1.5; }
+.answer-line { display: flex; align-items: baseline; flex-wrap: wrap; gap: 8rpx 14rpx; margin-top: 14rpx; padding: 14rpx 16rpx; border-radius: 16rpx; background: var(--theme-soft, #F4F8FF); color: var(--theme-accent, #1B5E91); font-size: 22rpx; line-height: 1.5; }
 .answer-label { flex: 0 0 auto; color: var(--theme-accent, #1B5E91); font-size: 22rpx; font-weight: 700; }
 .variant-random .answer-box, .variant-practice-word .answer-box, .variant-practice-translation .answer-box { display: block; margin-top: 12rpx; padding: 14rpx 16rpx; border-left: 6rpx solid var(--theme-accent-border, #8BBDF7); border-radius: 0 14rpx 14rpx 0; background: var(--theme-soft, #F4F8FF); color: var(--theme-answer-ink, #486487); font-size: 22rpx; line-height: 1.5; }
 .classical-random-card .answer-box { margin-top: 12rpx; }
@@ -107,3 +107,9 @@
 .write-hint,
 .answer-line,
 .answer-label { font-size: 24rpx; }
+
+/* 文常随机题把题号与正文放在同一行，减少分类标签占用的垂直空间。 */
+.random-literature-card .question-line { align-items: baseline; padding-right: 40rpx; }
+.random-literature-card .question-index { flex: 0 0 auto; min-width: auto; margin: 0 8rpx 0 0; overflow: visible; text-overflow: clip; white-space: nowrap; line-height: 1.55; }
+.random-literature-card .stem { margin-top: 0; }
+.random-literature-card .star-hit { position: absolute; top: 1rpx; right: 0; width: 64rpx; height: 64rpx; }

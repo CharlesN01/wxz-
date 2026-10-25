@@ -99,7 +99,7 @@ class ContentAPITests(TestCase):
         item = self.client.get(f"/api/v1/questions/{self.question.pk}/").json()
         self.assertEqual(item, {
             "id": self.question.pk, "source": "literature", "categoryId": "pre-qin",
-            "articleId": None, "type": "fact", "tag": "文学常识",
+            "articleId": None, "articleTitle": None, "type": "fact", "tag": "文学常识",
             "stem": "《诗经》收录{{0}}篇。", "answers": ["305"],
             "sortOrder": 0, "revision": 1,
         })

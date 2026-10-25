@@ -33,17 +33,19 @@
     </view>
     <view wx:elif="{{questions.length}}" class="question-list">
       <view wx:for="{{questions}}" wx:key="id" class="question">
-        <view class="question-head">
-          <text class="question-index">{{index + 1 < 10 ? '0' + (index + 1) : index + 1}} / {{questions.length < 10 ? '0' + questions.length : questions.length}}</text>
-          <view class="question-tools">
-            <view class="favorite-button {{item.favorite ? 'favorite-selected' : ''}}" data-id="{{item.id}}" bindtap="toggleFavorite" role="button" aria-label="{{item.favorite ? '取消收藏' : '收藏'}}" aria-pressed="{{item.favorite}}">{{item.favorite ? '★' : '☆'}}</view>
+        <view class="question-line">
+          <text class="question-index">{{index + 1 < 10 ? '0' + (index + 1) : index + 1}}.</text>
+          <view class="question-content">
+            <view class="question-text">
+              <block wx:for="{{item.parts}}" wx:for-item="part" wx:key="key">
+                <input wx:if="{{mode === 'writing' && part.isBlank}}" class="blank answer-input" value="{{item.draftAnswers[part.answerIndex] || ''}}" data-id="{{item.id}}" data-index="{{part.answerIndex}}" bindinput="onBlankInput" maxlength="-1" aria-label="第 {{part.answerIndex + 1}} 空" />
+                <text wx:else class="{{part.isFilled ? 'filled-answer' : ''}}">{{part.text}}</text>
+              </block>
+            </view>
           </view>
         </view>
-        <view class="question-text">
-          <block wx:for="{{item.parts}}" wx:for-item="part" wx:key="key">
-            <input wx:if="{{mode === 'writing' && part.isBlank}}" class="blank answer-input" value="{{item.draftAnswers[part.answerIndex] || ''}}" data-id="{{item.id}}" data-index="{{part.answerIndex}}" bindinput="onBlankInput" maxlength="-1" aria-label="第 {{part.answerIndex + 1}} 空" />
-            <text wx:else class="{{part.isFilled ? 'filled-answer' : ''}}">{{part.text}}</text>
-          </block>
+        <view class="question-tools">
+          <view class="favorite-button {{item.favorite ? 'favorite-selected' : ''}}" data-id="{{item.id}}" bindtap="toggleFavorite" role="button" aria-label="{{item.favorite ? '取消收藏' : '收藏'}}" aria-pressed="{{item.favorite}}">{{item.favorite ? '★' : '☆'}}</view>
         </view>
         <input wx:if="{{mode === 'writing' && !item.hasInlineBlanks && item.hasAnswerInput}}" class="answer-input standalone-answer-input" value="{{item.draftAnswers[0] || ''}}" data-id="{{item.id}}" data-index="0" bindinput="onBlankInput" maxlength="-1" aria-label="填写本题答案" />
         <view wx:if="{{mode === 'writing' && item.answerVisible}}" class="answer"><text class="answer-label">答案：</text><text>{{item.answerText}}</text></view>

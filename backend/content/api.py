@@ -66,7 +66,7 @@ class PublishedQuestionView(ProtectedContentView):
             | Q(published_revision__category__is_active=True),
             Q(published_revision__article__isnull=True)
             | Q(published_revision__article__is_active=True),
-        ).select_related("published_revision")
+        ).select_related("published_revision", "published_revision__article")
 
         fields = {
             "source": "published_revision__source",

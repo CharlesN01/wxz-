@@ -45,7 +45,7 @@ MODE = {"type": "string", "enum": ["writing", "reciting"]}
 CAPACITY = {"type": "integer", "minimum": 1, "maximum": 100}
 SCOPE = {"source": SOURCE, "categoryId": nullable(STRING), "articleId": nullable(STRING), "type": nullable(TYPE)}
 QUESTION = {
-    "id": STRING, "source": SOURCE, "categoryId": nullable(STRING), "articleId": nullable(STRING),
+    "id": STRING, "source": SOURCE, "categoryId": nullable(STRING), "articleId": nullable(STRING), "articleTitle": nullable(STRING),
     "type": TYPE, "tag": STRING, "stem": STRING, "answers": {"type": "array", "items": STRING, "minItems": 1},
     "sortOrder": INTEGER, "revision": POSITIVE, "state": nullable(ref("QuestionState")),
 }
@@ -58,7 +58,7 @@ WRITING = {
 }
 EXAMPLE_QUESTION = {
     "id": "example-quanxue-001", "source": "classical", "categoryId": None, "articleId": "quanxue",
-    "type": "word", "tag": "字词", "stem": "吾尝{{0}}而思矣。", "answers": ["终日"], "sortOrder": 1, "revision": 1,
+    "articleTitle": "劝学", "type": "word", "tag": "字词", "stem": "吾尝{{0}}而思矣。", "answers": ["终日"], "sortOrder": 1, "revision": 1,
     "state": None,
 }
 EXAMPLES = {

@@ -21,7 +21,7 @@ def published_questions():
             published_revision__article__is_active=True,
             published_revision__category__isnull=True,
         )
-    ).select_related("published_revision").order_by("published_revision__sort_order", "pk")
+    ).select_related("published_revision", "published_revision__article").order_by("published_revision__sort_order", "pk")
 
 
 def scope_questions(source, scope_id):

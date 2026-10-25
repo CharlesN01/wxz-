@@ -5373,6 +5373,7 @@
                       "source": "classical",
                       "categoryId": null,
                       "articleId": "quanxue",
+                      "articleTitle": "劝学",
                       "type": "word",
                       "tag": "字词",
                       "stem": "吾尝{{0}}而思矣。",
@@ -5567,6 +5568,7 @@
                   "source": "classical",
                   "categoryId": null,
                   "articleId": "quanxue",
+                  "articleTitle": "劝学",
                   "type": "word",
                   "tag": "字词",
                   "stem": "吾尝{{0}}而思矣。",
@@ -6592,6 +6594,16 @@
               }
             ]
           },
+          "articleTitle": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "type": {
             "type": "string",
             "enum": [
@@ -6637,6 +6649,7 @@
           "source",
           "categoryId",
           "articleId",
+          "articleTitle",
           "type",
           "tag",
           "stem",
@@ -6759,6 +6772,16 @@
               }
             ]
           },
+          "articleTitle": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "type": {
             "type": "string",
             "enum": [
@@ -6830,6 +6853,7 @@
           "source",
           "categoryId",
           "articleId",
+          "articleTitle",
           "type",
           "tag",
           "stem",

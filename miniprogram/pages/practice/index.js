@@ -121,7 +121,7 @@ Page(withStudyTime({
       const payload = await api.content.questions({ source: 'classical', articleId: this.articleId, type: this.questionType, page: 1 }, { auth: hasToken() });
       if (generation !== this._loadGeneration) return;
       const rows = Array.isArray(payload.results) ? payload.results : [];
-      const scope = { id: this.articleId, start: 0, count: Number.isInteger(payload.count) ? payload.count : rows.length, pages: {}, generation, mastered: null };
+      const scope = { id: this.articleId, title: this.articleTitle, start: 0, count: Number.isInteger(payload.count) ? payload.count : rows.length, pages: {}, generation, mastered: null };
       this._scopes = [scope];
       this._remoteTotal = scope.count;
       this.acceptRemotePage(scope, 1, payload);
@@ -149,7 +149,7 @@ Page(withStudyTime({
         count = Number.isInteger(first.count) ? first.count : (first.results || []).length;
       }
       if (generation !== this._loadGeneration) return;
-      const scope = { id: article.id, start: this._remoteTotal, count, pages: {}, generation,
+      const scope = { id: article.id, title: article.title || '', start: this._remoteTotal, count, pages: {}, generation,
         mastered: masteredCount(article.progress && article.progress[masteredField], count) };
       this._scopes.push(scope);
       this._remoteTotal += count;
@@ -160,7 +160,10 @@ Page(withStudyTime({
   },
   acceptRemotePage(scope, pageNumber, payload) {
     if (scope.generation !== this._loadGeneration) return;
-    const rows = Array.isArray(payload.results) ? payload.results : [];
+    const rows = (Array.isArray(payload.results) ? payload.results : []).map((question) => ({
+      ...question,
+      articleTitle: question.articleTitle || scope.title || ''
+    }));
     const completed = masteredCount(payload.progress && payload.progress.masteredCount, scope.count);
     if (completed !== null) scope.mastered = completed;
     const size = Number(payload.access && payload.access.pageSize);

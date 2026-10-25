@@ -15,20 +15,31 @@
   <view wx:if="{{(mode === 'writing' && answerVisible) || (mode === 'reciting' && (isTranslation || isWordExplanation || standaloneAnswer))}}" class="answer-box"><text class="answer-caption">{{isTranslation ? '参考译文' : '答案：'}}</text><text class="answer-text" selectable="{{true}}">{{answerText}}</text></view>
 </template>
 
-<view class="card variant-{{variant}} {{isTranslation ? 'translation-card' : ''}} {{variant === 'random' && question.source === 'classical' ? 'classical-random-card' : ''}}">
+<view class="card variant-{{variant}} {{isTranslation ? 'translation-card' : ''}} {{variant === 'random' && question.source === 'classical' ? 'classical-random-card' : ''}} {{variant === 'random' && question.source !== 'classical' ? 'random-literature-card' : ''}}">
   <block wx:if="{{variant === 'random' || variant === 'practice-word' || variant === 'practice-translation'}}">
-    <view class="question-head">
-      <text class="question-index">{{number < 10 ? '0' + number : number}} · {{variant === 'random' && question.source !== 'classical' ? (question.categoryName || question.tag) : (isTranslation ? '重点翻译' : '重点字词')}}{{variant === 'random' && question.source === 'classical' && question.articleTitle ? ' · 《' + question.articleTitle + '》' : ''}}</text>
+    <block wx:if="{{variant === 'random' && question.source !== 'classical'}}">
+      <view class="question-line random-literature-line">
+        <text class="question-index">{{number < 10 ? '0' + number : number}}.</text>
+        <view class="question-content">
+          <template is="question-body" data="{{segments, mode, draftAnswers, isTranslation, translationStem, isWordExplanation, wordStem, standaloneAnswer, answerVisible, answerText}}" />
+        </view>
+      </view>
       <view class="star-hit {{question.favorite ? 'selected' : ''}}" bindtap="favorite" role="button" aria-label="{{question.favorite ? '取消收藏' : '收藏'}}" aria-pressed="{{question.favorite}}"><text class="star">{{question.favorite ? '★' : '☆'}}</text></view>
-    </view>
-    <template is="question-body" data="{{segments, mode, draftAnswers, isTranslation, translationStem, isWordExplanation, wordStem, standaloneAnswer, answerVisible, answerText}}" />
+    </block>
+    <block wx:else>
+      <view class="question-head">
+        <text class="question-index">{{number < 10 ? '0' + number : number}}. {{originLabel || (question.articleTitle ? ' · 《' + question.articleTitle + '》' : '文言文')}}</text>
+        <view class="star-hit {{question.favorite ? 'selected' : ''}}" bindtap="favorite" role="button" aria-label="{{question.favorite ? '取消收藏' : '收藏'}}" aria-pressed="{{question.favorite}}"><text class="star">{{question.favorite ? '★' : '☆'}}</text></view>
+      </view>
+      <template is="question-body" data="{{segments, mode, draftAnswers, isTranslation, translationStem, isWordExplanation, wordStem, standaloneAnswer, answerVisible, answerText}}" />
+    </block>
     <view wx:if="{{mode === 'writing'}}" class="question-foot"><view class="answer-toggle {{answerVisible ? 'answer-open' : ''}}" bindtap="toggleAnswer" role="button">{{answerVisible ? '收起答案' : '查看答案'}}</view></view>
   </block>
   <block wx:else>
     <view class="question-line">
       <text class="number">{{number}}</text>
       <view class="question-content">
-        <text wx:if="{{showTag || isTranslation}}" class="tag">{{isTranslation ? '重点翻译' : question.tag}}</text>
+        <text wx:if="{{showTag || isTranslation}}" class="tag">{{question.source === 'classical' ? originLabel : question.tag}}</text>
         <template is="question-body" data="{{segments, mode, draftAnswers, isTranslation, translationStem, isWordExplanation, wordStem, standaloneAnswer, answerVisible, answerText}}" />
       </view>
     </view>
