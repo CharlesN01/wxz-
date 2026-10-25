@@ -1,4 +1,7 @@
-/* 96rpx 点击行与底部安全区分别占位，图标和文字在点击行内居中。 */
+/*
+ * 导航栏使用固定 CSS px 尺寸，避免 rpx 随设备屏宽缩放导致 Android
+ * 比 iOS 显得更小；底部安全区仍由 env() 单独适配刘海和 Home 指示条。
+ */
 .study-bottom-navigation {
   position: fixed;
   z-index: 6;
@@ -9,11 +12,11 @@
   grid-template-columns: repeat(3, minmax(0, 1fr));
   width: 100%;
   max-width: 430px;
-  height: calc(96rpx + 1px + env(safe-area-inset-bottom));
+  height: calc(50px + 1px + env(safe-area-inset-bottom));
   margin: 0 auto;
   padding: 0 0 env(safe-area-inset-bottom);
   border-top: 1px solid #E9EEF5;
-  border-radius: 32rpx 32rpx 0 0;
+  border-radius: 16px 16px 0 0;
   background: rgba(255,255,255,.97);
   box-sizing: border-box;
 }
@@ -22,29 +25,29 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 4rpx;
+  gap: 2px;
   min-width: 0;
-  height: 96rpx;
+  height: 50px;
   margin: 0;
   padding: 0;
-  font-size: 22rpx;
-  line-height: 28rpx;
+  font-size: 11px;
+  line-height: 14px;
   text-align: center;
   box-sizing: border-box;
 }
 .study-bottom-navigation .study-bottom-navigation-icon {
   display: block;
   flex: 0 0 auto;
-  height: 36rpx;
+  height: 18px;
   margin: 0;
-  font-size: 34rpx;
+  font-size: 17px;
   font-weight: 500;
-  line-height: 36rpx;
+  line-height: 18px;
 }
 .study-bottom-navigation .study-bottom-navigation-label {
   display: block;
   flex: 0 0 auto;
   margin: 0;
-  font-size: 22rpx;
-  line-height: 28rpx;
+  font-size: 11px;
+  line-height: 14px;
 }
