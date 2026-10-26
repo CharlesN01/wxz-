@@ -1,3 +1,8 @@
+const SHARE_TITLE = '文常记｜山东专升本语文';
+const SHARE_PATH = '/pages/home/index';
+const SHARE_IMAGE = '/assets/share-cover.jpg';
+function shareAppMessage() { return { title: SHARE_TITLE, path: SHARE_PATH, imageUrl: SHARE_IMAGE }; }
+function shareTimeline() { return { title: SHARE_TITLE, query: '', imageUrl: SHARE_IMAGE }; }
 const { withStudyTime } = require('../../utils/study-timer');
 const dataService = require('../../services/data-service');
 const studyStore = require('../../utils/study-store');
@@ -389,5 +394,7 @@ Page(withStudyTime({
   openHome() { navigation.openPage('/pages/home/index'); },
   openFavorites() { navigation.openPage('/pages/favorites/index'); },
   openProfile() { navigation.openPage('/pages/mine/index'); },
-  onGoStudy() { navigation.openPage(this._source === 'classical' ? '/pages/classical/index' : '/pages/literature/index'); }
+  onGoStudy() { navigation.openPage(this._source === 'classical' ? '/pages/classical/index' : '/pages/literature/index'); },
+  onShareAppMessage() { return shareAppMessage(); },
+  onShareTimeline() { return shareTimeline(); }
 }));

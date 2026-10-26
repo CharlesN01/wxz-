@@ -1,3 +1,8 @@
+const SHARE_TITLE = '文常记｜山东专升本语文';
+const SHARE_PATH = '/pages/home/index';
+const SHARE_IMAGE = '/assets/share-cover.jpg';
+function shareAppMessage() { return { title: SHARE_TITLE, path: SHARE_PATH, imageUrl: SHARE_IMAGE }; }
+function shareTimeline() { return { title: SHARE_TITLE, query: '', imageUrl: SHARE_IMAGE }; }
 const api = require('../../services/api');
 const { orderView } = require('../../utils/order-view');
 
@@ -98,5 +103,7 @@ Page({
       toast('支付已提交，正在确认');
     } catch (error) { toast(paymentMessage(error)); }
     finally { this.setData({ busy: false }); }
-  }
+  },
+  onShareAppMessage() { return shareAppMessage(); },
+  onShareTimeline() { return shareTimeline(); }
 });

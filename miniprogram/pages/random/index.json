@@ -6,5 +6,6 @@
     "question-card": "/components/question-card/index",
     "empty-state": "/components/empty-state/index",
     "study-icon": "/components/study-icon/index"
-  }
+  },
+  "enableShareTimeline": true
 }

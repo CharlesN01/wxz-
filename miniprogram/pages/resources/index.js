@@ -1,3 +1,8 @@
+const SHARE_TITLE = '文常记｜山东专升本语文';
+const SHARE_PATH = '/pages/home/index';
+const SHARE_IMAGE = '/assets/share-cover.jpg';
+function shareAppMessage() { return { title: SHARE_TITLE, path: SHARE_PATH, imageUrl: SHARE_IMAGE }; }
+function shareTimeline() { return { title: SHARE_TITLE, query: '', imageUrl: SHARE_IMAGE }; }
 const api = require('../../services/api');
 const { resourceImageUrl, retryImageUrl } = require('../../utils/resource-image');
 function currentTheme() { try { return wx.getStorageSync('chinese-study.theme') === 'night' ? 'night' : 'day'; } catch (_) { return 'day'; } }
@@ -80,5 +85,7 @@ Page({
     this.setData({ qrLoading: false, qrError: '二维码图片加载失败，点击重试；如仍失败，请联系管理员重新上传。' });
   },
   retryQr() { return this.load({ retryQr: true }); },
-  retry() { this.load(); }
+  retry() { this.load(); },
+  onShareAppMessage() { return shareAppMessage(); },
+  onShareTimeline() { return shareTimeline(); }
 });

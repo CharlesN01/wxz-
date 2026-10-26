@@ -1,3 +1,8 @@
+const SHARE_TITLE = '文常记｜山东专升本语文';
+const SHARE_PATH = '/pages/home/index';
+const SHARE_IMAGE = '/assets/share-cover.jpg';
+function shareAppMessage() { return { title: SHARE_TITLE, path: SHARE_PATH, imageUrl: SHARE_IMAGE }; }
+function shareTimeline() { return { title: SHARE_TITLE, query: '', imageUrl: SHARE_IMAGE }; }
 const { withStudyTime } = require('../../utils/study-timer');
 const dataService = require('../../services/data-service');
 const studyStore = require('../../utils/study-store');
@@ -156,5 +161,7 @@ Page(withStudyTime({
   },
   onFavorite(event) { const id = event && event.currentTarget && event.currentTarget.dataset ? event.currentTarget.dataset.id : event && event.detail && event.detail.id; return this._updateState(id, 'favorite'); },
   onMaster(event) { return this._updateState(event.detail.id, 'mastered'); },
-  onGoStudy() { if (this._sourceFilter === 'classical' || this._categoryId.indexOf('classical-') === 0) navigation.openPage('/pages/classical/index'); else navigation.openPage('/pages/literature/index', this._categoryId ? { categoryId: this._categoryId } : undefined); }
+  onGoStudy() { if (this._sourceFilter === 'classical' || this._categoryId.indexOf('classical-') === 0) navigation.openPage('/pages/classical/index'); else navigation.openPage('/pages/literature/index', this._categoryId ? { categoryId: this._categoryId } : undefined); },
+  onShareAppMessage() { return shareAppMessage(); },
+  onShareTimeline() { return shareTimeline(); }
 }));
