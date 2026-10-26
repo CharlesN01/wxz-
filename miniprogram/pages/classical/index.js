@@ -1,6 +1,6 @@
 const SHARE_TITLE = '文常记｜山东专升本语文';
 const SHARE_PATH = '/pages/home/index';
-const SHARE_IMAGE = '/assets/share-cover.jpg';
+const SHARE_IMAGE = '/assets/share-cover.png';
 function shareAppMessage() { return { title: SHARE_TITLE, path: SHARE_PATH, imageUrl: SHARE_IMAGE }; }
 function shareTimeline() { return { title: SHARE_TITLE, query: '', imageUrl: SHARE_IMAGE }; }
 const dataService = require('../../services/data-service');
