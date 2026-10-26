@@ -375,7 +375,7 @@ Page({
       return;
     }
     const info = {
-      refund: ['退费规则', '具体退费规则待公布，请在购买前阅读完整说明。'],
+      refund: ['退费规则', '温馨提示：本产品为刷题题库（线上虚拟权限），开通后即可使用，不支持退款。使用中遇到问题，可联系客服处理。'],
       customer: ['联系客服', '如有使用问题，请通过本小程序公布的官方渠道联系我们，我们会尽快处理。']
     }[kind];
     this.setData({ infoTitle: info[0], infoText: info[1], infoKind: kind, infoVisible: true });

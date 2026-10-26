@@ -191,9 +191,9 @@ page { background: #F5FAFE; }
 .home-page.theme-night .group-modal-note { color: #778AA3; }
 
 /* 工作区文字层级：只放大内容文字，底部导航沿用公共 22rpx/28rpx。 */
-.home-page .dashboard-head { font-size: 20rpx; }
+.home-page .dashboard-head { font-size: 24rpx; }
 .home-page .target-pill { font-size: 18rpx; }
-.home-page .countdown-number { font-size: 54rpx; }
+.home-page .countdown-number { font-size: 64rpx; }
 .home-page .countdown-unit,
 .home-page .dashboard-caption { font-size: 20rpx; }
 .home-page .stat-number { font-size: 34rpx; }
@@ -202,7 +202,7 @@ page { background: #F5FAFE; }
 .home-page .growth-value { font-size: 20rpx; }
 .home-page .growth-title { font-size: 28rpx; }
 .home-page .section-title { font-size: 28rpx; }
-.home-page .module-name,
+.home-page .module-name { font-size: 26rpx; }
 .home-page .group-title { font-size: 22rpx; }
 .home-page .module-desc,
 .home-page .continue-desc,
@@ -222,10 +222,10 @@ page { background: #F5FAFE; }
 /* 430px prototype baseline; keep the same geometry across simulator widths. */
 .home-body { padding: 12px; }
 .dashboard-card { padding: 9px 14px; border-radius: 15px; }
-.dashboard-head { font-size: 20rpx; }
+.dashboard-head { font-size: 24rpx; }
 .target-pill { padding: 4px 7px; border-radius: 7px; font-size: 18rpx; }
 .countdown-line { margin-top: 7px; }
-.countdown-number { font-size: 54rpx; }
+.countdown-number { font-size: 64rpx; }
 .countdown-unit { margin-left: 5px; font-size: 20rpx; }
 .dashboard-caption { margin-top: 5px; font-size: 20rpx; }
 .dashboard-stats { gap: 7px; margin-top: 8px; }
@@ -243,7 +243,7 @@ page { background: #F5FAFE; }
 .module-card, .module-wide { min-height: 64px; padding: 9px; border-radius: 11px; }
 .module-icon, .continue-icon { width: 29px; height: 29px; border-radius: 8px; font-size: 22rpx; }
 .module-copy { margin-left: 8px; }
-.module-name { font-size: 22rpx; }
+.module-name { font-size: 26rpx; }
 .module-desc { margin-top: 3px; font-size: 18rpx; }
 .module-arrow { font-size: 36rpx; }
 .continue-card { gap: 10px; margin-top: 11px; padding: 12px; border-radius: 14px; }

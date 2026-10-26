@@ -134,6 +134,31 @@ test('首页入口固定进入自测；随机续学保留上下文；资料群�
   assert.doesNotMatch(homeTemplate, /study-navbar[^>]*bind:more=/);
 });
 
+test('首页备考资料入口只打开弹窗，不再跳转资料页', () => {
+  const template = fs.readFileSync(path.join(root, 'miniprogram/pages/home/index.wxml'), 'utf8');
+  assert.match(template, /class="group-card"\s+bindtap="openGroupModal"/);
+  assert.doesNotMatch(template, /class="group-card"[^>]*data-page="resources"/);
+  assert.match(template, /class="group-action"[^>]*catchtap="openGroupModal"/);
+});
+
+test('首页红圈主文字字号按视觉要求放大，说明文字保持独立字号', () => {
+  const styles = fs.readFileSync(path.join(root, 'miniprogram/pages/home/index.wxss'), 'utf8');
+  assert.match(styles, /\.dashboard-head\s*\{[^}]*font-size:\s*24rpx;/);
+  assert.match(styles, /\.countdown-number\s*\{[^}]*font-size:\s*64rpx;/);
+  assert.match(styles, /\.module-name\s*\{[^}]*font-size:\s*26rpx;/);
+  assert.match(styles, /\.module-desc\s*\{[^}]*font-size:\s*18rpx;/);
+});
+
+test('退费规则和客服联系弹窗使用已确认文案与二维码', () => {
+  const script = fs.readFileSync(path.join(root, 'miniprogram/pages/mine/index.js'), 'utf8');
+  const template = fs.readFileSync(path.join(root, 'miniprogram/pages/mine/index.wxml'), 'utf8');
+  const styles = fs.readFileSync(path.join(root, 'miniprogram/pages/mine/index.wxss'), 'utf8');
+  assert.match(script, /本产品为刷题题库（线上虚拟权限），开通后即可使用，不支持退款。使用中遇到问题，可联系客服处理。/);
+  assert.match(template, /wx:if="\{\{infoKind === 'customer'\}\}" class="customer-qr"/);
+  assert.match(template, /src="\/assets\/contact-qr\.jpg"/);
+  assert.match(styles, /\.customer-qr\s*\{[^}]*width:\s*240px;[^}]*height:\s*240px;/s);
+});
+
 test('首页内容顺序与原型保持一致，学习趋势排在资料群之后', () => {
   const template = fs.readFileSync(path.join(root, 'miniprogram/pages/home/index.wxml'), 'utf8');
   assert.ok(template.indexOf('class="dashboard-card"') < template.indexOf('class="section-title"'));

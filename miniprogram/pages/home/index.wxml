@@ -41,7 +41,7 @@
     <view class="continue-card" bindtap="continueLearning" role="button" hover-class="module-pressed">
       <view class="continue-icon">文</view><view class="continue-copy"><text class="continue-title">{{resumeLabel}}</text><text class="continue-desc">{{resumeDescription}}</text></view><text class="continue-action">继续</text>
     </view>
-    <view class="group-card" data-page="resources" bindtap="openModule" hover-class="module-pressed">
+    <view class="group-card" bindtap="openGroupModal" hover-class="module-pressed">
       <view class="group-icon">群</view><view class="group-copy"><text class="group-badge">备考资料共享</text><text class="group-title">山东专升本资料备考群</text><text class="group-desc">每日更新最新资料 · 进群有机会领取免费会员</text></view><view class="group-action" role="button" catchtap="openGroupModal">扫码进群</view>
     </view>
     <view class="growth-card">
