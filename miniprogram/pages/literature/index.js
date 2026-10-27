@@ -7,12 +7,13 @@ const { withStudyTime } = require('../../utils/study-timer');
 const api = require('../../services/api');
 const navigation = require('../../utils/navigation');
 const safeTop = require('../../utils/safe-top');
+const UI_PAGE_SIZE = 6;
 const questionUtils = require('../../utils/question-utils');
 const answerDrafts = require('../../utils/answer-drafts');
-let contentCache = { read: () => null, write: () => false };
-try { const loadedCache = require('../../utils/content-cache'); if (loadedCache && typeof loadedCache.read === 'function') contentCache = loadedCache; } catch (_) { /* Older test/runtime shells do not expose optional cache. */ }
 
-const UI_PAGE_SIZE = 6;
+let tabletSheet = null;
+try { tabletSheet = require('../../utils/tablet-answer-sheet'); } catch (_) {}
+tabletSheet = tabletSheet || { viewport: () => null, resizedViewport: () => null, pageSize: () => UI_PAGE_SIZE, isTablet: () => false };
 const SOURCE = 'literature';
 function currentTheme() { try { return wx.getStorageSync('chinese-study.theme') === 'night' ? 'night' : 'day'; } catch (_) { return 'day'; } }
 
@@ -93,6 +94,7 @@ Page(withStudyTime({
     questions: [],
     page: 1,
     pageSize: UI_PAGE_SIZE,
+    isTablet: false,
     questionProgressLabel: '00 / 00',
     totalQuestions: 0,
     pageCount: 0,
@@ -101,6 +103,11 @@ Page(withStudyTime({
     answerProgressPercent: 0,
     pageQuestionCount: 0,
     restrictedCount: 0,
+    restrictedQuestionCount: 0,
+    restrictedPageCount: 0,
+    activated: false,
+    lockedPage: false,
+    membershipVisible: false,
     categoryScrollLeft: 0,
     safeTop: 0,
     isGuest: true,
@@ -109,6 +116,7 @@ Page(withStudyTime({
   },
 
   onLoad(options) {
+    this._answerViewport = tabletSheet.viewport(typeof wx === 'undefined' ? null : wx);
     this._options = options || {};
     // These prototype pages have no custom navigation bar; the WeChat viewport
     // already starts below the status bar, so adding a capsule spacer would
@@ -127,35 +135,12 @@ Page(withStudyTime({
     this._preferenceVersion = 0;
     this._resumePending = null;
     this._resumeSaving = false;
-    this._lastRefreshAt = 0;
-    const cached = contentCache.read('literature-first', api.auth, 'v1');
-    if (cached && cached.payload && Array.isArray(cached.payload.categories)) {
-      const snapshot = cached.payload;
-      this._questionRows = Array.isArray(snapshot.rows) ? snapshot.rows : [];
-      this._questionPages = {};
-      if (snapshot.categoryId) this._questionPages[String(snapshot.categoryId) + ':1'] = {
-        rows: this._questionRows, count: Number(snapshot.totalQuestions) || this._questionRows.length,
-        pageSize: Number(snapshot.apiPageSize) || Math.max(this._questionRows.length, 1), restrictedCount: Number(snapshot.restrictedCount) || 0
-      };
-      this._loaded = true;
-      this.setData({
-        loading: false, categories: snapshot.categories, categoryId: snapshot.categoryId || '',
-        categoryName: snapshot.categoryName || '文学常识', mode: snapshot.mode || 'writing',
-        questions: Array.isArray(snapshot.questions) ? snapshot.questions : [], page: Number(snapshot.page) || 1,
-        pageSize: UI_PAGE_SIZE, totalQuestions: Number(snapshot.totalQuestions) || this._questionRows.length,
-        pageCount: Number(snapshot.pageCount) || 0, restrictedCount: Number(snapshot.restrictedCount) || 0,
-        questionProgressLabel: snapshot.questionProgressLabel || '00 / 00',
-        progressPercent: Number(snapshot.progressPercent) || 0, isGuest: !hasToken()
-      });
-    }
     this.bootstrap();
   },
 
   onShow() {
     this.setData({ theme: currentTheme() });
     if (!this._loaded || this.data.loading) return;
-    if (!this._needsRemoteRefresh && this.data.page <= 1 && this.data.restrictedCount <= 0 && Date.now() - (this._lastRefreshAt || 0) < 60 * 1000) return;
-    this._needsRemoteRefresh = false;
     // Returning from membership/activation must refetch the accessible count
     // and pages; refreshing question state alone retains the free-only cache.
     this._questionPages = {};
@@ -165,7 +150,12 @@ Page(withStudyTime({
     return this.loadPage(this.data.page || 1);
   },
 
-  onHide() { this._needsRemoteRefresh = true; },
+  onResize(event) {
+    const next = tabletSheet.resizedViewport(typeof wx === 'undefined' ? null : wx, this._answerViewport, event);
+    if (!next) return;
+    this._answerViewport = next;
+    if (this._loaded) return this.loadPage(this.data.page || 1);
+  },
 
   async bootstrap() {
     // Start independent reads together; categories must not delay preferences
@@ -209,7 +199,7 @@ Page(withStudyTime({
     this._preferenceVersion = preference && Number(preference.version) >= 0
       ? Number(preference.version)
       : 0;
-    // 原型固定每页展示 6 道；后端 pageSize 只表示 API 分页大小，不能改变页面题组。
+    // Phone/free pages stay at six; member tablet pages aggregate API pages below.
     this._pageSize = UI_PAGE_SIZE;
     this._loaded = true;
     this.setData({
@@ -237,22 +227,12 @@ Page(withStudyTime({
       return;
     }
     await this.loadPage(1, { findResume: Boolean(this._resumeQuestionId) });
-    // Warm the first page for the remaining periods after the visible group is ready.
-    this.prefetchCategories(categories);
   },
 
-  async loadApiPage(page, requestId, options = {}) {
-    const categoryId = options.categoryId || this.data.categoryId;
+  async loadApiPage(page, requestId) {
+    const categoryId = this.data.categoryId;
     const cacheKey = categoryId + ':' + page;
     if (this._questionPages[cacheKey]) return this._questionPages[cacheKey];
-    if (!options.force) {
-      const cached = contentCache.read('literature-category', api.auth, cacheKey);
-      if (cached && cached.payload && Array.isArray(cached.payload.rows)) {
-        const cachedRecord = Object.assign({}, cached.payload, { fromCache: true, stale: Boolean(cached.stale) });
-        this._questionPages[cacheKey] = cachedRecord;
-        return cachedRecord;
-      }
-    }
     const response = await api.content.questions({
       source: SOURCE,
       categoryId,
@@ -260,36 +240,24 @@ Page(withStudyTime({
     });
     if (requestId !== this._questionRequest) return null;
     const rows = response && Array.isArray(response.results) ? response.results : [];
+    const access = response && response.access || {};
     const pageSize = Number(response && response.access && response.access.pageSize) > 0
       ? Number(response.access.pageSize)
       : Math.max(rows.length, 1);
     const record = {
       rows,
-      count: Number(response && response.count) >= 0 ? Number(response.count) : rows.length,
+      count: Number(access.totalCount) >= 0 ? Number(access.totalCount) : Number(response && response.count) >= 0 ? Number(response.count) : rows.length,
       pageSize,
-      restrictedCount: Number(response && response.access && response.access.restrictedCount) || 0
+      activated: Boolean(access.activated),
+      freeCount: Number(access.freeCount) >= 0 ? Number(access.freeCount) : 0,
+      restrictedCount: Number(access.restrictedCount) || 0
     };
     this._questionPages[cacheKey] = record;
-    contentCache.write('literature-category', api.auth, cacheKey, record);
     return record;
   },
 
-  async prefetchCategories(categories) {
-    if (this._prefetchPromise || !Array.isArray(categories)) return this._prefetchPromise;
-    const ids = categories.map((item) => item && item.id).filter(Boolean)
-      .filter((id) => String(id) !== String(this.data.categoryId));
-    this._prefetchPromise = (async () => {
-      // Keep background work bounded so opening the page does not saturate mobile data.
-      for (let index = 0; index < ids.length; index += 2) {
-        await Promise.all(ids.slice(index, index + 2).map((categoryId) =>
-          this.loadApiPage(1, this._questionRequest, { categoryId }).catch(() => null)
-        ));
-      }
-    })().finally(() => { this._prefetchPromise = null; });
-    return this._prefetchPromise;
-  },
-
   async loadPage(page, options) {
+    if (!this._answerViewport) this._answerViewport = tabletSheet.viewport(typeof wx === 'undefined' ? null : wx);
     if (!this.data.categoryId) return;
     let targetPage = Math.max(1, Number(page) || 1);
     const requestId = ++this._questionRequest;
@@ -311,7 +279,13 @@ Page(withStudyTime({
     if (!firstPage) return;
     const count = firstPage.count;
     const apiPageSize = firstPage.pageSize;
-    const pageCount = count ? Math.ceil(count / UI_PAGE_SIZE) : 0;
+    const activated = Boolean(firstPage.activated);
+    const runtime = typeof wx === 'undefined' ? null : wx;
+    const pageSize = tabletSheet.pageSize(activated, runtime, this._answerViewport);
+    const pageCount = count ? Math.ceil(count / pageSize) : 0;
+    if (pageSize !== this.data.pageSize) {
+      targetPage = Math.floor((targetPage - 1) * (this.data.pageSize || UI_PAGE_SIZE) / pageSize) + 1;
+    }
 
     if (options && options.findResume && this._resumeQuestionId) {
       const serverPageCount = count ? Math.ceil(count / apiPageSize) : 0;
@@ -346,15 +320,16 @@ Page(withStudyTime({
         }
       }
       if (resumeIndex >= 0) {
-        targetPage = Math.floor(resumeIndex / UI_PAGE_SIZE) + 1;
+        targetPage = Math.floor(resumeIndex / pageSize) + 1;
       } else if (targetPage > 1) {
         targetPage = 1;
       }
     }
 
     targetPage = Math.min(targetPage, pageCount || 1);
-    const startIndex = (targetPage - 1) * UI_PAGE_SIZE;
-    const endIndex = Math.min(startIndex + UI_PAGE_SIZE, count);
+    const lockedPage = !activated && targetPage > 1;
+    const startIndex = (targetPage - 1) * pageSize;
+    const endIndex = Math.min(startIndex + pageSize, count);
     const firstApiPage = Math.floor(startIndex / apiPageSize) + 1;
     const lastApiPage = endIndex > startIndex
       ? Math.floor((endIndex - 1) / apiPageSize) + 1
@@ -376,6 +351,17 @@ Page(withStudyTime({
       return;
     }
 
+    if (pageSize > UI_PAGE_SIZE && Object.keys(this._questionPages).some(key => {
+      const record = this._questionPages[key];
+      return key.startsWith(this.data.categoryId + ':') && record.activated !== activated;
+    })) {
+      this._questionPages = {};
+      this._questionRows = [];
+      this._activated = false;
+      this.setData({ loading: false, hasError: true, questions: [], activated: false, membershipVisible: false, errorMessage: '会员状态已变化，请重新加载题目' });
+      return;
+    }
+
     const rows = [];
     for (let index = startIndex; index < endIndex; index += 1) {
       const apiPage = Math.floor(index / apiPageSize) + 1;
@@ -383,41 +369,41 @@ Page(withStudyTime({
       const row = record && record.rows[index % apiPageSize];
       if (row) rows.push(row);
     }
-    await this.loadStates(rows, requestId);
+    const safeRows = answerDrafts.restrict(rows, lockedPage);
+    await this.loadStates(safeRows, requestId);
     if (requestId !== this._questionRequest) return;
-    this._questionRows = rows;
-    const questions = this.renderRows(rows);
+    this._questionRows = safeRows;
+    this._activated = activated;
+    this._lockedPage = lockedPage;
+    const questions = this.renderRows(safeRows, lockedPage);
     this.setData(Object.assign({
       loading: false,
       hasError: false,
       questions,
       page: targetPage,
-      pageSize: UI_PAGE_SIZE,
+      pageSize,
+      isTablet: tabletSheet.isTablet(runtime, this._answerViewport),
       questionProgressLabel: formatQuestionProgress(startIndex, count),
       totalQuestions: count,
       pageCount,
       progressPercent: pageCount ? Math.round(targetPage / pageCount * 100) : 0,
-      restrictedCount: firstPage.restrictedCount,
+      restrictedCount: activated ? 0 : Math.max(0, count - UI_PAGE_SIZE),
+      restrictedQuestionCount: Math.max(0, count - UI_PAGE_SIZE),
+      restrictedPageCount: Math.max(0, pageCount - 1),
+      activated,
+      lockedPage,
+      membershipVisible: lockedPage,
       canPrevious: targetPage > 1,
       canNext: targetPage < pageCount,
       personalError: this.data.personalError
     }, answerDrafts.progress(questions)));
-    this._lastRefreshAt = Date.now();
-    contentCache.write('literature-first', api.auth, 'v1', {
-      categories: this.data.categories, categoryId: this.data.categoryId, categoryName: this.data.categoryName,
-      mode: this.data.mode, rows, questions, page: targetPage, totalQuestions: count, pageCount,
-      apiPageSize, restrictedCount: firstPage.restrictedCount, questionProgressLabel: formatQuestionProgress(startIndex, count),
-      progressPercent: pageCount ? Math.round(targetPage / pageCount * 100) : 0
-    });
-    if (firstPage.fromCache && firstPage.stale) {
-      // The cached page is immediately usable; refresh it without blocking the tap.
-      this.loadApiPage(1, requestId, { force: true }).catch(() => null);
-    }
     this.queueResume();
   },
 
   async loadStates(rows, requestId, refresh) {
     if (!hasToken() || !rows.length) return;
+    rows = rows.filter((item) => !item.locked);
+    if (!rows.length) return;
     // Current content responses already contain the learner's state. Only
     // older servers (or an explicit refresh) require individual reads.
     const missing = rows.filter((item) => refresh || !item.state);
@@ -440,11 +426,13 @@ Page(withStudyTime({
     }
   },
 
-  renderRows(rows) {
+  renderRows(rows, lockedPage) {
     const mode = this.data.mode;
-    const questions = rows.map((item) => {
+    const pageLocked = lockedPage === undefined ? Boolean(this._lockedPage) : Boolean(lockedPage);
+    const questions = answerDrafts.restrict(rows, pageLocked).map((item) => {
       const state = this._stateMap[item.id] || normalizeState(null);
       return Object.assign({}, item, state, {
+        locked: Boolean(item.locked || pageLocked),
         parts: buildParts(item, mode),
         hasInlineBlanks: /\{\{\d+\}\}/.test(item.stem || ''),
         hasAnswerInput: questionUtils.requiredAnswerIndices(item).length > 0,
@@ -570,6 +558,7 @@ Page(withStudyTime({
   },
 
   async updateQuestionState(id, field) {
+    if (this.data.lockedPage || (this.data.questions || []).some(q => String(q.id) === String(id) && q.locked)) return this.openMembership();
     if (!id || this._pendingState[id]) return;
     if (!await this.ensureLogin()) return;
     const stateResult = await settle(api.learning.questionState(id));
@@ -618,6 +607,8 @@ Page(withStudyTime({
   toggleAnswer(event) {
     const id = event.currentTarget.dataset.id;
     if (!id) return;
+    const question = this.data.questions.find((item) => String(item.id) === String(id));
+    if (question && question.locked) return this.openMembership();
     this._answerVisible[id] = !this._answerVisible[id];
     this.setData({ questions: this.renderRows(this._questionRows) });
   },
@@ -629,6 +620,19 @@ Page(withStudyTime({
     this._resumeQuestionId = '';
     this.loadPage(target);
     wx.pageScrollTo({ scrollTop: 0, duration: 180 });
+  },
+
+  openMembership() {
+    this.setData({ membershipVisible: true });
+  },
+
+  closeMembership() {
+    this.setData({ membershipVisible: false });
+  },
+
+  goMembership() {
+    this.setData({ membershipVisible: false });
+    navigation.openPage('/pages/mine/index', { membership: '1' });
   },
 
   retry() {
@@ -653,7 +657,7 @@ Page(withStudyTime({
   },
 
   queueResume() {
-    if (!hasToken() || !this.data.questions.length) return;
+    if (this.data.lockedPage || !hasToken() || !this.data.questions.length || this.data.questions[0].locked) return;
     const question = this.data.questions[0];
     this._resumePending = {
       source: SOURCE,

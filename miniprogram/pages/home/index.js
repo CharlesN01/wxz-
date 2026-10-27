@@ -9,8 +9,8 @@ const { learningTrend, minutes } = require('../../utils/learning-trend');
 const studyTimer = require('../../utils/study-timer').clock;
 const themeStore = require('../../utils/theme');
 const { revealGeometry } = require('../../utils/theme-reveal');
-let contentCache = { read: () => null, write: () => false };
-try { const loadedCache = require('../../utils/content-cache'); if (loadedCache && typeof loadedCache.read === 'function') contentCache = loadedCache; } catch (_) { /* Older test/runtime shells do not expose optional cache. */ }
+const dataService = require('../../services/data-service');
+const mockData = require('../../data/mock');
 
 const GROUP_QR_IMAGE = '/assets/group-qr.jpg';
 
@@ -38,6 +38,26 @@ function hasToken() {
   } catch (_) {
     return false;
   }
+}
+
+function isDeveloperToolsPreview() {
+  try {
+    if (typeof wx === 'undefined' || typeof wx.getSystemInfoSync !== 'function') return false;
+    const info = wx.getSystemInfoSync() || {};
+    return String(info.platform || '').toLowerCase() === 'devtools';
+  } catch (_) {
+    return false;
+  }
+}
+
+function getPreviewFallback() {
+  const categories = dataService.getCategories();
+  const articles = dataService.getArticles();
+  return {
+    config: Object.assign({}, mockData.config),
+    categories: { count: categories.length, results: categories },
+    articles: { count: articles.length, results: articles }
+  };
 }
 
 function describeError(error, fallback) {
@@ -127,19 +147,16 @@ Page({
   onLoad() {
     this._loadVersion = 0;
     this._loaded = false;
-    this._publicPromise = null;
-    this._lastPublicRefreshAt = 0;
-    this._personalPromise = null;
     this.setData({ theme: themeStore.getTheme() });
     this.loadPublicData();
+    this.loadGroupResource();
   },
 
   onShow() {
     this.syncTheme();
     if (this._loaded) {
-      const age = Date.now() - (this._lastPublicRefreshAt || 0);
-      if (age >= 60 * 1000) this.loadPublicData();
-      else this.loadPersonalData(this._loadVersion);
+      this.refreshLearningConfig().then(() => this.loadPersonalData());
+      this.loadGroupResource();
     }
   },
 
@@ -151,6 +168,9 @@ Page({
   onPageScroll(event) {
     this._scrollTop = Math.max(0, Number(event.scrollTop) || 0);
   },
+
+  // Rotation invalidates the viewport geometry of an in-flight theme reveal.
+  onResize() { this.finishThemeTransition(); },
 
   onHide() { this.finishThemeTransition(); },
 
@@ -208,72 +228,77 @@ Page({
       targetLabel: config.examDate ? String(config.examDate).slice(0, 4) + ' 山东专升本' : '山东专升本' });
   },
 
-  applyPublicData(cached, options) {
-    const source = cached || {};
-    const config = Object.assign({ pageSize: 20, dailyTarget: 20, examDate: null }, source.config || {});
-    const categories = Array.isArray(source.categories) ? source.categories : [];
-    const articles = Array.isArray(source.articles) ? source.articles : [];
-    this._firstCategoryId = source.firstCategoryId || (categories[0] && categories[0].id) || '';
+  async loadPublicData() {
+    const version = ++this._loadVersion;
+    this.setData({ loading: true, hasError: false, errorMessage: '' });
+    let results = await Promise.all([
+      settle(api.config.get()),
+      settle(api.content.categories({ page: 1 })),
+      settle(api.content.articles({ page: 1 }))
+    ]);
+    if (version !== this._loadVersion) return;
+
+    // The simulator can temporarily lose access to the public API while the
+    // project is being previewed. Keep the page usable with the bundled demo
+    // data; real devices and release builds continue to use the API results.
+    if (isDeveloperToolsPreview() && results.every((result) => !result.ok)) {
+      const fallback = getPreviewFallback();
+      results = [
+        { ok: true, value: fallback.config },
+        { ok: true, value: fallback.categories },
+        { ok: true, value: fallback.articles }
+      ];
+    }
+
+    const configResult = results[0];
+    const categoriesResult = results[1];
+    const articlesResult = results[2];
+    const config = configResult.ok && configResult.value
+      ? Object.assign({ pageSize: 20, dailyTarget: 20, examDate: null }, configResult.value)
+      : this.data.config;
+    const categories = categoriesResult.ok && categoriesResult.value
+      ? (categoriesResult.value.results || [])
+      : [];
+    const articles = articlesResult.ok && articlesResult.value
+      ? (articlesResult.value.results || [])
+      : [];
+    const categoryCount = categoriesResult.ok && categoriesResult.value
+      ? numberOr(categoriesResult.value.count, categories.length)
+      : categories.length;
+    const literatureCount = categories.reduce(
+      (sum, item) => sum + numberOr(item.publishedCount, numberOr(item.freeCount, 0)),
+      0
+    );
+    const publicFailed = !configResult.ok && !categoriesResult.ok && !articlesResult.ok;
     const examCountdown = daysUntil(config.examDate);
-    const stats = Object.assign({}, EMPTY_STATS, { todayTarget: numberOr(config.dailyTarget, EMPTY_STATS.todayTarget) });
+    const stats = Object.assign({}, EMPTY_STATS, {
+      todayTarget: numberOr(config.dailyTarget, EMPTY_STATS.todayTarget)
+    });
+
+    this._firstCategoryId = categories[0] ? categories[0].id : '';
     this.setData({
       config,
-      stats: this.data.statsReady ? this.data.stats : stats,
-      categoryCount: numberOr(source.categoryCount, categories.length),
+      stats,
+      categoryCount,
       firstCategoryId: this._firstCategoryId,
-      literatureCount: numberOr(source.literatureCount, categories.reduce((sum, item) => sum + numberOr(item.publishedCount, numberOr(item.freeCount, 0)), 0)),
+      literatureCount,
       classicalCount: 0,
-      articleCount: numberOr(source.articleCount, articles.length),
+      articleCount: articlesResult.ok && articlesResult.value
+        ? numberOr(articlesResult.value.count, articles.length)
+        : articles.length,
       countdown: examCountdown === null ? '--' : examCountdown,
       targetLabel: config.examDate ? String(config.examDate).slice(0, 4) + ' 山东专升本' : '山东专升本',
       loading: false,
-      hasError: options && options.error ? true : false,
-      errorMessage: options && options.error ? String(options.error) : ''
+      hasError: publicFailed,
+      errorMessage: publicFailed
+        ? describeError(configResult.error, '学习配置暂不可用')
+        : ''
     });
     this._loaded = true;
+    await this.loadPersonalData(version);
   },
 
-  async loadPublicData() {
-    if (this._publicPromise) return this._publicPromise;
-    const version = ++this._loadVersion;
-    const cached = contentCache.read('home-public', api.auth, 'v1');
-    if (cached && cached.payload) this.applyPublicData(cached.payload, { cached: true });
-    else this.setData({ loading: false, hasError: false, errorMessage: '' });
-    this._publicPromise = Promise.all([
-      settle(api.config.get()), settle(api.content.categories({ page: 1 })), settle(api.content.articles({ page: 1 }))
-    ]).then((results) => {
-      if (version !== this._loadVersion) return;
-      const configResult = results[0], categoriesResult = results[1], articlesResult = results[2];
-      const categories = categoriesResult.ok && categoriesResult.value ? (categoriesResult.value.results || []) : [];
-      const articles = articlesResult.ok && articlesResult.value ? (articlesResult.value.results || []) : [];
-      const payload = {
-        config: configResult.ok ? configResult.value : (cached && cached.payload && cached.payload.config),
-        categories,
-        articles: articles.slice(0, 20),
-        categoryCount: categoriesResult.ok && categoriesResult.value ? numberOr(categoriesResult.value.count, categories.length) : categories.length,
-        literatureCount: categories.reduce((sum, item) => sum + numberOr(item.publishedCount, numberOr(item.freeCount, 0)), 0),
-        articleCount: articlesResult.ok && articlesResult.value ? numberOr(articlesResult.value.count, articles.length) : articles.length,
-        firstCategoryId: categories[0] ? categories[0].id : ''
-      };
-      const failed = !configResult.ok && !categoriesResult.ok && !articlesResult.ok;
-      if (!failed || !cached) this.applyPublicData(payload, { error: failed ? describeError(configResult.error, '学习配置暂不可用') : '' });
-      if (!failed) contentCache.write('home-public', api.auth, 'v1', payload);
-      this._lastPublicRefreshAt = Date.now();
-      this.loadPersonalData(version);
-    }).catch((error) => {
-      if (version === this._loadVersion && !cached) this.applyPublicData(null, { error: describeError(error, '学习配置暂不可用') });
-    }).finally(() => { this._publicPromise = null; });
-    this.loadPersonalData(version);
-    return this._publicPromise;
-  },
-
-  loadPersonalData(version) {
-    if (this._personalPromise) return this._personalPromise;
-    this._personalPromise = this._loadPersonalData(version).finally(() => { this._personalPromise = null; });
-    return this._personalPromise;
-  },
-
-  async _loadPersonalData(version) {
+  async loadPersonalData(version) {
     if (version && version !== this._loadVersion) return;
     const personalVersion = this._personalVersion = (this._personalVersion || 0) + 1;
     if (!hasToken()) {
@@ -341,6 +366,7 @@ Page({
 
   retry() {
     this.loadPublicData();
+    this.loadGroupResource();
   },
 
   openGroupModal() {

@@ -15,7 +15,8 @@ Component({
     attached() { this.refreshMetrics(); this.updateNavigationColor(); }
   },
   pageLifetimes: {
-    show() { this.refreshMetrics(); this.updateNavigationColor(); }
+    show() { this.refreshMetrics(); this.updateNavigationColor(); },
+    resize() { this.refreshMetrics(); }
   },
   observers: { theme() { this.updateNavigationColor(); } },
   methods: {

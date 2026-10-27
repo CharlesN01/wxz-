@@ -1,18 +1,23 @@
 :host { display: block; }
-.modes { display: flex; align-items: center; width: 100%; height: 88rpx; padding: 8rpx; border: 1px solid var(--theme-border, #DCE8F0); border-radius: 20rpx; background: var(--theme-soft, #EAF4FB); box-sizing: border-box; font-family: "PingFang SC", "Microsoft YaHei", sans-serif; }
-.mode { flex: 1; min-width: 0; height: 100%; display: flex; justify-content: center; align-items: center; border-radius: 16rpx; color: var(--theme-muted, #607184); font-size: 30rpx; font-weight: 500; line-height: normal; white-space: nowrap; box-sizing: border-box; }
-.mode + .mode { margin-left: 8rpx; }
-.active { background: var(--theme-accent, #1B5E91); color: var(--theme-paper, #FFFFFF); box-shadow: 0 3rpx 9rpx rgba(var(--theme-accent-rgb, 35,123,234),.2); }
-.mode-icon { position: relative; flex-shrink: 0; width: 28rpx; height: 28rpx; margin-right: 14rpx; box-sizing: border-box; }
-.writing-icon { width: 25rpx; height: 24rpx; border: 2rpx solid currentColor; border-radius: 5rpx; }
-.pencil { position: absolute; width: 22rpx; height: 5rpx; top: 2rpx; right: -7rpx; border: 2rpx solid currentColor; border-radius: 2rpx; transform: rotate(-45deg); background: var(--theme-soft, #EAF4FB); }
+.modes { display: flex; align-items: center; width: 100%; height: var(--study-rpx-88); padding: var(--study-rpx-8); border: 1px solid var(--theme-border, #DCE8F0); border-radius: var(--study-rpx-20); background: var(--theme-soft, #EAF4FB); box-sizing: border-box; font-family: "PingFang SC", "Microsoft YaHei", sans-serif; }
+.mode { flex: 1; min-width: 0; height: 100%; display: flex; justify-content: center; align-items: center; border-radius: var(--study-rpx-16); color: var(--theme-muted, #607184); font-size: var(--study-rpx-30); font-weight: 500; line-height: normal; white-space: nowrap; box-sizing: border-box; }
+.mode + .mode { margin-left: var(--study-rpx-8); }
+.active { background: var(--theme-accent, #1B5E91); color: var(--theme-paper, #FFFFFF); box-shadow: 0 var(--study-rpx-3) var(--study-rpx-9) rgba(var(--theme-accent-rgb, 35,123,234),.2); }
+.mode-icon { position: relative; flex-shrink: 0; width: var(--study-rpx-28); height: var(--study-rpx-28); margin-right: var(--study-rpx-14); box-sizing: border-box; }
+.writing-icon { width: var(--study-rpx-25); height: var(--study-rpx-24); border: var(--study-rpx-2) solid currentColor; border-radius: var(--study-rpx-5); }
+.pencil { position: absolute; width: var(--study-rpx-22); height: var(--study-rpx-5); top: var(--study-rpx-2); right: var(--study-rpx-n7); border: var(--study-rpx-2) solid currentColor; border-radius: var(--study-rpx-2); transform: rotate(-45deg); background: var(--theme-soft, #EAF4FB); }
 .active .pencil { background: var(--theme-accent, #1B5E91); }
 .reading-icon { display: flex; align-items: center; }
-.book-left, .book-right { width: 14rpx; height: 24rpx; border: 2rpx solid currentColor; box-sizing: border-box; }
-.book-left { border-radius: 5rpx 2rpx 0 3rpx; transform: skewY(8deg); }
-.book-right { border-left: 0; border-radius: 2rpx 5rpx 3rpx 0; transform: skewY(-8deg); }
-.theme-blue { height: 60rpx; padding: 4rpx; border-color: var(--theme-border, #E9EEF5); border-radius: 16rpx; background: var(--theme-soft, #EAF1FA); }
-.theme-blue .mode { height: 100%; border-radius: 12rpx; color: var(--theme-muted, #8995A8); font-size: 26rpx; font-weight: 400; }
+.book-left, .book-right { width: var(--study-rpx-14); height: var(--study-rpx-24); border: var(--study-rpx-2) solid currentColor; box-sizing: border-box; }
+.book-left { border-radius: var(--study-rpx-5) var(--study-rpx-2) 0 var(--study-rpx-3); transform: skewY(8deg); }
+.book-right { border-left: 0; border-radius: var(--study-rpx-2) var(--study-rpx-5) var(--study-rpx-3) 0; transform: skewY(-8deg); }
+.theme-blue { height: var(--study-rpx-60); padding: var(--study-rpx-4); border-color: var(--theme-border, #E9EEF5); border-radius: var(--study-rpx-16); background: var(--theme-soft, #EAF1FA); }
+.theme-blue .mode { height: 100%; border-radius: var(--study-rpx-12); color: var(--theme-muted, #8995A8); font-size: var(--study-rpx-26); font-weight: 400; }
 .theme-blue .mode-icon { display: none; }
-.theme-blue .active { color: var(--theme-accent, #237BEA); background: var(--theme-paper, #FFFFFF); box-shadow: 0 2rpx 8rpx rgba(var(--theme-shadow-rgb, 45,91,155),.08); font-weight: 700; }
-.theme-blue .mode + .mode { margin-left: 4rpx; }
+.theme-blue .active { color: var(--theme-accent, #237BEA); background: var(--theme-paper, #FFFFFF); box-shadow: 0 var(--study-rpx-2) var(--study-rpx-8) rgba(var(--theme-shadow-rgb, 45,91,155),.08); font-weight: 700; }
+.theme-blue .mode + .mode { margin-left: var(--study-rpx-4); }
+
+/* Component isolation must not reintroduce viewport-scaled tablet sizes. */
+@media (min-width: 600px) {
+  :host { --study-rpx: 0.625px; }
+}

@@ -30,6 +30,11 @@ Component({
   observers: {
     'question, mode'(question, mode) {
       const item = question || {};
+      if (item.locked) {
+        this._questionKey = null; this._renderKey = null;
+        this.setData({ segments: [], translationStem: '', translationAnswer: '', wordStem: '', answerText: '', draftAnswers: [], answerVisible: false });
+        return;
+      }
       const stem = String(item.stem || '');
       const answers = Array.isArray(item.answers) ? item.answers : [];
       const questionKey = JSON.stringify([String(item.id || stem), item.revision == null ? null : String(item.revision)]);
@@ -72,9 +77,10 @@ Component({
     }
   },
   methods: {
-    favorite() { this.triggerEvent('favorite', { id: this.data.question.id }); },
-    master() { this.triggerEvent('master', { id: this.data.question.id }); },
+    favorite() { if (this.data.question.locked) return this.unlock(); this.triggerEvent('favorite', { id: this.data.question.id }); },
+    master() { if (this.data.question.locked) return this.unlock(); this.triggerEvent('master', { id: this.data.question.id }); },
     onDraftInput(event) {
+      if (this.data.question.locked) return;
       const index = Number(event.currentTarget.dataset.answerIndex);
       if (!utils.requiredAnswerIndices(this.data.question).includes(index)) return;
       const values = this.data.draftAnswers.slice();
@@ -82,6 +88,7 @@ Component({
       this.setData({ [`draftAnswers[${index}]`]: values[index] });
       this.triggerEvent('answerinput', { id: this.data.question.id, values, ...utils.answerProgress(this.data.question, values) });
     },
-    toggleAnswer() { this.setData({ answerVisible: !this.data.answerVisible }); }
+    toggleAnswer() { if (this.data.question && this.data.question.locked) return; this.setData({ answerVisible: !this.data.answerVisible }); },
+    unlock() { this.triggerEvent('unlock', { id: this.data.question && this.data.question.id }); }
   }
 });

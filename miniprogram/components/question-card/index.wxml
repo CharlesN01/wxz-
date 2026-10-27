@@ -16,7 +16,15 @@
 </template>
 
 <view class="card variant-{{variant}} {{isTranslation ? 'translation-card' : ''}} {{variant === 'random' && question.source === 'classical' ? 'classical-random-card' : ''}} {{variant === 'random' && question.source !== 'classical' ? 'random-literature-card' : ''}}">
-  <block wx:if="{{variant === 'random' || variant === 'practice-word' || variant === 'practice-translation'}}">
+  <block wx:if="{{question.locked}}">
+    <view class="locked-card" bindtap="unlock" role="button" aria-label="开通会员查看题目">
+      <view class="locked-card-head"><text class="locked-card-index">{{number < 10 ? '0' + number : number}}.</text><text class="locked-card-label">会员专享题目</text></view>
+      <view class="locked-card-lines"><view class="locked-line locked-line-long"></view><view class="locked-line locked-line-short"></view><view class="locked-line locked-line-medium"></view></view>
+      <view class="locked-card-action">开通会员后查看并答题</view>
+    </view>
+  </block>
+  <block wx:else>
+    <block wx:if="{{variant === 'random' || variant === 'practice-word' || variant === 'practice-translation'}}">
     <block wx:if="{{variant === 'random' && question.source !== 'classical'}}">
       <view class="question-line random-literature-line">
         <text class="question-index">{{number < 10 ? '0' + number : number}}.</text>
@@ -34,8 +42,8 @@
       <template is="question-body" data="{{segments, mode, draftAnswers, isTranslation, translationStem, isWordExplanation, wordStem, standaloneAnswer, answerVisible, answerText}}" />
     </block>
     <view wx:if="{{mode === 'writing'}}" class="question-foot"><view class="answer-toggle {{answerVisible ? 'answer-open' : ''}}" bindtap="toggleAnswer" role="button">{{answerVisible ? '收起答案' : '查看答案'}}</view></view>
-  </block>
-  <block wx:else>
+    </block>
+    <block wx:else>
     <view class="question-line">
       <text class="number">{{number}}</text>
       <view class="question-content">
@@ -46,5 +54,6 @@
     <view class="star-hit {{question.favorite ? 'selected' : ''}}" bindtap="favorite" role="button" aria-label="{{question.favorite ? '取消收藏' : '收藏'}}" aria-pressed="{{question.favorite}}"><text class="star">{{question.favorite ? '★' : '☆'}}</text></view>
     <view wx:if="{{mode === 'writing'}}" class="answer-toggle {{answerVisible ? 'answer-open' : ''}}" bindtap="toggleAnswer" role="button">{{answerVisible ? '收起答案' : '查看答案'}}</view>
     <view class="card-footer"><view class="master-hit" bindtap="master" role="button" aria-label="{{question.mastered ? '取消掌握' : '标记掌握'}}" aria-pressed="{{question.mastered}}"><view class="master {{question.mastered ? 'mastered' : ''}}"><text class="master-symbol">{{question.mastered ? '✓' : '○'}}</text><text>{{question.mastered ? '已掌握' : '标记掌握'}}</text></view></view></view>
+    </block>
   </block>
 </view>

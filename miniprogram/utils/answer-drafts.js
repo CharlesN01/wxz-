@@ -54,17 +54,28 @@ function createStore(auth, storage) {
   };
 }
 
+// Strip protected fields before rendering or caching a locked placeholder.
+function restrict(questions, lockedPage) {
+  return (questions || []).map(question => {
+    if (!lockedPage && !question.locked) return question;
+    const { id, source, categoryId, articleId, articleTitle, type, sortOrder, revision, position } = question;
+    return { id, source, categoryId, articleId, articleTitle, type, sortOrder, revision, position,
+      locked: true, tag: '', stem: '', answers: [], state: null, favorite: false, mastered: false,
+      draftAnswers: [], answerVisible: false };
+  });
+}
+
 function decorate(questions, store) {
   return (questions || []).map(question => Object.assign({}, question, {
     // Cached remote groups may belong to another user. Only the current
     // account's draft store is trusted for restoring an answer.
-    draftAnswers: store.read(question)
+    draftAnswers: question.locked ? [] : store.read(question)
   }));
 }
 
 function progress(questions) {
   const rows = questions || [];
-  const answeredCount = rows.filter(question => !question.unavailable
+  const answeredCount = rows.filter(question => !question.unavailable && !question.locked
     && questionUtils.answerProgress(question, question.draftAnswers || []).completed).length;
   return {
     answeredCount,
@@ -77,11 +88,11 @@ function acceptInput(page, event, store) {
   const detail = event && event.detail || {};
   if (page.data.mode !== 'writing' || !detail.id || !Array.isArray(detail.values)) return null;
   const question = (page.data.questions || []).find(row => String(row.id) === String(detail.id));
-  if (!question || question.unavailable) return null;
+  if (!question || question.unavailable || question.locked || page.data.lockedPage) return null;
   const values = store.save(question, detail.values);
   const questions = page.data.questions.map(row => row === question
     ? Object.assign({}, row, { draftAnswers: values }) : row);
   return Object.assign({ questions }, progress(questions));
 }
 
-module.exports = { accountKey, createStore, decorate, progress, acceptInput };
+module.exports = { accountKey, createStore, decorate, progress, acceptInput, restrict };

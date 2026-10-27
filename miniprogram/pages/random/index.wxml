@@ -1,4 +1,4 @@
-<view class="random-page {{source === 'literature' ? 'literature-random' : 'classical-random'}} theme-{{theme}}">
+<view class="random-page {{source === 'literature' ? 'literature-random' : 'classical-random'}} tablet-{{activated ? 'member' : 'free'}}-sheet theme-{{theme}}">
   <study-navbar title="{{source === 'classical' ? '文言文随机测试' : '文常随机测试'}}" theme="paper" back="{{true}}" class="page-navbar" />
 
   <view class="random-main">
@@ -31,10 +31,15 @@
       <view class="type-filter {{typeFilter === 'translation' ? 'active' : ''}}" data-type="translation" bindtap="onTypeChange" role="tab" aria-selected="{{typeFilter === 'translation'}}">翻译随机</view>
     </view>
 
+    <view wx:if="{{!loading && !hasError}}" class="membership-status">{{activated ? '会员已开通 · 全部题目可答' : '未开通会员 · 第 1 页免费'}}</view>
     <view class="random-toolbar">
       <view wx:if="{{source === 'literature'}}" class="toolbar-copy">
         <text class="toolbar-title">文常随机测试</text>
         <text class="toolbar-subtitle">{{mode === 'reciting' ? '答案核对' : '全库混合'}}</text>
+      </view>
+      <view wx:elif="{{source === 'classical'}}" class="toolbar-copy tablet-classical-toolbar-copy">
+        <text class="toolbar-title">文言文随机测试</text>
+        <text class="toolbar-subtitle">全库混合</text>
       </view>
       <mode-switch mode="{{mode}}" theme="blue" bindchange="onModeChange" />
     </view>
@@ -42,10 +47,13 @@
     <view wx:if="{{source === 'literature' && !loading && !hasError && questions.length}}" class="page-progress" aria-label="本页已答 {{answeredCount}} / {{pageQuestionCount}}">
       <view class="page-progress-fill" style="width: {{answerProgressPercent}}%;"></view>
     </view>
+    <view wx:if="{{source === 'classical' && !loading && !hasError && questions.length}}" class="page-progress tablet-classical-progress" aria-label="本页已答 {{answeredCount}} / {{pageQuestionCount}}">
+      <view class="page-progress-fill" style="width: {{answerProgressPercent}}%;"></view>
+    </view>
 
     <view class="random-questions" wx:if="{{!loading && !hasError && questions.length}}">
       <view class="random-question" wx:for="{{questions}}" wx:key="id">
-        <question-card class="study-question-card" question="{{item}}" mode="{{mode}}" number="{{index + 1}}" variant="random" show-tag="{{true}}" bindfavorite="onFavorite" bindmaster="onMaster" bindanswerinput="onAnswerInput" />
+        <question-card class="study-question-card" question="{{item}}" mode="{{mode}}" number="{{index + 1}}" variant="random" show-tag="{{true}}" bindfavorite="onFavorite" bindmaster="onMaster" bindanswerinput="onAnswerInput" bindunlock="openMembership" />
       </view>
     </view>
     <empty-state wx:elif="{{!loading && !hasError && roundContentUnavailable}}" title="题库已更新" description="题库已更新，请重新开始本轮" action-text="重新开始本轮" bindaction="restartUpdatedRound" />
@@ -64,5 +72,7 @@
     <view class="bottom-nav-item study-bottom-navigation-item" bindtap="openFavorites" role="button"><text class="bottom-nav-icon study-bottom-navigation-icon">☆</text><text class="study-bottom-navigation-label">收藏</text></view>
     <view class="bottom-nav-item study-bottom-navigation-item" bindtap="openProfile" role="button"><text class="bottom-nav-icon study-bottom-navigation-icon">◎</text><text class="study-bottom-navigation-label">我的</text></view>
   </view>
+
+  <membership-gate visible="{{membershipVisible}}" remaining-pages="{{restrictedPageCount}}" remaining-questions="{{restrictedQuestionCount}}" context-label="{{source === 'classical' ? '文言文随机练习' : '文学常识随机练习'}}" bindopen="goMembership" bindclose="closeMembership" />
 
 </view>

@@ -1,0 +1,9 @@
+<view wx:if="{{visible}}" class="membership-mask" catchtap="stopTap" catchtouchmove="stopTap">
+  <view class="membership-dialog" catchtap="stopTap">
+    <view class="membership-mark">会员专享</view>
+    <text class="membership-title">当前为未开通会员</text>
+    <text class="membership-copy">开通会员后即可查看{{contextLabel}}剩余 {{remainingPages}} 页（共 {{remainingQuestions}} 道题），继续正常答题。</text>
+    <button class="membership-primary" bindtap="open">开通会员</button>
+    <view class="membership-secondary" bindtap="close" role="button">暂不查看</view>
+  </view>
+</view>

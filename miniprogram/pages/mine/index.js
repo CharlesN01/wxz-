@@ -93,6 +93,7 @@ Page({
     feedbackContent: '', feedbackContact: '', busy: false
   },
 
+  onLoad(options) { if (options && options.membership === '1') this.setData({ memberVisible: true }); },
   onShow() { this.setData({ theme: currentTheme() }); this.refresh(); },
   onHide() { this.clearOrderExpiryTimer(); },
   onUnload() { this.clearOrderExpiryTimer(); },
