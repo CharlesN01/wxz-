@@ -7,6 +7,8 @@ const dataService = require('../../services/data-service');
 const studyStore = require('../../utils/study-store');
 const navigation = require('../../utils/navigation');
 const api = require('../../services/api');
+let contentCache = { read: () => null, write: () => false };
+try { const loadedCache = require('../../utils/content-cache'); if (loadedCache && typeof loadedCache.read === 'function') contentCache = loadedCache; } catch (_) { /* Older test/runtime shells do not expose optional cache. */ }
 
 function currentTheme() { try { return wx.getStorageSync('chinese-study.theme') === 'night' ? 'night' : 'day'; } catch (_) { return 'day'; } }
 
@@ -76,7 +78,17 @@ Page({
     this._remoteLoaded = false;
     this._loadGeneration = 0;
     this._needsRemoteRefresh = false;
+    this._lastRefreshAt = 0;
     this.setData({ mode: requestedMode });
+    const cached = contentCache.read('classical-catalog', api.auth, 'v1');
+    if (cached && cached.payload && Array.isArray(cached.payload.articles)) {
+      this.articles = cached.payload.articles;
+      this._remoteLoaded = true;
+      this._contentToken = getToken();
+      this.setData({ loading: false, dataSource: 'remote', articleTotal: Number(cached.payload.articleTotal) || this.articles.length,
+        learnedCount: Number(cached.payload.learnedCount) || 0, completionPercent: Number(cached.payload.completionPercent) || 0 });
+      this.applyFilter();
+    }
     if (options.mode === 'writing' || options.mode === 'reciting') studyStore.setMode(requestedMode);
     if (canRequest()) this.loadRemote();
   },
@@ -85,7 +97,7 @@ Page({
     this.setData({ theme: currentTheme() });
     if (canRequest() && this._loadingPromise) return this.loadRemote();
     if (canRequest() && this._remoteLoaded && (this._contentToken !== getToken()
-      || this._needsRemoteRefresh || this.data.dataSource === 'local')) return this.loadRemote();
+      || this._needsRemoteRefresh || this.data.dataSource === 'local') && Date.now() - (this._lastRefreshAt || 0) >= 60 * 1000) return this.loadRemote();
     if (!canRequest() || this._remoteLoaded) this.refreshProgress();
   },
 
@@ -198,6 +210,11 @@ Page({
       dataSource: 'remote',
       articleTotal: total,
       learnedCount,
+      completionPercent: total ? Math.round(learnedCount / total * 100) : 0
+    });
+    this._lastRefreshAt = Date.now();
+    contentCache.write('classical-catalog', api.auth, 'v1', {
+      articles: this.articles, articleTotal: total, learnedCount,
       completionPercent: total ? Math.round(learnedCount / total * 100) : 0
     });
     this.applyFilter();

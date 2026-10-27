@@ -1,7 +1,18 @@
 const mock = require('../data/mock');
-const STORAGE_KEY = 'chinese-study.frontend.v1';
+const STORAGE_PREFIX = 'chinese-study.frontend.v1:';
+const STORAGE_KEY = STORAGE_PREFIX + 'guest';
+const session = require('./session');
 const validIds = new Set(mock.questions.map((question) => question.id));
 let cached;
+let cachedKey = '';
+
+function storageKey() {
+  try {
+    const current = session.getSession && session.getSession();
+    const id = current && current.user && current.user.id;
+    return STORAGE_PREFIX + (id ? 'user:' + String(id) : 'guest');
+  } catch (_) { return STORAGE_KEY; }
+}
 
 function todayKey(now) {
   const date = new Date(now === undefined ? Date.now() : now);
@@ -69,17 +80,21 @@ function normalize(input) {
 }
 
 function getState() {
-  if (!cached) {
-    try { cached = normalize(typeof wx !== 'undefined' ? wx.getStorageSync(STORAGE_KEY) : null); }
+  const key = storageKey();
+  if (!cached || cachedKey !== key) {
+    cachedKey = key;
+    try { cached = normalize(typeof wx !== 'undefined' ? wx.getStorageSync(key) : null); }
     catch (_) { cached = freshState(); }
   }
   return JSON.parse(JSON.stringify(cached));
 }
 
 function save(state) {
+  const key = storageKey();
+  cachedKey = key;
   cached = normalize(state);
   try {
-    if (typeof wx !== 'undefined') wx.setStorageSync(STORAGE_KEY, cached);
+    if (typeof wx !== 'undefined') wx.setStorageSync(key, cached);
   } catch (_) {
     if (typeof wx !== 'undefined' && wx.showToast) wx.showToast({ title: '记录暂未保存，请稍后重试', icon: 'none' });
   }
@@ -128,6 +143,12 @@ function saveResume(record) {
   state.resume = record ? normalizeResume(record) : null;
   save(state);
 }
+function clear() {
+  const key = storageKey();
+  cached = freshState();
+  cachedKey = key;
+  try { if (typeof wx !== 'undefined') wx.removeStorageSync(key); } catch (_) {}
+}
 function getResume() { return getState().resume; }
 
 function getStats(now) {
@@ -152,4 +173,4 @@ function getStats(now) {
   };
 }
 
-module.exports = { STORAGE_KEY, getState, getStats, getMode, setMode, toggleFavorite, toggleMastered, saveResume, getResume, todayKey };
+module.exports = { STORAGE_KEY, getState, getStats, getMode, setMode, toggleFavorite, toggleMastered, saveResume, getResume, todayKey, clear };

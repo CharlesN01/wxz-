@@ -10,6 +10,7 @@ from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 
 from common.api import PublicStudentAPIView
+from common import content_cache
 from common.errors import BusinessError
 from .access import accessible_questions, free_questions, published_questions, question_access, scope_questions
 from .models import Article, Category, LearningConfiguration
@@ -80,6 +81,13 @@ class StudentCatalogView(StudentContentView):
 
     def get(self, request):
         validate_query_params(request.query_params, StudentPageQuery)
+        anonymous = not (request.user and request.user.is_authenticated)
+        cache_key = None
+        if anonymous:
+            cache_key = "%s:v%s:%s" % (self.__class__.__name__, content_cache.version(), request.query_params.get("page", "1"))
+            cached = content_cache.get(cache_key)
+            if cached is not None:
+                return Response(cached)
         config = LearningConfiguration.current()
         counts = published_questions().filter(**{self.revision_field: OuterRef("pk")}).order_by().values(
             self.revision_field,
@@ -89,7 +97,10 @@ class StudentCatalogView(StudentContentView):
             **self.catalog_annotations(),
         ).annotate(free_count=Least(F("published_count"), Value(config.page_size))).order_by("sort_order", "pk")
 
-        return self.paginated(request, queryset, config.page_size, lambda page: self.serialize(page, request, config))
+        response = self.paginated(request, queryset, config.page_size, lambda page: self.serialize(page, request, config))
+        if cache_key:
+            content_cache.set(cache_key, response.data)
+        return response
 
     def catalog_annotations(self):
         return {}

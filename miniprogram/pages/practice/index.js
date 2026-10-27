@@ -9,6 +9,8 @@ const studyStore = require('../../utils/study-store');
 const navigation = require('../../utils/navigation');
 const api = require('../../services/api');
 const answerDrafts = require('../../utils/answer-drafts');
+let contentCache = { read: () => null, write: () => false };
+try { const loadedCache = require('../../utils/content-cache'); if (loadedCache && typeof loadedCache.read === 'function') contentCache = loadedCache; } catch (_) { /* Older test/runtime shells do not expose optional cache. */ }
 
 const GROUP_SIZE = 6;
 function currentTheme() { try { return wx.getStorageSync('chinese-study.theme') === 'night' ? 'night' : 'day'; } catch (_) { return 'day'; } }
@@ -53,6 +55,16 @@ Page(withStudyTime({
     this._groupCache = {};
     this._resumeVersion = 0;
     this._remoteLoaded = false;
+    const cached = contentCache.read('practice-first', api.auth, [this.articleId || 'all', this.questionType].join(':'));
+    if (cached && cached.payload && Array.isArray(cached.payload.questions)) {
+      const snapshot = cached.payload;
+      this.allQuestions = snapshot.allQuestions || snapshot.questions;
+      this._groupCache = snapshot.groupCache || {};
+      this._remoteLoaded = true;
+      this.setData({ loading: false, dataSource: 'remote', total: Number(snapshot.total) || this.allQuestions.length,
+        groupIndex: Number(snapshot.groupIndex) || 0, groupCount: Number(snapshot.groupCount) || Math.ceil(this.allQuestions.length / GROUP_SIZE),
+        questions: snapshot.questions, progressPercent: Number(snapshot.progressPercent) || 0 });
+    }
     const initialMode = options.mode === 'reciting' ? 'reciting' : options.mode === 'writing' ? 'writing' : studyStore.getMode();
     studyStore.setMode(initialMode);
     this.setData({ title: this.questionType === 'word' ? '重点字词专项' : '重点翻译专项', articleTitle: this.articleTitle, typeLabel: this.questionType === 'word' ? '重点字词' : '重点翻译', isWord: this.questionType === 'word', mode: initialMode });
@@ -291,6 +303,10 @@ Page(withStudyTime({
       : (this.allQuestions || []).filter(question => (states[question.id] || (!hasToken() ? localQuestionState(question.id) : normalizeState(null))).mastered).length;
     const answerProgress = answerDrafts.progress(questions);
     this.setData(Object.assign({ questions, total, completed, pageCompleted: answerProgress.answeredCount, pageProgressPercent: answerProgress.answerProgressPercent, progressPercent: total ? Math.round(completed / total * 100) : 0, groupIndex, groupCount, nextLabel: '下一页' }, answerProgress));
+    contentCache.write('practice-first', api.auth, [this.articleId || 'all', this.questionType].join(':'), {
+      questions, allQuestions: this.allQuestions, groupCache: this._groupCache, total, groupIndex, groupCount,
+      progressPercent: total ? Math.round(completed / total * 100) : 0
+    });
     if (questions.length) {
       this._groupCache = this._groupCache || {};
       this._groupCache[String(groupIndex + 1)] = cloneRows(questions);

@@ -13,6 +13,7 @@ psycopg==3.3.6
 psycopg-binary==3.3.6
 pycparser==3.0
 python-dotenv==1.2.1
+redis==7.0.1
 sqlparse==0.6.0
 tablib==3.10.0
 tzdata==2026.4

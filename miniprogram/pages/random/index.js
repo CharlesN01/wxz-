@@ -10,6 +10,8 @@ const safeTop = require('../../utils/safe-top');
 const navigation = require('../../utils/navigation');
 const api = require('../../services/api');
 const answerDrafts = require('../../utils/answer-drafts');
+let contentCache = { read: () => null, write: () => false };
+try { const loadedCache = require('../../utils/content-cache'); if (loadedCache && typeof loadedCache.read === 'function') contentCache = loadedCache; } catch (_) { /* Older test/runtime shells do not expose optional cache. */ }
 
 const GROUP_SIZE = 6;
 const PAGE_PATH = '/pages/random/index';
@@ -59,6 +61,18 @@ Page(withStudyTime({
     this._roundId = '';
     this._roundIds = [];
     this._groupCache = {};
+    const cached = contentCache.read('random-round', api.auth, [this._source, this._type || 'all', this._articleId || 'all'].join(':'));
+    if (cached && cached.payload && cached.payload.roundId && cached.payload.groupCache && typeof cached.payload.groupCache === 'object') {
+      this._roundId = cached.payload.roundId;
+      this._groupIndex = Number(cached.payload.groupIndex) || 1;
+      this._roundCount = Number(cached.payload.roundCount) || 0;
+      this._roundTotal = Number(cached.payload.roundTotal) || 0;
+      this._roundIds = Array.isArray(cached.payload.roundIds) ? cached.payload.roundIds : [];
+      this._groupCache = cached.payload.groupCache;
+      this._ready = true;
+      this.setData({ loading: false, dataSource: 'remote', groupNumber: this._groupIndex, groupCount: this._roundCount, roundQuestionCount: this._roundTotal });
+      this.renderCachedGroup(this._groupIndex, '正在后台同步最新题组');
+    }
     this._stateMap = {};
     this._resumeVersion = 0;
     this._ready = false;
@@ -243,6 +257,10 @@ Page(withStudyTime({
     const roundContentUnavailable = !rows.length && Array.isArray(payload.skipped) && payload.skipped.length > 0
       && payload.skipped.every((item) => item && (item.reason === 'UNAVAILABLE' || item.reason === 'SCOPE_CHANGED'));
     this.setData(Object.assign({ loading: false, dataSource: 'remote', questions, roundContentUnavailable, groupNumber: this._groupIndex, groupCount: this._roundCount, roundQuestionCount: this._roundTotal, groupPageSize: this._groupPageSize, progressPercent: this._roundCount ? Math.round(this._groupIndex / this._roundCount * 100) : 0, nextLabel: this._groupIndex >= this._roundCount ? '再练一轮' : '下一组', personalError: restricted ? errorText({ code: 'ENTITLEMENT_REQUIRED' }) : '' }, answerDrafts.progress(questions)));
+    contentCache.write('random-round', api.auth, [this._source, this._type || 'all', this._articleId || 'all'].join(':'), {
+      roundId: this._roundId, groupIndex: this._groupIndex, roundCount: this._roundCount, roundTotal: this._roundTotal,
+      roundIds: this._roundIds, groupCache: this._groupCache
+    });
     this.saveResume();
     return true;
   },

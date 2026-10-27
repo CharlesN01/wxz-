@@ -10,6 +10,7 @@ from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
 from django.db.models import Max
 from django.utils import timezone
+from common import content_cache
 
 from .models import Article, Category, Question, QuestionRevision
 
@@ -186,6 +187,7 @@ def publish_questions(queryset, actor, *, confirmation_token=None):
         log_entries.append(_log_publication(question, actor, description))
         changed += 1
     LogEntry.objects.bulk_create(log_entries, batch_size=500)
+    content_cache.bump()
     return changed
 
 
@@ -205,4 +207,5 @@ def unpublish_questions(queryset, actor, *, confirmation_token=None):
         question.is_published = False
         _log_publication(question, actor, "下架题目（保留发布修订）").save()
         changed += 1
+    content_cache.bump()
     return changed

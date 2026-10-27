@@ -55,6 +55,14 @@ VIRTUAL_PAYMENT_SANDBOX_APP_KEY = os.environ.get("VIRTUAL_PAYMENT_SANDBOX_APP_KE
 VIRTUAL_PAYMENT_CALLBACK_TOKEN = os.environ.get("VIRTUAL_PAYMENT_CALLBACK_TOKEN", "")
 VIRTUAL_PAYMENT_CALLBACK_AES_KEY = os.environ.get("VIRTUAL_PAYMENT_CALLBACK_AES_KEY", "")
 ACTIVATION_REDEEM_RATE_LIMIT = 10
+REDIS_URL = os.environ.get("REDIS_URL", "")
+CONTENT_CACHE_ENABLED = env_bool("CONTENT_CACHE_ENABLED", bool(REDIS_URL))
+try:
+    CONTENT_CACHE_TTL_SECONDS = int(os.environ.get("CONTENT_CACHE_TTL_SECONDS", "60"))
+except ValueError:
+    raise ImproperlyConfigured("CONTENT_CACHE_TTL_SECONDS must be an integer.") from None
+if CONTENT_CACHE_TTL_SECONDS < 1:
+    raise ImproperlyConfigured("CONTENT_CACHE_TTL_SECONDS must be positive.")
 AGENT_DISTRIBUTION_ENABLED = env_bool("AGENT_DISTRIBUTION_ENABLED", False)
 AGENT_QRCODE_ENABLED = env_bool("AGENT_QRCODE_ENABLED", False)
 try:
@@ -134,6 +142,16 @@ elif DB_ENGINE == "postgresql":
     }}
 else:
     raise ImproperlyConfigured("DB_ENGINE must be sqlite or postgresql.")
+
+if CONTENT_CACHE_ENABLED and REDIS_URL:
+    CACHES = {"default": {
+        "BACKEND": "django.core.cache.backends.redis.RedisCache",
+        "LOCATION": REDIS_URL,
+        "TIMEOUT": CONTENT_CACHE_TTL_SECONDS,
+        "OPTIONS": {"socket_timeout": 0.2, "socket_connect_timeout": 0.2},
+    }}
+else:
+    CACHES = {"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache", "LOCATION": "chinese-study-content"}}
 
 AUTH_USER_MODEL = "accounts.User"
 AUTH_PASSWORD_VALIDATORS = [

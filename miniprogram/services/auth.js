@@ -1,5 +1,7 @@
 const http = require('../utils/http');
 const session = require('../utils/session');
+const contentCache = require('../utils/content-cache');
+const studyStore = require('../utils/study-store');
 
 function getWechatCode() {
   return new Promise((resolve, reject) => {
@@ -74,6 +76,8 @@ async function logout() {
       });
     }
   } finally {
+    contentCache.clear({ getSession: session.getSession });
+    if (studyStore.clear) studyStore.clear();
     session.clearSession();
   }
 }

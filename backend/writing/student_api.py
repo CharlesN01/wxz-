@@ -7,6 +7,7 @@ from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 
 from common.api import PublicStudentAPIView
+from common import content_cache
 from common.errors import BusinessError
 from content.student_api import EmptyQuery
 from content.models import LearningConfiguration
@@ -45,6 +46,13 @@ class WritingView(PublicStudentAPIView):
 class WritingListView(WritingView):
     def get(self, request):
         query = self._query(request)
+        anonymous = not (request.user and request.user.is_authenticated)
+        cache_key = None
+        if anonymous:
+            cache_key = "writing-list:v%s:" % content_cache.version() + ":".join(str(request.query_params.get(name, "")) for name in ("page", "categoryId", "genreId", "kind"))
+            cached = content_cache.get(cache_key)
+            if cached is not None:
+                return Response(cached)
         category_id = query.get("categoryId")
         genre_id = query.get("genreId")
         kind = query.get("kind")
@@ -73,6 +81,8 @@ class WritingListView(WritingView):
             "totalCount": total,
             "restrictedCount": max(0, total - readable.count()),
         }
+        if cache_key:
+            content_cache.set(cache_key, response.data)
         return response
 
 

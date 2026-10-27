@@ -10,6 +10,7 @@ from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
 from django.db.models import Max
 from django.utils import timezone
+from common import content_cache
 
 from .models import WritingCategory, WritingContent, WritingGenre, WritingRevision
 
@@ -168,6 +169,7 @@ def publish_writings(queryset, actor, *, confirmation_token=None):
         content.save(update_fields=("published_revision", "is_published", "updated_at"))
         _log_publication(content, actor, description)
         changed += 1
+    content_cache.bump()
     return changed
 
 
@@ -185,4 +187,5 @@ def unpublish_writings(queryset, actor, *, confirmation_token=None):
         content.is_published = False
         _log_publication(content, actor, "下架应用文（保留发布修订）")
         changed += 1
+    content_cache.bump()
     return changed
