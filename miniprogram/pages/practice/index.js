@@ -10,6 +10,11 @@ const navigation = require('../../utils/navigation');
 const api = require('../../services/api');
 const GROUP_SIZE = 6;
 const answerDrafts = require('../../utils/answer-drafts');
+let contentCache = { read: () => null, write: () => false };
+try {
+  const loadedCache = require('../../utils/content-cache');
+  if (loadedCache && typeof loadedCache.read === 'function') contentCache = loadedCache;
+} catch (_) { /* test shells may omit optional cache */ }
 
 let tabletSheet = null;
 try { tabletSheet = require('../../utils/tablet-answer-sheet'); } catch (_) {}
@@ -58,6 +63,17 @@ Page(withStudyTime({
     this._resumeVersion = 0;
     this._remoteLoaded = false;
     this._activated = false;
+    const cacheKey = [this.articleId || 'all', this.questionType].join(':');
+    const cached = contentCache.read('practice-first', api.auth, cacheKey);
+    if (cached && cached.payload && Array.isArray(cached.payload.questions)) {
+      const snapshot = cached.payload;
+      this.allQuestions = snapshot.allQuestions || snapshot.questions;
+      this._groupCache = snapshot.groupCache || {};
+      this._remoteLoaded = true;
+      this.setData({ loading: false, dataSource: 'remote', total: Number(snapshot.total) || this.allQuestions.length,
+        groupIndex: Number(snapshot.groupIndex) || 0, groupCount: Number(snapshot.groupCount) || Math.ceil(this.allQuestions.length / GROUP_SIZE),
+        questions: snapshot.questions, progressPercent: Number(snapshot.progressPercent) || 0 });
+    }
     const initialMode = options.mode === 'reciting' ? 'reciting' : options.mode === 'writing' ? 'writing' : studyStore.getMode();
     studyStore.setMode(initialMode);
     this.setData({ title: this.questionType === 'word' ? '重点字词专项' : '重点翻译专项', articleTitle: this.articleTitle, typeLabel: this.questionType === 'word' ? '重点字词' : '重点翻译', isWord: this.questionType === 'word', mode: initialMode });
@@ -103,7 +119,7 @@ Page(withStudyTime({
     this._remotePaging = true;
     this._activated = false;
     this.allQuestions = [];
-    this.setData({ loading: true, hasError: false, errorMessage: '', personalError: '', groupLoading: false, requiresEntitlement: false, restrictedCount: 0, questions: [], groupIndex: previousGroup, lockedPage: false, membershipVisible: false });
+    this.setData({ loading: this.data.questions.length ? false : true, hasError: false, errorMessage: '', personalError: '', groupLoading: false, requiresEntitlement: false, restrictedCount: 0, questions: this.data.questions, groupIndex: previousGroup, lockedPage: false, membershipVisible: false });
     const result = await settle(this.prepareRemoteScopes(generation));
     if (generation !== this._loadGeneration) return;
     if (!result.ok) {
@@ -322,6 +338,15 @@ Page(withStudyTime({
     if (questions.length) {
       this._groupCache = this._groupCache || {};
       this._groupCache[String(groupIndex + 1)] = cloneRows(questions);
+      contentCache.write('practice-first', api.auth, [this.articleId || 'all', this.questionType].join(':'), {
+        allQuestions: this.allQuestions,
+        groupCache: this._groupCache,
+        questions,
+        total,
+        groupIndex,
+        groupCount,
+        progressPercent: total ? Math.round(completed / total * 100) : 0
+      });
       this.savePosition();
     }
   },

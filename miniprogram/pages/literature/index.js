@@ -14,6 +14,11 @@ const answerDrafts = require('../../utils/answer-drafts');
 let tabletSheet = null;
 try { tabletSheet = require('../../utils/tablet-answer-sheet'); } catch (_) {}
 tabletSheet = tabletSheet || { viewport: () => null, resizedViewport: () => null, pageSize: () => UI_PAGE_SIZE, isTablet: () => false };
+let contentCache = { read: () => null, write: () => false };
+try {
+  const loadedCache = require('../../utils/content-cache');
+  if (loadedCache && typeof loadedCache.read === 'function') contentCache = loadedCache;
+} catch (_) { /* test shells may omit optional cache */ }
 const SOURCE = 'literature';
 function currentTheme() { try { return wx.getStorageSync('chinese-study.theme') === 'night' ? 'night' : 'day'; } catch (_) { return 'day'; } }
 
@@ -135,12 +140,39 @@ Page(withStudyTime({
     this._preferenceVersion = 0;
     this._resumePending = null;
     this._resumeSaving = false;
+    this._lastRefreshAt = 0;
+    const cached = contentCache.read('literature-first', api.auth, 'v1');
+    if (cached && cached.payload && Array.isArray(cached.payload.categories)) {
+      const snapshot = cached.payload;
+      this._lastRefreshAt = Number(cached.savedAt) || Date.now();
+      this._questionRows = Array.isArray(snapshot.rows) ? snapshot.rows : [];
+      this._questionPages = {};
+      if (snapshot.categoryId) this._questionPages[String(snapshot.categoryId) + ':1'] = {
+        rows: this._questionRows,
+        count: Number(snapshot.totalQuestions) || this._questionRows.length,
+        pageSize: Number(snapshot.apiPageSize) || Math.max(this._questionRows.length, 1),
+        activated: Boolean(snapshot.activated),
+        freeCount: Number(snapshot.freeCount) || 0,
+        restrictedCount: Number(snapshot.restrictedCount) || 0
+      };
+      this._loaded = true;
+      this.setData({ loading: false, categories: snapshot.categories, categoryId: snapshot.categoryId || '',
+        categoryName: snapshot.categoryName || '文学常识', mode: snapshot.mode || 'writing',
+        questions: Array.isArray(snapshot.questions) ? snapshot.questions : [], page: Number(snapshot.page) || 1,
+        pageSize: UI_PAGE_SIZE, totalQuestions: Number(snapshot.totalQuestions) || this._questionRows.length,
+        pageCount: Number(snapshot.pageCount) || 0, restrictedCount: Number(snapshot.restrictedCount) || 0,
+        questionProgressLabel: snapshot.questionProgressLabel || '00 / 00', progressPercent: Number(snapshot.progressPercent) || 0,
+        isGuest: !hasToken() });
+    }
     this.bootstrap();
   },
 
   onShow() {
     this.setData({ theme: currentTheme() });
     if (!this._loaded || this.data.loading) return;
+    if (!this._needsRemoteRefresh && this.data.page <= 1 && this.data.restrictedCount <= 0
+      && Date.now() - (this._lastRefreshAt || 0) < 60 * 1000) return;
+    this._needsRemoteRefresh = false;
     // Returning from membership/activation must refetch the accessible count
     // and pages; refreshing question state alone retains the free-only cache.
     this._questionPages = {};
@@ -156,6 +188,8 @@ Page(withStudyTime({
     this._answerViewport = next;
     if (this._loaded) return this.loadPage(this.data.page || 1);
   },
+
+  onHide() { this._needsRemoteRefresh = true; },
 
   async bootstrap() {
     // Start independent reads together; categories must not delay preferences
@@ -227,12 +261,22 @@ Page(withStudyTime({
       return;
     }
     await this.loadPage(1, { findResume: Boolean(this._resumeQuestionId) });
+    this.prefetchCategories(categories);
   },
 
-  async loadApiPage(page, requestId) {
-    const categoryId = this.data.categoryId;
+  async loadApiPage(page, requestId, options) {
+    options = options || {};
+    const categoryId = options.categoryId || this.data.categoryId;
     const cacheKey = categoryId + ':' + page;
-    if (this._questionPages[cacheKey]) return this._questionPages[cacheKey];
+    if (this._questionPages[cacheKey] && !options.force) return this._questionPages[cacheKey];
+    if (!options.force) {
+      const cached = contentCache.read('literature-category', api.auth, cacheKey);
+      if (cached && cached.payload && Array.isArray(cached.payload.rows)) {
+        const cachedRecord = Object.assign({}, cached.payload, { fromCache: true, stale: Boolean(cached.stale) });
+        this._questionPages[cacheKey] = cachedRecord;
+        return cachedRecord;
+      }
+    }
     const response = await api.content.questions({
       source: SOURCE,
       categoryId,
@@ -253,7 +297,22 @@ Page(withStudyTime({
       restrictedCount: Number(access.restrictedCount) || 0
     };
     this._questionPages[cacheKey] = record;
+    contentCache.write('literature-category', api.auth, cacheKey, record);
     return record;
+  },
+
+  async prefetchCategories(categories) {
+    if (this._prefetchPromise || !Array.isArray(categories)) return this._prefetchPromise;
+    const ids = categories.map((item) => item && item.id).filter(Boolean)
+      .filter((id) => String(id) !== String(this.data.categoryId));
+    this._prefetchPromise = (async () => {
+      for (let index = 0; index < ids.length; index += 2) {
+        await Promise.all(ids.slice(index, index + 2).map((categoryId) =>
+          this.loadApiPage(1, this._questionRequest, { categoryId }).catch(() => null)
+        ));
+      }
+    })().finally(() => { this._prefetchPromise = null; });
+    return this._prefetchPromise;
   },
 
   async loadPage(page, options) {
@@ -261,7 +320,7 @@ Page(withStudyTime({
     if (!this.data.categoryId) return;
     let targetPage = Math.max(1, Number(page) || 1);
     const requestId = ++this._questionRequest;
-    this.setData({ loading: true, hasError: false, errorMessage: '' });
+    this.setData({ loading: !(this.data.questions && this.data.questions.length), hasError: false, errorMessage: '' });
     let firstPage;
     try {
       firstPage = await this.loadApiPage(1, requestId);
@@ -397,6 +456,27 @@ Page(withStudyTime({
       canNext: targetPage < pageCount,
       personalError: this.data.personalError
     }, answerDrafts.progress(questions)));
+    this._lastRefreshAt = Date.now();
+    contentCache.write('literature-first', api.auth, 'v1', {
+      categories: this.data.categories,
+      categoryId: this.data.categoryId,
+      categoryName: this.data.categoryName,
+      mode: this.data.mode,
+      rows: safeRows,
+      questions,
+      page: targetPage,
+      totalQuestions: count,
+      pageCount,
+      apiPageSize,
+      activated,
+      freeCount: firstPage.freeCount,
+      restrictedCount: firstPage.restrictedCount,
+      questionProgressLabel: formatQuestionProgress(startIndex, count),
+      progressPercent: pageCount ? Math.round(targetPage / pageCount * 100) : 0
+    });
+    if (firstPage.fromCache && firstPage.stale) {
+      this.loadApiPage(1, requestId, { force: true }).catch(() => null);
+    }
     this.queueResume();
   },
 

@@ -6,6 +6,11 @@ function shareTimeline() { return { title: SHARE_TITLE, query: '', imageUrl: SHA
 const { withStudyTime } = require('../../utils/study-timer');
 const api = require('../../services/api');
 const navigation = require('../../utils/navigation');
+let contentCache = { read: () => null, write: () => false };
+try {
+  const loadedCache = require('../../utils/content-cache');
+  if (loadedCache && typeof loadedCache.read === 'function') contentCache = loadedCache;
+} catch (_) { /* test shells may omit optional cache */ }
 const { genreOf, genresFrom, readingContent } = require('./reader');
 
 const kinds = [
@@ -29,6 +34,12 @@ Page(withStudyTime({
   },
   onLoad() {
     this.syncTheme(true);
+    const cached = contentCache.read('application-list', api.auth, 'v1');
+    if (cached && cached.payload && Array.isArray(cached.payload.items)) {
+      const snapshot = cached.payload;
+      this.setData({ loading: false, items: snapshot.items, genres: genresFrom(snapshot.items), restrictedCount: Number(snapshot.restrictedCount) || 0 });
+      this.filterItems(snapshot.selectedId);
+    }
     return this.load();
   },
   onShow() {
@@ -56,10 +67,11 @@ Page(withStudyTime({
     const theme = globalTheme === 'day' ? 'warm' : 'blue';
     if (this.data.globalTheme !== globalTheme || this.data.theme !== theme) this.setData({ globalTheme, theme });
   },
-  async loadWritings(params) {
+  async loadWritings(params, onFirstPage) {
     let response = await api.content.writings(params);
     const access = response && response.access || {};
     const entries = response && Array.isArray(response.results) ? response.results.slice() : [];
+    if (typeof onFirstPage === 'function') onFirstPage({ entries: entries.slice(), count: Number(response && response.count) || entries.length, access });
     let next = response && response.next;
     const seen = new Set();
     while (next && !seen.has(String(next))) {
@@ -74,9 +86,15 @@ Page(withStudyTime({
     this._listRequest = (this._listRequest || 0) + 1;
     const request = this._listRequest;
     this._detailRequest = (this._detailRequest || 0) + 1;
-    this.setData({ loading: true, error: '', detailError: '', detailLoading: false, selected: null, reader: null });
+    this.setData({ loading: !this.data.items.length, error: '', detailError: '', detailLoading: false, selected: null, reader: null });
     try {
-      const result = await this.loadWritings({ page: 1 });
+      const result = await this.loadWritings({ page: 1 }, (first) => {
+        if (request !== this._listRequest) return;
+        const firstGenres = genresFrom(first.entries);
+        this.setData({ items: first.entries, genres: firstGenres, loading: false, restrictedCount: Math.max(0, Number(first.access.restrictedCount) || 0) });
+        contentCache.write('application-list', api.auth, 'v1', { items: first.entries, restrictedCount: Math.max(0, Number(first.access.restrictedCount) || 0), selectedId: first.entries[0] && first.entries[0].id });
+        this.filterItems(this._resumeWritingId);
+      });
       if (request !== this._listRequest) return;
       const genres = genresFrom(result.entries);
       this.setData({ items: result.entries, genres, loading: false,
