@@ -1,3 +1,8 @@
+const SHARE_TITLE = '文常记｜山东专升本语文';
+const SHARE_PATH = '/pages/home/index';
+const SHARE_IMAGE = '/assets/share-cover.png';
+function shareAppMessage() { return { title: SHARE_TITLE, path: SHARE_PATH, imageUrl: SHARE_IMAGE }; }
+function shareTimeline() { return { title: SHARE_TITLE, query: '', imageUrl: SHARE_IMAGE }; }
 const { withStudyTime } = require('../../utils/study-timer');
 const dataService = require('../../services/data-service');
 const studyStore = require('../../utils/study-store');
@@ -6,6 +11,7 @@ const navigation = require('../../utils/navigation');
 const api = require('../../services/api');
 const answerDrafts = require('../../utils/answer-drafts');
 
+const tabletSheet = require('../../utils/tablet-answer-sheet');
 const GROUP_SIZE = 6;
 const PAGE_PATH = '/pages/random/index';
 function currentTheme() { try { return wx.getStorageSync('chinese-study.theme') === 'night' ? 'night' : 'day'; } catch (_) { return 'day'; } }
@@ -38,9 +44,10 @@ function compatibleType(source, type) {
 }
 
 Page(withStudyTime({
-  data: { theme: 'day', loading: true, hasError: false, errorMessage: '', dataSource: 'local', personalError: '', roundContentUnavailable: false, source: 'literature', safeTop: 0, typeFilter: 'word', mode: 'writing', sourceName: '文学常识', subtitle: '8 类混合随机 · 每页 6 题', questions: [], groupNumber: 0, groupCount: 0, roundQuestionCount: 0, groupPageSize: GROUP_SIZE, progressPercent: 0, answeredCount: 0, answerProgressPercent: 0, pageQuestionCount: 0, nextLabel: '下一组' },
+  data: { theme: 'day', loading: true, hasError: false, errorMessage: '', dataSource: 'local', personalError: '', roundContentUnavailable: false, source: 'literature', safeTop: 0, typeFilter: 'word', mode: 'writing', sourceName: '文学常识', subtitle: '8 类混合随机 · 每页 6 题', questions: [], groupNumber: 0, groupCount: 0, roundQuestionCount: 0, groupPageSize: GROUP_SIZE, progressPercent: 0, answeredCount: 0, answerProgressPercent: 0, pageQuestionCount: 0, nextLabel: '下一组', activated: false, lockedPage: false, membershipVisible: false, restrictedPageCount: 0, restrictedQuestionCount: 0 },
 
   onLoad(options = {}) {
+    this._answerViewport = tabletSheet.viewport(typeof wx === 'undefined' ? null : wx);
     this._source = options.source === 'classical' ? 'classical' : 'literature';
     this._typeExplicit = Boolean(options.type) && compatibleType(this._source, options.type);
     this._type = this._typeExplicit ? options.type : (this._source === 'classical' ? 'word' : null);
@@ -57,6 +64,7 @@ Page(withStudyTime({
     this._stateMap = {};
     this._resumeVersion = 0;
     this._ready = false;
+    this._activated = false;
     const initialMode = options.mode === 'reciting' ? 'reciting' : options.mode === 'writing' ? 'writing' : studyStore.getMode();
     studyStore.setMode(initialMode);
     this.setData({
@@ -98,7 +106,16 @@ Page(withStudyTime({
     this.refreshLocalGroup();
   },
 
+  onResize(event) {
+    const next = tabletSheet.resizedViewport(typeof wx === 'undefined' ? null : wx, this._answerViewport, event);
+    if (!next) return;
+    this._answerViewport = next;
+    if ((this.data.dataSource === 'remote' || this.data.loading) && this._roundId && hasToken()) return this.loadRemoteGroup(this._groupIndex);
+  },
+
   startLocalRound(restore) {
+    this._tabletBatchSize = 1;
+    this._activated = false;
     const resume = restore ? studyStore.getResume() : null;
     const resumeOptions = resume && resume.options || {};
     const matchesContext = resumeOptions.source === this._source
@@ -136,16 +153,18 @@ Page(withStudyTime({
   refreshLocalGroup() {
     const ids = (this._groups && this._groups[this._groupIndex - 1]) || [];
     const cached = this._groupCache && this._groupCache[String(this._groupIndex)];
+    const lockedPage = !this._activated && this._groupIndex > 1;
     const questions = (Array.isArray(cached) ? cached : ids.map((id) => dataService.getQuestion(id)).filter(Boolean))
-      .map((item) => Object.assign({}, item, normalizeState(this._stateMap[item.id])));
+      .map((item) => Object.assign({}, item, normalizeState(this._stateMap[item.id]), { locked: lockedPage }));
     const count = this._groups ? this._groups.length : 0;
     const decorated = this.decorateDrafts(dataService.decorateQuestions(questions));
-    this.setData(Object.assign({ loading: false, dataSource: this.data.dataSource || 'local', questions: decorated, groupNumber: count ? this._groupIndex : 0, groupCount: count, roundQuestionCount: this._roundIds.length, groupPageSize: GROUP_SIZE, progressPercent: count ? Math.round(this._groupIndex / count * 100) : 0, nextLabel: this._groupIndex >= count ? '再练一轮' : '下一组' }, answerDrafts.progress(decorated)));
+    this.setData(Object.assign({ loading: false, dataSource: this.data.dataSource || 'local', questions: decorated, groupNumber: count ? this._groupIndex : 0, groupCount: count, roundQuestionCount: this._roundIds.length, groupPageSize: GROUP_SIZE, progressPercent: count ? Math.round(this._groupIndex / count * 100) : 0, nextLabel: this._groupIndex >= count ? '再练一轮' : '下一组', lockedPage, membershipVisible: lockedPage, restrictedPageCount: Math.max(0, count - 1), restrictedQuestionCount: Math.max(0, this._roundIds.length - Math.min(GROUP_SIZE, this._roundIds.length)), activated: Boolean(this._activated) }, answerDrafts.progress(decorated)));
     if (count) this.saveResume();
   },
 
   async startRemoteRound(restore) {
     this._contentAccountKey = getAccountKey();
+    this._activated = false;
     if (!restore) { this._roundId = ''; this._roundIds = []; this._groupIndex = 1; }
     const localResume = restore ? studyStore.getResume() : null;
     if (restore) this.hydrateLocalResume(localResume);
@@ -213,23 +232,73 @@ Page(withStudyTime({
     this._ready = true;
   },
 
-  async loadRemoteGroup(index) {
+  async loadRemoteGroup(index, forceFree) {
+    if (!this._answerViewport) this._answerViewport = tabletSheet.viewport(typeof wx === 'undefined' ? null : wx);
     this.setData({ loading: true, hasError: false, roundContentUnavailable: false });
+    const requestId = this._groupRequest = (this._groupRequest || 0) + 1;
+    const token = getToken();
     const result = await settle(api.practice.group(this._roundId, index));
+    if (requestId !== this._groupRequest || token !== getToken()) return false;
     if (!result.ok) {
       const message = errorText(result.error);
       if (result.error && result.error.code === 'NETWORK_ERROR' && this.renderCachedGroup(index, message)) return false;
       this.setData({ loading: false, hasError: true, errorMessage: message, questions: [] });
       return false;
     }
-    const payload = result.value || {};
+    let payload = result.value || {};
     this._groupIndex = Number(payload.groupIndex) || index;
     this._roundCount = Number(payload.groupCount) || this._roundCount || 0;
     this._roundTotal = Number(payload.totalCount) || this._roundTotal || 0;
     this._groupPageSize = Number(payload.pageSize) > 0 ? Number(payload.pageSize) : this._groupPageSize || GROUP_SIZE;
-    const rows = Array.isArray(payload.results) ? payload.results : [];
-    this._groupCache[String(this._groupIndex)] = cloneRows(rows);
+    if (payload.access && typeof payload.access.activated === 'boolean') this._activated = payload.access.activated;
+    else if (hasToken() && api.entitlements && api.entitlements.current) {
+      // Older group endpoints omit access metadata. Read the real entitlement
+      // rather than mistaking an existing member for a nonmember during rollout.
+      const entitlement = await settle(api.entitlements.current());
+      if (requestId !== this._groupRequest || token !== getToken()) return false;
+      if (!entitlement.ok) {
+        this.setData({ loading: false, hasError: true, questions: [], errorMessage: '会员状态暂时无法确认，请重新加载' });
+        return false;
+      }
+      this._activated = Boolean(entitlement.value && entitlement.value.active);
+    }
+    if (forceFree) this._activated = false;
+    const runtime = typeof wx === 'undefined' ? null : wx;
+    const desiredSize = tabletSheet.pageSize(this._activated, runtime, this._answerViewport);
+    const batchSize = tabletSheet.isTablet(runtime, this._answerViewport) && this._activated
+      ? Math.max(1, Math.ceil(desiredSize / this._groupPageSize)) : 1;
+    const firstGroup = Math.floor((this._groupIndex - 1) / batchSize) * batchSize + 1;
+    const lastGroup = Math.min(firstGroup + batchSize - 1, this._roundCount || firstGroup);
+    const groups = [{ index: this._groupIndex, payload }];
+    if (batchSize > 1) {
+      const needed = [];
+      for (let group = firstGroup; group <= lastGroup; group += 1) if (group !== this._groupIndex) needed.push(group);
+      const extra = await Promise.all(needed.map(group => settle(api.practice.group(this._roundId, group))));
+      if (requestId !== this._groupRequest || token !== getToken()) return false;
+      const failure = extra.find(item => !item.ok);
+      if (failure) {
+        this.setData({ loading: false, hasError: true, questions: [], errorMessage: errorText(failure.error) });
+        return false;
+      }
+      if (extra.some(item => item.value && item.value.access && item.value.access.activated === false)) {
+        // Recheck after a concurrent revocation; never display a partly authorized sheet.
+        return this.loadRemoteGroup(index, true);
+      }
+      extra.forEach((item, offset) => groups.push({ index: needed[offset], payload: item.value || {} }));
+      groups.sort((a, b) => a.index - b.index);
+      payload = Object.assign({}, payload, {
+        results: groups.reduce((rows, group) => rows.concat(Array.isArray(group.payload.results) ? group.payload.results : []), []),
+        skipped: groups.reduce((rows, group) => rows.concat(Array.isArray(group.payload.skipped) ? group.payload.skipped : []), [])
+      });
+    }
+    this._groupIndex = firstGroup;
+    this._tabletBatchSize = batchSize;
+    groups.forEach(group => {
+      this._groupCache[String(group.index)] = cloneRows(answerDrafts.restrict(group.payload.results, !this._activated && group.index > 1));
+    });
+    const rows = answerDrafts.restrict(Array.isArray(payload.results) ? payload.results : [], !this._activated && this._groupIndex > 1);
     await this.loadStates(rows);
+    if (requestId !== this._groupRequest || token !== getToken()) return false;
     const seenIds = new Set(this._roundIds);
     rows.forEach((item) => { if (item.id && !seenIds.has(item.id)) { seenIds.add(item.id); this._roundIds.push(item.id); } });
     const questions = this.decorateDrafts(rows.map((item) => Object.assign({}, item, this._stateMap[item.id] || normalizeState(null))));
@@ -237,13 +306,18 @@ Page(withStudyTime({
       && payload.skipped.some((item) => item && item.reason === 'ENTITLEMENT_REQUIRED');
     const roundContentUnavailable = !rows.length && Array.isArray(payload.skipped) && payload.skipped.length > 0
       && payload.skipped.every((item) => item && (item.reason === 'UNAVAILABLE' || item.reason === 'SCOPE_CHANGED'));
-    this.setData(Object.assign({ loading: false, dataSource: 'remote', questions, roundContentUnavailable, groupNumber: this._groupIndex, groupCount: this._roundCount, roundQuestionCount: this._roundTotal, groupPageSize: this._groupPageSize, progressPercent: this._roundCount ? Math.round(this._groupIndex / this._roundCount * 100) : 0, nextLabel: this._groupIndex >= this._roundCount ? '再练一轮' : '下一组', personalError: restricted ? errorText({ code: 'ENTITLEMENT_REQUIRED' }) : '' }, answerDrafts.progress(questions)));
+    const lockedPage = !this._activated && this._groupIndex > 1;
+    const groupNumber = Math.floor((this._groupIndex - 1) / batchSize) + 1;
+    const groupCount = Math.ceil(this._roundCount / batchSize);
+    this.setData(Object.assign({ loading: false, dataSource: 'remote', questions, roundContentUnavailable, groupNumber, groupCount, roundQuestionCount: this._roundTotal, groupPageSize: this._groupPageSize * batchSize, progressPercent: groupCount ? Math.round(groupNumber / groupCount * 100) : 0, nextLabel: groupNumber >= groupCount ? '再练一轮' : '下一组', personalError: restricted ? errorText({ code: 'ENTITLEMENT_REQUIRED' }) : '', lockedPage, membershipVisible: lockedPage, restrictedPageCount: Math.max(0, this._roundCount - 1), restrictedQuestionCount: Number(payload.access && payload.access.restrictedQuestionCount) || Math.max(0, this._roundTotal - this._groupPageSize), activated: Boolean(this._activated) }, answerDrafts.progress(questions)));
     this.saveResume();
     return true;
   },
 
   async loadStates(rows) {
     if (!hasToken()) return;
+    rows = rows.filter((item) => !item.locked);
+    if (!rows.length) return;
     rows.forEach((item) => { if (item.state) this._stateMap[item.id] = normalizeState(item.state); });
     const missing = rows.filter((item) => !item.state);
     if (!missing.length) return;
@@ -257,6 +331,7 @@ Page(withStudyTime({
   },
 
   saveResume() {
+    if (this.data.lockedPage || (this.data.questions || []).some(q => q.locked)) return;
     studyStore.saveResume({
       path: PAGE_PATH,
       options: { source: this._source, type: this._type, articleId: this._articleId || null, mode: this.data.mode },
@@ -270,6 +345,7 @@ Page(withStudyTime({
     });
     if (!hasToken() || !this._roundIds.length) return;
     const id = this.data.questions[0] && this.data.questions[0].id || this._roundIds[0];
+    if (this.data.lockedPage || (this.data.questions || []).some(q => String(q.id) === String(id) && q.locked)) return this.openMembership();
     if (!id) return;
     const body = { source: this._source, categoryId: null, articleId: this._articleId, type: this._type, mode: this.data.mode, questionId: id, roundId: this._roundId || null, groupIndex: this._groupIndex, baseVersion: this._resumeVersion };
     settle(api.learning.saveResume(body)).then((result) => {
@@ -308,6 +384,8 @@ Page(withStudyTime({
   renderCachedGroup(index, message) {
     const rows = this._groupCache && this._groupCache[String(index)];
     if (!Array.isArray(rows) || !rows.length) return false;
+    // A network failure cannot re-authorize a previously downloaded paid round.
+    if (this._roundId && rows.some(row => row.revision != null)) return false;
     this._groupIndex = Number(index) || this._groupIndex || 1;
     const states = this._stateMap || {};
     const questions = this.decorateDrafts(rows.map((item) => Object.assign({}, item, normalizeState(states[item.id]))));
@@ -325,7 +403,7 @@ Page(withStudyTime({
     if (!this._draftStore) this._draftStore = answerDrafts.createStore(api.auth, typeof wx === 'undefined' ? null : wx);
     return this._draftStore;
   },
-  decorateDrafts(questions) { return answerDrafts.decorate(questions, this.draftStore()); },
+  decorateDrafts(questions) { return answerDrafts.decorate(answerDrafts.restrict(questions, !this._activated && this._groupIndex > 1), this.draftStore()); },
   onAnswerInput(event) {
     const update = answerDrafts.acceptInput(this, event, this.draftStore());
     if (update) this.setData(update);
@@ -339,6 +417,7 @@ Page(withStudyTime({
   onRetry() { if (hasToken()) this.startRemoteRound(false); else { this.startLocalRound(false); this.refreshLocalGroup(); } },
   async onModeChange(event) { const mode = event.detail.mode; if (mode !== 'writing' && mode !== 'reciting' || mode === this.data.mode) return; studyStore.setMode(mode); this.setData({ mode }); if (this.data.dataSource === 'remote') { await this.loadRemoteGroup(this._groupIndex); this.saveResume(); } else this.refreshLocalGroup(); },
   async updateState(id, field, desiredValue) {
+    if (this.data.lockedPage || (this.data.questions || []).some(q => String(q.id) === String(id) && q.locked)) return this.openMembership();
     if (!id) return;
     if (!hasToken()) {
       const current = studyStore.getState();
@@ -376,18 +455,31 @@ Page(withStudyTime({
   },
   onPreviousGroup() {
     if (this.data.groupNumber <= 1) return;
-    if (this.data.dataSource === 'remote') this.loadRemoteGroup(this._groupIndex - 1);
+    if (this.data.dataSource === 'remote') {
+      const pending = this.loadRemoteGroup(Math.max(1, this._groupIndex - (this._tabletBatchSize || 1)));
+      if (typeof wx !== 'undefined' && wx.pageScrollTo) wx.pageScrollTo({ scrollTop: 0, duration: 180 });
+      return pending;
+    }
     else { this._groupIndex -= 1; this.refreshLocalGroup(); }
     if (typeof wx !== 'undefined' && wx.pageScrollTo) wx.pageScrollTo({ scrollTop: 0, duration: 180 });
   },
   onNextGroup() {
-    if (!this.data.groupCount || this._groupIndex >= this.data.groupCount) return;
-    if (this.data.dataSource === 'remote') this.loadRemoteGroup(this._groupIndex + 1);
+    if (!this.data.groupCount || this.data.groupNumber >= this.data.groupCount) return;
+    if (this.data.dataSource === 'remote') {
+      const pending = this.loadRemoteGroup(this._groupIndex + (this._tabletBatchSize || 1));
+      if (typeof wx !== 'undefined' && wx.pageScrollTo) wx.pageScrollTo({ scrollTop: 0, duration: 200 });
+      return pending;
+    }
     else { this._groupIndex += 1; this.refreshLocalGroup(); }
     if (typeof wx !== 'undefined' && wx.pageScrollTo) wx.pageScrollTo({ scrollTop: 0, duration: 200 });
   },
   openHome() { navigation.openPage('/pages/home/index'); },
   openFavorites() { navigation.openPage('/pages/favorites/index'); },
-  openProfile() { navigation.openPage('/pages/mine/index'); },
-  onGoStudy() { navigation.openPage(this._source === 'classical' ? '/pages/classical/index' : '/pages/literature/index'); }
+  openProfile() { navigation.openPage('/pages/mine/index', { membership: '1' }); },
+  onGoStudy() { navigation.openPage(this._source === 'classical' ? '/pages/classical/index' : '/pages/literature/index'); },
+  openMembership() { this.setData({ membershipVisible: true }); },
+  closeMembership() { this.setData({ membershipVisible: false }); },
+  goMembership() { this.setData({ membershipVisible: false }); navigation.openPage('/pages/mine/index', { membership: '1' }); },
+  onShareAppMessage() { return shareAppMessage(); },
+  onShareTimeline() { return shareTimeline(); }
 }));

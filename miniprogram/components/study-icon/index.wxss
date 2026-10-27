@@ -1,2 +1,7 @@
 :host { display: inline-flex; vertical-align: middle; }
 .icon { display: block; }
+
+/* Component isolation must not reintroduce viewport-scaled tablet sizes. */
+@media (min-width: 600px) {
+  :host { --study-rpx: 0.625px; }
+}

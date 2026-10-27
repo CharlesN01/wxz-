@@ -40,6 +40,27 @@ async function refreshSession() {
   return login();
 }
 
+function wechatSessionValid() {
+  return new Promise((resolve) => {
+    if (typeof wx === 'undefined' || typeof wx.checkSession !== 'function') {
+      resolve(false);
+      return;
+    }
+    wx.checkSession({ success: () => resolve(true), fail: () => resolve(false) });
+  });
+}
+
+// Before a virtual payment the backend signs with the session_key captured at
+// the last wx.login. WeChat validates that signature against the session_key it
+// still holds for the user, which can expire independently while our 7-day
+// token is still valid. Re-login whenever the local token is missing or the
+// WeChat session has lapsed, so the key the backend signs with matches WeChat's.
+async function ensureFreshSession() {
+  if (!session.getToken()) return login();
+  if (await wechatSessionValid()) return session.getSession();
+  return refreshSession();
+}
+
 async function logout() {
   const token = session.getToken();
   try {
@@ -57,4 +78,4 @@ async function logout() {
   }
 }
 
-module.exports = { login, logout, refreshSession };
+module.exports = { login, logout, refreshSession, ensureFreshSession };

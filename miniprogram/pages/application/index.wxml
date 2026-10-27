@@ -7,10 +7,7 @@
       <text class="hero-copy">选好文种，直接看写作样例、记要点。写完后可按题目要求自查。</text>
       <view class="hero-foot"><text>写作样例</text><text>题目要求</text><text>写作要点</text></view>
     </view>
-    <view class="section-head">
-      <text class="section-title">选择文种</text>
-      <view class="theme-switch"><button class="theme-option {{theme === 'blue' ? 'active' : ''}}" data-theme="blue" bindtap="changeTheme" aria-label="蓝色主题">蓝色</button><button class="theme-option {{theme === 'warm' ? 'active' : ''}}" data-theme="warm" bindtap="changeTheme" aria-label="暖色主题">暖色</button></view>
-    </view>
+    <view class="section-head"><text class="section-title">选择文种</text></view>
     <view wx:if="{{loading}}" class="state">正在加载应用文内容…</view>
     <view wx:elif="{{error}}" class="state error"><text>{{error}}</text><button class="retry-button" bindtap="retry">重新加载</button></view>
     <view wx:elif="{{!items.length && !restrictedCount}}" class="state"><text>暂无已发布的应用文内容</text><text class="state-copy">发布后可在这里切换文种、查看样例和要点。</text><button class="retry-button" bindtap="retry">刷新内容</button></view>
@@ -33,18 +30,16 @@
       <view wx:elif="{{selected && reader}}" class="panel">
         <view class="article-heading"><text class="article-title">{{selected.title}}</text><text class="source-label">{{reader.sourceLabel}}</text></view>
         <block wx:if="{{mode === 'template'}}">
+          <view wx:if="{{reader.requirement}}" class="requirement"><text class="requirement-title">题目要求</text><text class="requirement-body">{{reader.requirement}}</text></view>
           <text class="panel-heading">{{selected.kind === 'exercise' ? '参考答案' : '写作样例'}}</text>
           <text wx:if="{{reader.sample}}" class="template-content">{{reader.sample}}</text>
           <text wx:else class="content-empty">该内容未单独提供写作样例，可切换查看写作要点或原文。</text>
-          <view wx:if="{{reader.requirement}}" class="requirement"><text class="requirement-title">题目要求</text><text class="requirement-body">{{reader.requirement}}</text></view>
         </block>
         <block wx:else>
           <text class="panel-heading">写作要点</text>
           <view wx:if="{{reader.points.length}}" class="steps"><view wx:for="{{reader.points}}" wx:key="*this" class="step"><text class="step-number">{{index + 1}}</text><text class="step-copy">{{item}}</text></view></view>
           <text wx:else class="content-empty">该内容尚未单独提供写作要点，请查看写作样例或原文。</text>
         </block>
-        <button class="original-toggle" bindtap="toggleOriginal">{{originalVisible ? '收起原文' : '查看完整原文'}}</button>
-        <text wx:if="{{originalVisible}}" class="original-content">{{reader.original}}</text>
       </view>
       <view wx:if="{{detailItems.length}}" class="page-nav"><button disabled="{{selectedIndex <= 0}}" data-direction="-1" bindtap="changePage">‹ 上一篇</button><text class="page-no">第 {{selectedIndex + 1}} / {{detailItems.length}} 篇</text><button disabled="{{selectedIndex >= detailItems.length - 1}}" data-direction="1" bindtap="changePage">下一篇 ›</button></view>
     </block>

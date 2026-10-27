@@ -1,0 +1,30 @@
+page { background: var(--theme-background, #f5f9ff); }
+.orders-page { min-height: 100vh; padding-bottom: var(--study-rpx-32); color: var(--theme-ink, #152844); background: var(--theme-background, #f5f9ff); }
+.orders-body { padding: var(--study-rpx-24); }
+.state { margin-bottom: var(--study-rpx-20); padding: var(--study-rpx-22); border-radius: var(--study-rpx-18); color: var(--theme-muted, #718097); background: var(--theme-soft, #eef6ff); font-size: var(--study-rpx-24); text-align: center; }
+.error-state { color: #b65f4c; background: #fff5f2; }
+.login-card { padding: var(--study-rpx-28); border: var(--study-rpx-1) solid var(--theme-border, #dce9fb); border-radius: var(--study-rpx-24); background: var(--theme-paper, #fff); }
+.login-title { display: block; font-size: var(--study-rpx-32); font-weight: 700; }
+.login-copy { display: block; margin-top: var(--study-rpx-10); color: var(--theme-muted, #8492a8); font-size: var(--study-rpx-24); line-height: 1.55; }
+.primary { display: flex; align-items: center; justify-content: center; min-height: var(--study-rpx-76); margin-top: var(--study-rpx-20); border: 0; border-radius: var(--study-rpx-16); color: #fff; background: var(--theme-accent, #247fee); font-size: var(--study-rpx-28); font-weight: 700; line-height: normal; }
+.orders-heading { display: flex; align-items: baseline; justify-content: space-between; margin: var(--study-rpx-8) var(--study-rpx-4) var(--study-rpx-16); }
+.heading-title { font-size: var(--study-rpx-34); font-weight: 700; }
+.heading-count { color: var(--theme-muted, #8492a8); font-size: var(--study-rpx-24); }
+.orders-list { overflow: hidden; border-radius: var(--study-rpx-22); background: var(--theme-paper, #fff); }
+.order-row { display: block; padding: var(--study-rpx-26) var(--study-rpx-24); border-bottom: var(--study-rpx-1) solid var(--theme-soft, #edf0f5); }
+.order-row:last-child { border-bottom: 0; }
+.order-main, .order-meta { display: flex; align-items: center; justify-content: space-between; gap: var(--study-rpx-16); }
+.order-product { min-width: 0; font-size: var(--study-rpx-28); font-weight: 700; }
+.order-price { flex: 0 0 auto; font-size: var(--study-rpx-28); font-weight: 700; }
+.order-meta { margin-top: var(--study-rpx-10); color: var(--theme-muted, #8492a8); font-size: var(--study-rpx-22); }
+.order-action { display: block; margin-top: var(--study-rpx-10); color: var(--theme-accent, #247fee); font-size: var(--study-rpx-22); font-weight: 700; }
+.empty { display: flex; flex-direction: column; align-items: center; padding: var(--study-rpx-120) var(--study-rpx-20); color: var(--theme-muted, #8492a8); background: var(--theme-paper, #fff); border-radius: var(--study-rpx-22); font-size: var(--study-rpx-28); }
+.empty-copy { margin-top: var(--study-rpx-12); font-size: var(--study-rpx-22); }
+.detail-toolbar { margin-bottom: var(--study-rpx-14); }
+.back-button { display: inline-flex; align-items: center; justify-content: center; min-height: var(--study-rpx-58); padding: 0 var(--study-rpx-16); border: var(--study-rpx-1) solid var(--theme-border, #dce9fb); border-radius: var(--study-rpx-14); color: var(--theme-accent, #247fee); background: var(--theme-paper, #fff); font-size: var(--study-rpx-24); line-height: normal; }
+.detail-card { padding: var(--study-rpx-28) var(--study-rpx-24); border-radius: var(--study-rpx-22); background: var(--theme-paper, #fff); }
+.detail-title { display: block; margin-bottom: var(--study-rpx-16); font-size: var(--study-rpx-34); font-weight: 700; }
+.detail-line { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--study-rpx-20); padding: var(--study-rpx-18) 0; border-bottom: var(--study-rpx-1) solid var(--theme-soft, #edf0f5); color: var(--theme-muted, #718097); font-size: var(--study-rpx-24); }
+.detail-line > text:last-child { max-width: 72%; color: var(--theme-ink, #152844); text-align: right; word-break: break-all; }
+.detail-status { color: var(--theme-accent, #247fee) !important; font-weight: 700; }
+.detail-tip { display: block; margin-top: var(--study-rpx-20); color: var(--theme-muted, #718097); font-size: var(--study-rpx-22); line-height: 1.55; }

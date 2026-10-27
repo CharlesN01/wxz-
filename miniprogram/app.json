@@ -6,6 +6,7 @@
     "pages/practice/index",
     "pages/random/index",
     "pages/favorites/index",
+    "pages/orders/index",
     "pages/application/index",
     "pages/mine/index",
     "pages/resources/index"
@@ -20,8 +21,10 @@
     "mode-switch": "/components/mode-switch/index",
     "question-card": "/components/question-card/index",
     "empty-state": "/components/empty-state/index",
-    "study-icon": "/components/study-icon/index"
+    "study-icon": "/components/study-icon/index",
+    "membership-gate": "/components/membership-gate/index"
   },
   "style": "v2",
-  "lazyCodeLoading": "requiredComponents"
+  "lazyCodeLoading": "requiredComponents",
+  "resizable": true
 }

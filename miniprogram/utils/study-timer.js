@@ -163,8 +163,8 @@ const clock = createStudyTimer({
 
 function questionReady(page) {
   const data = page.data;
-  return !data.loading && !data.hasError && data.dataSource === 'remote'
-    && (data.questions || []).some((question) => !question.unavailable);
+  return !data.loading && !data.hasError && !data.lockedPage && data.dataSource === 'remote'
+    && (data.questions || []).some((question) => !question.unavailable && !question.locked);
 }
 
 function withStudyTime(definition, check) {

@@ -1,4 +1,4 @@
-<view class="literature-page literature-{{mode}} theme-{{theme}}">
+<view class="literature-page literature-{{mode}} tablet-{{activated ? 'member' : 'free'}}-sheet theme-{{theme}}">
   <study-navbar title="文学常识" theme="paper" back="{{true}}" class="page-navbar" />
   <view class="literature-main">
     <view wx:if="{{mode === 'writing'}}" class="literature-hero">
@@ -25,35 +25,49 @@
         <view class="mode {{mode === 'reciting' ? 'mode-active' : ''}}" data-mode="reciting" bindtap="onModeTap" role="button" aria-label="背诵全览" aria-pressed="{{mode === 'reciting'}}">背诵全览</view>
       </view>
     </view>
+    <view wx:if="{{!loading && !hasError}}" class="membership-status">{{activated ? '会员已开通 · 全部题目可答' : '未开通会员 · 第 1 页免费'}}</view>
     <view class="page-progress" aria-label="本页已答 {{answeredCount}} / {{pageQuestionCount}}"><view class="page-progress-fill" style="width: {{answerProgressPercent || 0}}%;"></view></view>
 
     <view wx:if="{{loading}}" class="page-loading"><view class="loading-spinner"></view><text>正在加载题目...</text></view>
     <view wx:elif="{{hasError}}" class="page-error">
       <view class="error-icon">!</view><text class="error-title">题目加载失败</text><text class="error-copy">{{errorMessage}}</text><view class="retry-button" role="button" bindtap="retry">重新加载</view>
     </view>
-    <view wx:elif="{{questions.length}}" class="question-list">
-      <view wx:for="{{questions}}" wx:key="id" class="question">
-        <view class="question-head">
-          <text class="question-index">{{index + 1 < 10 ? '0' + (index + 1) : index + 1}} / {{questions.length < 10 ? '0' + questions.length : questions.length}}</text>
-          <view class="question-tools">
-            <view class="favorite-button {{item.favorite ? 'favorite-selected' : ''}}" data-id="{{item.id}}" bindtap="toggleFavorite" role="button" aria-label="{{item.favorite ? '取消收藏' : '收藏'}}" aria-pressed="{{item.favorite}}">{{item.favorite ? '★' : '☆'}}</view>
+    <view wx:elif="{{questions.length}}" class="question-list {{lockedPage ? 'question-list-locked' : ''}}">
+      <view wx:for="{{questions}}" wx:key="id" class="question {{item.locked ? 'question-locked' : ''}}">
+        <block wx:if="{{item.locked}}">
+          <view class="locked-literature-card" bindtap="openMembership" role="button" aria-label="开通会员查看题目">
+            <view class="locked-literature-head"><text class="question-index">{{index + 1 < 10 ? '0' + (index + 1) : index + 1}}.</text><text>会员专享题目</text></view>
+            <view class="locked-literature-lines"><view class="locked-literature-line locked-literature-long"></view><view class="locked-literature-line locked-literature-medium"></view><view class="locked-literature-line locked-literature-short"></view></view>
+            <view class="locked-literature-action">开通会员后查看并答题</view>
+          </view>
+        </block>
+        <block wx:else>
+        <view class="question-line">
+          <text class="question-index">{{index + 1 < 10 ? '0' + (index + 1) : index + 1}}.</text>
+          <view class="question-content">
+            <view class="question-text">
+              <block wx:for="{{item.parts}}" wx:for-item="part" wx:key="key">
+                <input wx:if="{{mode === 'writing' && part.isBlank}}" class="blank answer-input" value="{{item.draftAnswers[part.answerIndex] || ''}}" data-id="{{item.id}}" data-index="{{part.answerIndex}}" bindinput="onBlankInput" maxlength="-1" aria-label="第 {{part.answerIndex + 1}} 空" />
+                <text wx:else class="{{part.isFilled ? 'filled-answer' : ''}}">{{part.text}}</text>
+              </block>
+            </view>
           </view>
         </view>
-        <view class="question-text">
-          <block wx:for="{{item.parts}}" wx:for-item="part" wx:key="key">
-            <input wx:if="{{mode === 'writing' && part.isBlank}}" class="blank answer-input" value="{{item.draftAnswers[part.answerIndex] || ''}}" data-id="{{item.id}}" data-index="{{part.answerIndex}}" bindinput="onBlankInput" maxlength="-1" placeholder="填写答案" aria-label="第 {{part.answerIndex + 1}} 空" />
-            <text wx:else class="{{part.isFilled ? 'filled-answer' : ''}}">{{part.text}}</text>
-          </block>
+        <view class="question-tools">
+          <view class="favorite-button {{item.favorite ? 'favorite-selected' : ''}}" data-id="{{item.id}}" bindtap="toggleFavorite" role="button" aria-label="{{item.favorite ? '取消收藏' : '收藏'}}" aria-pressed="{{item.favorite}}">{{item.favorite ? '★' : '☆'}}</view>
         </view>
-        <input wx:if="{{mode === 'writing' && !item.hasInlineBlanks && item.hasAnswerInput}}" class="answer-input standalone-answer-input" value="{{item.draftAnswers[0] || ''}}" data-id="{{item.id}}" data-index="0" bindinput="onBlankInput" maxlength="-1" placeholder="填写答案" aria-label="填写本题答案" />
+        <input wx:if="{{mode === 'writing' && !item.hasInlineBlanks && item.hasAnswerInput}}" class="answer-input standalone-answer-input" value="{{item.draftAnswers[0] || ''}}" data-id="{{item.id}}" data-index="0" bindinput="onBlankInput" maxlength="-1" aria-label="填写本题答案" />
         <view wx:if="{{mode === 'writing' && item.answerVisible}}" class="answer"><text class="answer-label">答案：</text><text>{{item.answerText}}</text></view>
         <view wx:if="{{mode === 'writing'}}" class="question-foot">
           <text></text><view class="answer-button" data-id="{{item.id}}" bindtap="toggleAnswer" role="button">{{item.answerVisible ? '收起答案' : '查看答案'}}</view>
         </view>
+        </block>
       </view>
-      <view wx:if="{{restrictedCount}}" class="access-note">还有 {{restrictedCount}} 道题目需要开通权益后继续学习</view>
+      <view wx:if="{{!isTablet && !activated && restrictedCount}}" class="access-note">还有 {{restrictedCount}} 道题目需要开通权益后继续学习</view>
     </view>
     <view wx:elif="{{!loading}}" class="literature-empty"><empty-state title="暂无文学常识题目" description="该分类暂无已发布内容，先看看其他时期吧" action-text="查看第一个分类" bind:action="showFirstCategory" /></view>
+
+    <view wx:if="{{isTablet && !loading && !hasError && !activated && restrictedCount && questions.length}}" class="access-note tablet-access-note">还有 {{restrictedCount}} 道题目需要开通权益后继续学习</view>
 
     <view wx:if="{{!loading && pageCount}}" class="pagination">
       <view class="page-button {{canPrevious ? '' : 'page-disabled'}}" data-delta="-1" bindtap="goPage" role="button">‹</view>
@@ -62,6 +76,8 @@
     </view>
     <view class="tip">学习建议：先在“默写自测”中独立作答，再切换“背诵全览”核对答案。完成后可切换下一个时期继续学习。</view>
   </view>
+
+  <membership-gate visible="{{membershipVisible}}" remaining-pages="{{restrictedPageCount}}" remaining-questions="{{restrictedQuestionCount}}" context-label="{{categoryName}}练习" bindopen="goMembership" bindclose="closeMembership" />
 
   <view class="bottom-nav study-bottom-navigation">
     <view class="bottom-nav-item study-bottom-navigation-item bottom-nav-active" bindtap="openHome" role="button"><text class="bottom-nav-icon study-bottom-navigation-icon">▦</text><text class="study-bottom-navigation-label">学习</text></view>

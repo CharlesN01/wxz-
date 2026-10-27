@@ -1,3 +1,8 @@
+const SHARE_TITLE = '文常记｜山东专升本语文';
+const SHARE_PATH = '/pages/home/index';
+const SHARE_IMAGE = '/assets/share-cover.png';
+function shareAppMessage() { return { title: SHARE_TITLE, path: SHARE_PATH, imageUrl: SHARE_IMAGE }; }
+function shareTimeline() { return { title: SHARE_TITLE, query: '', imageUrl: SHARE_IMAGE }; }
 const { withStudyTime } = require('../../utils/study-timer');
 const api = require('../../services/api');
 const navigation = require('../../utils/navigation');
@@ -169,7 +174,9 @@ Page(withStudyTime({
   toggleOriginal() { this.setData({ originalVisible: !this.data.originalVisible }); },
   openMembership() { this._refreshOnShow = true; navigation.openPage('/pages/mine/index'); },
   retry() { return this.load(); },
-  back() { navigation.openPage('/pages/home/index'); }
+  back() { navigation.openPage('/pages/home/index'); },
+  onShareAppMessage() { return shareAppMessage(); },
+  onShareTimeline() { return shareTimeline(); }
 }, (page) => Boolean(!page.data.loading && page.data.detailVisible && !page.data.detailLoading
   && !page.data.detailError && page.data.selected && page.data.selected.body && page.data.reader
   && (page.data.originalVisible || (page.data.mode === 'points' ? page.data.reader.points.length

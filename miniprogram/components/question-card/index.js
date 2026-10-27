@@ -1,4 +1,12 @@
 const utils = require('../../utils/question-utils');
+const dataService = require('../../services/data-service');
+
+function originLabel(question) {
+  const item = question || {};
+  const fallback = dataService.getArticleTitle ? dataService.getArticleTitle(item.articleId) : '';
+  const title = String(item.articleTitle || fallback || '').trim().replace(/^《|》$/g, '');
+  return title ? `《${title}》` : '文言文';
+}
 
 function translationPrompt(stem) {
   // Remove only the answer placeholder and its trailing instruction. A quote
@@ -18,10 +26,15 @@ Component({
     variant: { type: String, value: 'green' },
     showTag: { type: Boolean, value: false }
   },
-  data: { segments: [], isTranslation: false, translationStem: '', translationAnswer: '', wordStem: '', isWordExplanation: false, standaloneAnswer: false, answerVisible: false, answerText: '', draftAnswers: [] },
+  data: { segments: [], isTranslation: false, translationStem: '', translationAnswer: '', wordStem: '', isWordExplanation: false, standaloneAnswer: false, answerVisible: false, answerText: '', originLabel: '', draftAnswers: [] },
   observers: {
     'question, mode'(question, mode) {
       const item = question || {};
+      if (item.locked) {
+        this._questionKey = null; this._renderKey = null;
+        this.setData({ segments: [], translationStem: '', translationAnswer: '', wordStem: '', answerText: '', draftAnswers: [], answerVisible: false });
+        return;
+      }
       const stem = String(item.stem || '');
       const answers = Array.isArray(item.answers) ? item.answers : [];
       const questionKey = JSON.stringify([String(item.id || stem), item.revision == null ? null : String(item.revision)]);
@@ -34,6 +47,8 @@ Component({
       const draftAnswers = utils.normalizeDraftAnswers(item, sourceDraft);
       const renderKey = JSON.stringify([questionKey, stem, answers, item.type, mode]);
       const update = {};
+      const label = originLabel(item);
+      if (label !== this.data.originLabel) update.originLabel = label;
 
       // Favorite/mastered changes replace question objects. Keep the existing
       // input nodes and values when their content has not changed.
@@ -62,9 +77,10 @@ Component({
     }
   },
   methods: {
-    favorite() { this.triggerEvent('favorite', { id: this.data.question.id }); },
-    master() { this.triggerEvent('master', { id: this.data.question.id }); },
+    favorite() { if (this.data.question.locked) return this.unlock(); this.triggerEvent('favorite', { id: this.data.question.id }); },
+    master() { if (this.data.question.locked) return this.unlock(); this.triggerEvent('master', { id: this.data.question.id }); },
     onDraftInput(event) {
+      if (this.data.question.locked) return;
       const index = Number(event.currentTarget.dataset.answerIndex);
       if (!utils.requiredAnswerIndices(this.data.question).includes(index)) return;
       const values = this.data.draftAnswers.slice();
@@ -72,6 +88,7 @@ Component({
       this.setData({ [`draftAnswers[${index}]`]: values[index] });
       this.triggerEvent('answerinput', { id: this.data.question.id, values, ...utils.answerProgress(this.data.question, values) });
     },
-    toggleAnswer() { this.setData({ answerVisible: !this.data.answerVisible }); }
+    toggleAnswer() { if (this.data.question && this.data.question.locked) return; this.setData({ answerVisible: !this.data.answerVisible }); },
+    unlock() { this.triggerEvent('unlock', { id: this.data.question && this.data.question.id }); }
   }
 });

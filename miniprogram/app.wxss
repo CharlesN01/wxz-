@@ -1,3 +1,4 @@
+@import "styles/tablet.wxss";
 @import "styles/bottom-navigation.wxss";
 @import "styles/theme.wxss";
 
@@ -14,20 +15,22 @@ page {
   background: var(--study-blue-050);
   color: var(--study-ink);
   font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
-  font-size: 30rpx;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  font-size: var(--study-rpx-36);
   line-height: 1.6;
 }
 view, text, button, input, scroll-view { box-sizing: border-box; }
 button { display: flex; align-items: center; justify-content: center; margin: 0; padding: 0; border-radius: 0; font-size: inherit; line-height: normal; text-align: center; background: transparent; box-sizing: border-box; }
 button::after { border: 0; }
 .safe-top { padding-top: env(safe-area-inset-top); }
-.safe-bottom { padding-bottom: calc(28rpx + env(safe-area-inset-bottom)); }
-.page-content { padding: 28rpx 30rpx; }
+.safe-bottom { padding-bottom: calc(var(--study-rpx-28) + env(safe-area-inset-bottom)); }
+.page-content { padding: var(--study-rpx-28) var(--study-rpx-30); }
 .primary-button {
-  min-height: 88rpx; display: flex; align-items: center; justify-content: center;
-  padding: 18rpx 32rpx; border-radius: 20rpx; background: var(--study-blue-900);
-  color: #FFFFFF; font-size: 30rpx; font-weight: 600; line-height: normal;
-  box-shadow: 0 8rpx 20rpx rgba(18, 52, 91, .14);
+  min-height: var(--study-rpx-88); display: flex; align-items: center; justify-content: center;
+  padding: var(--study-rpx-18) var(--study-rpx-32); border-radius: var(--study-rpx-20); background: var(--study-blue-900);
+  color: #FFFFFF; font-size: var(--study-rpx-36); font-weight: 600; line-height: normal;
+  box-shadow: 0 var(--study-rpx-8) var(--study-rpx-20) rgba(18, 52, 91, .14);
 }
 .muted { color: var(--study-muted); }
 .surface { background: #FFFFFF; border: 1px solid var(--study-border); }

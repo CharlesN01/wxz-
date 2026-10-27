@@ -1,1 +1,1 @@
-<image class="icon" src="{{iconSource}}" mode="aspectFit" style="width: {{size}}rpx; height: {{size}}rpx; {{iconStyle}}" aria-hidden="true" />
+<image class="icon" src="{{iconSource}}" mode="aspectFit" style="{{iconStyle}}" aria-hidden="true" />

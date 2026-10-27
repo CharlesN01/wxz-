@@ -1,3 +1,8 @@
+const SHARE_TITLE = '文常记｜山东专升本语文';
+const SHARE_PATH = '/pages/home/index';
+const SHARE_IMAGE = '/assets/share-cover.png';
+function shareAppMessage() { return { title: SHARE_TITLE, path: SHARE_PATH, imageUrl: SHARE_IMAGE }; }
+function shareTimeline() { return { title: SHARE_TITLE, query: '', imageUrl: SHARE_IMAGE }; }
 const { withStudyTime } = require('../../utils/study-timer');
 const dataService = require('../../services/data-service');
 const studyStore = require('../../utils/study-store');
@@ -5,6 +10,7 @@ const navigation = require('../../utils/navigation');
 const api = require('../../services/api');
 const answerDrafts = require('../../utils/answer-drafts');
 
+const tabletSheet = require('../../utils/tablet-answer-sheet');
 const GROUP_SIZE = 6;
 function currentTheme() { try { return wx.getStorageSync('chinese-study.theme') === 'night' ? 'night' : 'day'; } catch (_) { return 'day'; } }
 function canRequest() { return typeof wx !== 'undefined' && typeof wx.request === 'function'; }
@@ -34,8 +40,9 @@ function localQuestionState(id) {
 }
 
 Page(withStudyTime({
-  data: { theme: 'day', loading: true, hasError: false, errorMessage: '', dataSource: 'local', personalError: '', requiresEntitlement: false, restrictedCount: 0, title: '重点字词专项', typeLabel: '重点字词', isWord: true, mode: 'writing', questions: [], total: 0, completed: 0, progressPercent: 0, answeredCount: 0, answerProgressPercent: 0, pageCompleted: 0, pageProgressPercent: 0, pageQuestionCount: 0, groupIndex: 0, groupCount: 0, nextLabel: '下一组' },
+  data: { theme: 'day', loading: true, hasError: false, errorMessage: '', dataSource: 'local', personalError: '', requiresEntitlement: false, restrictedCount: 0, restrictedPageCount: 0, restrictedQuestionCount: 0, activated: false, lockedPage: false, membershipVisible: false, title: '重点字词专项', typeLabel: '重点字词', isWord: true, mode: 'writing', questions: [], total: 0, completed: 0, progressPercent: 0, answeredCount: 0, answerProgressPercent: 0, pageCompleted: 0, pageProgressPercent: 0, pageQuestionCount: 0, groupIndex: 0, groupCount: 0, groupPageSize: GROUP_SIZE, nextLabel: '下一组' },
   onLoad(options) {
+    this._answerViewport = tabletSheet.viewport(typeof wx === 'undefined' ? null : wx);
     options = options || {};
     this.articleId = options.articleId || '';
     this._requestedQuestionId = options.questionId || '';
@@ -48,6 +55,7 @@ Page(withStudyTime({
     this._groupCache = {};
     this._resumeVersion = 0;
     this._remoteLoaded = false;
+    this._activated = false;
     const initialMode = options.mode === 'reciting' ? 'reciting' : options.mode === 'writing' ? 'writing' : studyStore.getMode();
     studyStore.setMode(initialMode);
     this.setData({ title: this.questionType === 'word' ? '重点字词专项' : '重点翻译专项', articleTitle: this.articleTitle, typeLabel: this.questionType === 'word' ? '重点字词' : '重点翻译', isWord: this.questionType === 'word', mode: initialMode });
@@ -62,12 +70,22 @@ Page(withStudyTime({
   onShow() {
     this.setData({ theme: currentTheme() });
     if (!this._remoteLoaded || this.data.loading) return;
-    if (canRequest() && (this._contentToken !== getToken()
-      || hasToken() && (this.data.restrictedCount > 0 || this.data.dataSource === 'local'))) return this.loadRemote(false);
-    else this.refreshQuestions();
+    if (canRequest()) return this.loadRemote(false, true);
+    this.refreshQuestions();
+  },
+  questionPageSize() { return tabletSheet.pageSize(this._activated, typeof wx === 'undefined' ? null : wx, this._answerViewport); },
+  onResize(event) {
+    const next = tabletSheet.resizedViewport(typeof wx === 'undefined' ? null : wx, this._answerViewport, event);
+    if (!next) return;
+    this._answerViewport = next;
+    if (this.allQuestions && canRequest()) return this.loadRemote(false, true);
+    if (!this.data.loading) this.refreshQuestions();
   },
   onUnload() { this._loadGeneration = (this._loadGeneration || 0) + 1; },
-  async loadRemote(restore) {
+  async loadRemote(restore, preservePage) {
+    if (!this._answerViewport) this._answerViewport = tabletSheet.viewport(typeof wx === 'undefined' ? null : wx);
+    const previousGroup = preservePage && this._contentToken === getToken() ? this.data.groupIndex : 0;
+    const previousOffset = previousGroup * (this.data.groupPageSize || GROUP_SIZE);
     const generation = (this._loadGeneration || 0) + 1;
     this._loadGeneration = generation;
     this._changingGroup = false;
@@ -81,8 +99,9 @@ Page(withStudyTime({
     this._pageSize = 0;
     this._savedPosition = '';
     this._remotePaging = true;
+    this._activated = false;
     this.allQuestions = [];
-    this.setData({ loading: true, hasError: false, errorMessage: '', personalError: '', groupLoading: false, requiresEntitlement: false, restrictedCount: 0, questions: [], groupIndex: 0 });
+    this.setData({ loading: true, hasError: false, errorMessage: '', personalError: '', groupLoading: false, requiresEntitlement: false, restrictedCount: 0, questions: [], groupIndex: previousGroup, lockedPage: false, membershipVisible: false });
     const result = await settle(this.prepareRemoteScopes(generation));
     if (generation !== this._loadGeneration) return;
     if (!result.ok) {
@@ -100,12 +119,19 @@ Page(withStudyTime({
       if (!this.data.hasError) this.refreshQuestions();
       return;
     }
+    // Tablet page size needs authoritative membership before locating/resuming a group.
+    if (tabletSheet.isTablet(typeof wx === 'undefined' ? null : wx, this._answerViewport) && this._scopes.length && !this._pageSize) {
+      const first = await settle(this.loadScopePage(this._scopes[0], 1));
+      if (generation !== this._loadGeneration) return;
+      if (!first.ok) { this.setData({ loading: false, hasError: true, errorMessage: errorText(first.error), questions: [] }); return; }
+    }
+    if (preservePage) this.setData({ groupIndex: Math.floor(previousOffset / this.questionPageSize()) });
     if (restore) {
       const resumed = await settle(this.restoreResume());
       if (!resumed.ok) this.setData({ personalError: errorText(resumed.error).replace('当前显示本地演示题目', '继续学习位置暂未恢复') });
     }
     if (generation !== this._loadGeneration) return;
-    const groupIndex = Math.min(Math.max(this.data.groupIndex, 0), Math.max(0, Math.ceil(this._remoteTotal / GROUP_SIZE) - 1));
+    const groupIndex = Math.min(Math.max(this.data.groupIndex, 0), Math.max(0, Math.ceil(this._remoteTotal / this.questionPageSize()) - 1));
     const group = await settle(this.ensureRemoteGroup(groupIndex));
     if (generation !== this._loadGeneration) return;
     this._remoteLoaded = true;
@@ -121,7 +147,7 @@ Page(withStudyTime({
       const payload = await api.content.questions({ source: 'classical', articleId: this.articleId, type: this.questionType, page: 1 }, { auth: hasToken() });
       if (generation !== this._loadGeneration) return;
       const rows = Array.isArray(payload.results) ? payload.results : [];
-      const scope = { id: this.articleId, start: 0, count: Number.isInteger(payload.count) ? payload.count : rows.length, pages: {}, generation, mastered: null };
+      const scope = { id: this.articleId, title: this.articleTitle, start: 0, count: Number.isInteger(payload.count) ? payload.count : rows.length, pages: {}, generation, mastered: null };
       this._scopes = [scope];
       this._remoteTotal = scope.count;
       this.acceptRemotePage(scope, 1, payload);
@@ -141,7 +167,7 @@ Page(withStudyTime({
     const publishedField = this.questionType === 'translation' ? 'publishedTranslationCount' : 'publishedWordCount';
     const masteredField = this.questionType === 'translation' ? 'masteredTranslationCount' : 'masteredWordCount';
     for (const article of articles) {
-      let count = Number(article[countField]);
+      let count = Number(article[publishedField] === undefined ? article[countField] : article[publishedField]);
       let first = null;
       // Compatibility with older servers: fetch each scope once, never once per question.
       if (!Number.isInteger(count) || count < 0) {
@@ -149,18 +175,22 @@ Page(withStudyTime({
         count = Number.isInteger(first.count) ? first.count : (first.results || []).length;
       }
       if (generation !== this._loadGeneration) return;
-      const scope = { id: article.id, start: this._remoteTotal, count, pages: {}, generation,
+      const scope = { id: article.id, title: article.title || '', start: this._remoteTotal, count, pages: {}, generation,
         mastered: masteredCount(article.progress && article.progress[masteredField], count) };
       this._scopes.push(scope);
       this._remoteTotal += count;
-      if (Number.isInteger(article[publishedField])) this._scopeRestricted[scope.id] = Math.max(0, article[publishedField] - count);
+      if (Number.isInteger(article[publishedField])) this._scopeRestricted[scope.id] = Math.max(0, article[publishedField] - (Number(article[countField]) || 0));
       if (first) this.acceptRemotePage(scope, 1, first);
     }
     this.setData({ restrictedCount: Object.values(this._scopeRestricted).reduce((sum, count) => sum + count, 0) });
   },
   acceptRemotePage(scope, pageNumber, payload) {
     if (scope.generation !== this._loadGeneration) return;
-    const rows = Array.isArray(payload.results) ? payload.results : [];
+    const rows = (Array.isArray(payload.results) ? payload.results : []).map((question) => ({
+      ...question,
+      articleTitle: question.articleTitle || scope.title || ''
+    }));
+    if (payload.access && typeof payload.access.activated === 'boolean') this._activated = payload.access.activated;
     const completed = masteredCount(payload.progress && payload.progress.masteredCount, scope.count);
     if (completed !== null) scope.mastered = completed;
     const size = Number(payload.access && payload.access.pageSize);
@@ -184,9 +214,10 @@ Page(withStudyTime({
     return scope.pages[pageNumber] || [];
   },
   async ensureRemoteGroup(groupIndex) {
-    const start = groupIndex * GROUP_SIZE;
-    const end = Math.min(start + GROUP_SIZE, this._remoteTotal);
-    // Only pages intersecting this six-question group are loaded. Cross-article
+    const size = this.questionPageSize();
+    const start = groupIndex * size;
+    const end = Math.min(start + size, this._remoteTotal);
+    // Only API pages intersecting the current presentation group are loaded. Cross-article
     // ordering follows the catalog and never depends on request completion order.
     for (const scope of this._scopes) {
       const lower = Math.max(start, scope.start);
@@ -235,7 +266,7 @@ Page(withStudyTime({
     if (this._requestedQuestionId) {
       const requestedIndex = await findQuestion(this._requestedQuestionId);
       if (requestedIndex >= 0) {
-        this.setData({ groupIndex: Math.floor(requestedIndex / GROUP_SIZE) });
+        this.setData({ groupIndex: Math.floor(requestedIndex / this.questionPageSize()) });
         return;
       }
     }
@@ -255,34 +286,37 @@ Page(withStudyTime({
       const sameArticle = this.articleId ? String(options.articleId || '') === String(this.articleId) : !options.articleId;
       if (local && /pages\/practice\/index$/.test(local.path || '') && sameArticle && options.type === this.questionType) {
         const group = local.groupCache && local.groupCache[String(Number(local.groupIndex) + 1)];
-        saved = { groupIndex: Number(local.groupIndex) + 1, questionId: options.questionId || group && group[0] && group[0].id || local.groupIds && local.groupIds[Number(local.groupIndex) * GROUP_SIZE] };
+        saved = { pageSize: Number(local.groupPageSize) || GROUP_SIZE, groupIndex: Number(local.groupIndex) + 1, questionId: options.questionId || group && group[0] && group[0].id || local.groupIds && local.groupIds[Number(local.groupIndex) * (Number(local.groupPageSize) || GROUP_SIZE)] };
       }
     }
     if (saved) {
       if (saved.questionId) {
         const index = await findQuestion(saved.questionId);
-        if (index >= 0) { this.setData({ groupIndex: Math.floor(index / GROUP_SIZE) }); return; }
+        if (index >= 0) { this.setData({ groupIndex: Math.floor(index / this.questionPageSize()) }); return; }
       }
       const rawIndex = Number(saved.groupIndex);
-      if (Number.isInteger(rawIndex) && rawIndex >= 1) this.setData({ groupIndex: rawIndex - 1 });
+      if (Number.isInteger(rawIndex) && rawIndex >= 1) this.setData({ groupIndex: Math.floor((rawIndex - 1) * (saved.pageSize || GROUP_SIZE) / this.questionPageSize()) });
     }
   },
   refreshQuestions() {
     const states = this._stateMap || {};
     const total = this._remotePaging ? this._remoteTotal : (this.allQuestions || []).length;
-    const groupCount = Math.ceil(total / GROUP_SIZE);
+    const size = this.questionPageSize();
+    const groupCount = Math.ceil(total / size);
     const groupIndex = groupCount ? Math.min(Math.max(this.data.groupIndex, 0), groupCount - 1) : 0;
     const rows = this._remotePaging
-      ? Array.from({ length: Math.min(GROUP_SIZE, total - groupIndex * GROUP_SIZE) }, (_value, index) => this._remoteRows[groupIndex * GROUP_SIZE + index]).filter(Boolean)
-      : (this.allQuestions || []).slice(groupIndex * GROUP_SIZE, groupIndex * GROUP_SIZE + GROUP_SIZE);
-    const questions = answerDrafts.decorate(rows.map(question => Object.assign({}, question, states[question.id] || (!hasToken() ? localQuestionState(question.id) : normalizeState(null)))), this.draftStore());
+      ? Array.from({ length: Math.min(size, total - groupIndex * size) }, (_value, index) => this._remoteRows[groupIndex * size + index]).filter(Boolean)
+      : (this.allQuestions || []).slice(groupIndex * size, groupIndex * size + size);
+    const lockedPage = !this._activated && groupIndex > 0;
+    const safeRows = answerDrafts.restrict(rows, lockedPage);
+    const questions = answerDrafts.decorate(safeRows.map(question => Object.assign({}, question, states[question.id] || (!hasToken() ? localQuestionState(question.id) : normalizeState(null)))), this.draftStore());
     const completed = this._remotePaging
       ? this._scopes.reduce((sum, scope) => sum + (scope.mastered !== null ? scope.mastered
         : Object.keys(this._remoteRows).filter(key => Number(key) >= scope.start && Number(key) < scope.start + scope.count
           && hasToken() && normalizeState(states[this._remoteRows[key].id]).mastered).length), 0)
       : (this.allQuestions || []).filter(question => (states[question.id] || (!hasToken() ? localQuestionState(question.id) : normalizeState(null))).mastered).length;
     const answerProgress = answerDrafts.progress(questions);
-    this.setData(Object.assign({ questions, total, completed, pageCompleted: answerProgress.answeredCount, pageProgressPercent: answerProgress.answerProgressPercent, progressPercent: total ? Math.round(completed / total * 100) : 0, groupIndex, groupCount, nextLabel: '下一页' }, answerProgress));
+    this.setData(Object.assign({ questions, total, completed, pageCompleted: answerProgress.answeredCount, pageProgressPercent: answerProgress.answerProgressPercent, progressPercent: total ? Math.round(completed / total * 100) : 0, groupIndex, groupCount, groupPageSize: size, nextLabel: '下一页', lockedPage, membershipVisible: lockedPage, restrictedPageCount: Math.max(0, groupCount - 1), restrictedQuestionCount: Math.max(0, total - Math.min(GROUP_SIZE, total)), activated: Boolean(this._activated), restrictedCount: this._activated ? 0 : Math.max(0, total - GROUP_SIZE) }, answerProgress));
     if (questions.length) {
       this._groupCache = this._groupCache || {};
       this._groupCache[String(groupIndex + 1)] = cloneRows(questions);
@@ -290,23 +324,25 @@ Page(withStudyTime({
     }
   },
   savePosition() {
+    if (this.data.lockedPage || (this.data.questions || []).some(q => q.locked)) return;
     const total = this._remotePaging ? this._remoteTotal : (this.allQuestions || []).length;
+    const size = this.questionPageSize();
     const groupIds = this._remotePaging
       ? Object.keys(this._remoteRows).sort((a, b) => Number(a) - Number(b)).map(key => this._remoteRows[key].id)
       : (this.allQuestions || []).map(question => question.id);
     const groupCache = Object.assign({}, this._groupCache || {});
     if (!this._remotePaging) (this.allQuestions || []).forEach((question, index) => {
-      const group = String(Math.floor(index / GROUP_SIZE) + 1);
+      const group = String(Math.floor(index / size) + 1);
       if (!groupCache[group]) groupCache[group] = [];
       if (!groupCache[group].some(row => row.id === question.id)) groupCache[group].push(cloneRows([question])[0]);
     });
-    const currentFirst = this._remotePaging ? this._remoteRows[this.data.groupIndex * GROUP_SIZE] : this.allQuestions[this.data.groupIndex * GROUP_SIZE];
+    const currentFirst = this._remotePaging ? this._remoteRows[this.data.groupIndex * size] : this.allQuestions[this.data.groupIndex * size];
     studyStore.saveResume({
       path: '/pages/practice/index', options: { articleId: this.articleId || null, type: this.questionType, questionId: currentFirst && currentFirst.id },
-      groupIds, groupIndex: this.data.groupIndex, groupCount: Math.ceil(total / GROUP_SIZE), roundQuestionCount: total, groupPageSize: GROUP_SIZE, groupCache
+      groupIds, groupIndex: this.data.groupIndex, groupCount: Math.ceil(total / size), roundQuestionCount: total, groupPageSize: size, groupCache
     });
     if (!hasToken() || !total) return;
-    const first = this._remotePaging ? this._remoteRows[this.data.groupIndex * GROUP_SIZE] : this.allQuestions[this.data.groupIndex * GROUP_SIZE];
+    const first = this._remotePaging ? this._remoteRows[this.data.groupIndex * size] : this.allQuestions[this.data.groupIndex * size];
     if (!first) return;
     const position = [this.articleId || '', this.questionType, this.data.mode, first.id].join(':');
     if (position === this._savedPosition) return;
@@ -331,19 +367,20 @@ Page(withStudyTime({
     const options = resume && resume.options || {};
     if (!resume || resume.path !== '/pages/practice/index' || String(options.articleId || '') !== String(this.articleId || '') || options.type !== this.questionType) return false;
     const cache = resume.groupCache && typeof resume.groupCache === 'object' ? resume.groupCache : {};
+    const savedSize = Number(resume.groupPageSize) || GROUP_SIZE;
     const groupIndex = Math.max(0, Number(resume.groupIndex) || 0);
     if (!Array.isArray(cache[String(groupIndex + 1)]) || !cache[String(groupIndex + 1)].length) return false;
-    const total = Number(resume.roundQuestionCount) || Number(resume.groupCount) * GROUP_SIZE || Object.values(cache).reduce((sum, rows) => sum + rows.length, 0);
+    const total = Number(resume.roundQuestionCount) || Number(resume.groupCount) * savedSize || Object.values(cache).reduce((sum, rows) => sum + rows.length, 0);
     const rows = new Array(total);
     Object.keys(cache).forEach(key => {
       if (!Array.isArray(cache[key])) return;
-      cache[key].forEach((question, index) => { rows[(Number(key) - 1) * GROUP_SIZE + index] = question; });
+      cache[key].forEach((question, index) => { rows[(Number(key) - 1) * savedSize + index] = question; });
     });
-    this._groupCache = cache;
+    this._groupCache = {};
     this._stateMap = this._stateMap || {};
     rows.forEach(question => { this._stateMap[question.id] = normalizeState(question.state || question); });
     this.allQuestions = rows;
-    this.setData({ groupIndex, groupCount: Math.ceil(total / GROUP_SIZE), total });
+    this.setData({ groupIndex: Math.floor(groupIndex * savedSize / this.questionPageSize()), groupCount: Math.ceil(total / this.questionPageSize()), total });
     return true;
   },
   onRetry() { this.loadRemote(false); },
@@ -370,6 +407,7 @@ Page(withStudyTime({
     this._stateMap[id] = next;
   },
   async updateState(id, field, desiredValue) {
+    if (this.data.lockedPage || (this.data.questions || []).some(q => String(q.id) === String(id) && q.locked)) return this.openMembership();
     if (!id) return;
     if (!hasToken()) {
       const current = localQuestionState(id);
@@ -395,7 +433,7 @@ Page(withStudyTime({
   onMaster(event) { return this.updateState(event.detail.id, 'mastered', event.detail.mastered); },
   async changeGroup(index) {
     if (this._changingGroup || this.data.loading || index < 0 || index >= this.data.groupCount) return;
-    if (!this._remotePaging && !this.allQuestions[index * GROUP_SIZE]) {
+    if (!this._remotePaging && !this.allQuestions[index * this.questionPageSize()]) {
       this.setData({ personalError: '当前分页尚未缓存，请联网后重试' });
       return;
     }
@@ -421,5 +459,10 @@ Page(withStudyTime({
   onEmptyAction() {
     if (this.data.requiresEntitlement) { navigation.openPage('/pages/mine/index'); return; }
     if (getCurrentPages().length > 1) wx.navigateBack({ delta: 1 }); else navigation.openPage('/pages/classical/index');
-  }
+  },
+  openMembership() { this.setData({ membershipVisible: true }); },
+  closeMembership() { this.setData({ membershipVisible: false }); },
+  goMembership() { this.setData({ membershipVisible: false }); navigation.openPage('/pages/mine/index', { membership: '1' }); },
+  onShareAppMessage() { return shareAppMessage(); },
+  onShareTimeline() { return shareTimeline(); }
 }));

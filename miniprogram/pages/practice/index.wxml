@@ -1,4 +1,4 @@
-<view class="practice-page theme-{{theme}}">
+<view class="practice-page tablet-{{activated ? 'member' : 'free'}}-sheet theme-{{theme}}">
   <study-navbar title="{{typeLabel}}" theme="paper" back="{{true}}" class="page-navbar" />
 
   <view class="practice-main">
@@ -19,9 +19,10 @@
     </view>
 
     <view class="practice-switch-row">
-      <text class="question-hint">每页 6 题</text>
+      <text class="question-hint">每页 {{groupPageSize}} 题</text>
       <view class="mode-switch-wrap"><mode-switch mode="{{mode}}" theme="blue" bindchange="onModeChange" /></view>
     </view>
+    <view wx:if="{{!loading && !hasError}}" class="membership-status">{{activated ? '会员已开通 · 全部题目可答' : '未开通会员 · 第 1 页免费'}}</view>
     <view class="progress-track"><view class="progress-fill" style="width: {{pageProgressPercent || 0}}%;"></view></view>
 
     <view wx:if="{{loading}}" class="practice-state">
@@ -33,7 +34,7 @@
     </view>
     <view wx:elif="{{total}}" class="question-list">
       <view wx:for="{{questions}}" wx:key="id" class="question-item">
-        <question-card class="study-question-card" question="{{item}}" mode="{{mode}}" number="{{groupIndex * 6 + index + 1}}" variant="{{isWord ? 'practice-word' : 'practice-translation'}}" show-tag="{{true}}" bindfavorite="onFavorite" bindmaster="onMaster" bindanswerinput="onAnswerInput" />
+        <question-card class="study-question-card" question="{{item}}" mode="{{mode}}" number="{{groupIndex * groupPageSize + index + 1}}" variant="{{isWord ? 'practice-word' : 'practice-translation'}}" show-tag="{{true}}" bindfavorite="onFavorite" bindmaster="onMaster" bindanswerinput="onAnswerInput" bindunlock="openMembership" />
       </view>
     </view>
     <view wx:elif="{{requiresEntitlement}}" class="practice-empty">
@@ -51,4 +52,5 @@
     <text wx:if="{{groupLoading}}" class="practice-tip">正在读取题目，请稍候…</text>
     <text wx:if="{{!loading && !hasError && total}}" class="practice-tip">{{mode === 'writing' ? '独立作答后，可切换背诵全览核对答案' : '答案直接显示，完成本页后进入下一页'}}</text>
   </view>
+  <membership-gate visible="{{membershipVisible}}" remaining-pages="{{restrictedPageCount}}" remaining-questions="{{restrictedQuestionCount}}" context-label="{{articleTitle ? articleTitle + typeLabel : typeLabel}}" bindopen="goMembership" bindclose="closeMembership" />
 </view>

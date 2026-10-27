@@ -12,6 +12,11 @@ function getCategories(source) {
 }
 
 function getArticles() { return mock.articles.map((article) => ({ ...article })); }
+function getArticleTitle(articleId) {
+  if (!articleId) return '';
+  const article = mock.articles.find((item) => String(item.id) === String(articleId));
+  return article ? article.title : '';
+}
 function getQuestions(filters) {
   const query = filters || {};
   return mock.questions.filter((question) => {
@@ -24,7 +29,11 @@ function getQuestions(filters) {
       } else if (question.categoryId !== query.categoryId) return false;
     }
     return true;
-  }).map((question) => ({ ...question, answers: question.answers.slice() }));
+  }).map((question) => ({
+    ...question,
+    articleTitle: question.articleTitle || getArticleTitle(question.articleId),
+    answers: question.answers.slice()
+  }));
 }
 function getQuestion(id) { return getQuestions().find((question) => question.id === id); }
 function decorateQuestions(items) {
@@ -41,4 +50,4 @@ function getArticleProgress() {
   });
 }
 
-module.exports = { getCategories, getArticles, getQuestions, getQuestion, decorateQuestions, getArticleProgress };
+module.exports = { getCategories, getArticles, getArticleTitle, getQuestions, getQuestion, decorateQuestions, getArticleProgress };

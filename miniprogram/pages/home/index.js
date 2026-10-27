@@ -1,9 +1,16 @@
+const SHARE_TITLE = '文常记｜山东专升本语文';
+const SHARE_PATH = '/pages/home/index';
+const SHARE_IMAGE = '/assets/share-cover.png';
+function shareAppMessage() { return { title: SHARE_TITLE, path: SHARE_PATH, imageUrl: SHARE_IMAGE }; }
+function shareTimeline() { return { title: SHARE_TITLE, query: '', imageUrl: SHARE_IMAGE }; }
 const api = require('../../services/api');
 const navigation = require('../../utils/navigation');
 const { learningTrend, minutes } = require('../../utils/learning-trend');
 const studyTimer = require('../../utils/study-timer').clock;
 const themeStore = require('../../utils/theme');
 const { revealGeometry } = require('../../utils/theme-reveal');
+const dataService = require('../../services/data-service');
+const mockData = require('../../data/mock');
 
 const GROUP_QR_IMAGE = '/assets/group-qr.jpg';
 
@@ -31,6 +38,26 @@ function hasToken() {
   } catch (_) {
     return false;
   }
+}
+
+function isDeveloperToolsPreview() {
+  try {
+    if (typeof wx === 'undefined' || typeof wx.getSystemInfoSync !== 'function') return false;
+    const info = wx.getSystemInfoSync() || {};
+    return String(info.platform || '').toLowerCase() === 'devtools';
+  } catch (_) {
+    return false;
+  }
+}
+
+function getPreviewFallback() {
+  const categories = dataService.getCategories();
+  const articles = dataService.getArticles();
+  return {
+    config: Object.assign({}, mockData.config),
+    categories: { count: categories.length, results: categories },
+    articles: { count: articles.length, results: articles }
+  };
 }
 
 function describeError(error, fallback) {
@@ -142,6 +169,9 @@ Page({
     this._scrollTop = Math.max(0, Number(event.scrollTop) || 0);
   },
 
+  // Rotation invalidates the viewport geometry of an in-flight theme reveal.
+  onResize() { this.finishThemeTransition(); },
+
   onHide() { this.finishThemeTransition(); },
 
   onUnload() {
@@ -201,12 +231,24 @@ Page({
   async loadPublicData() {
     const version = ++this._loadVersion;
     this.setData({ loading: true, hasError: false, errorMessage: '' });
-    const results = await Promise.all([
+    let results = await Promise.all([
       settle(api.config.get()),
       settle(api.content.categories({ page: 1 })),
       settle(api.content.articles({ page: 1 }))
     ]);
     if (version !== this._loadVersion) return;
+
+    // The simulator can temporarily lose access to the public API while the
+    // project is being previewed. Keep the page usable with the bundled demo
+    // data; real devices and release builds continue to use the API results.
+    if (isDeveloperToolsPreview() && results.every((result) => !result.ok)) {
+      const fallback = getPreviewFallback();
+      results = [
+        { ok: true, value: fallback.config },
+        { ok: true, value: fallback.categories },
+        { ok: true, value: fallback.articles }
+      ];
+    }
 
     const configResult = results[0];
     const categoriesResult = results[1];
@@ -452,5 +494,7 @@ Page({
       mode: resume.mode || undefined,
       questionId: resume.questionId || undefined
     });
-  }
+  },
+  onShareAppMessage() { return shareAppMessage(); },
+  onShareTimeline() { return shareTimeline(); }
 });
