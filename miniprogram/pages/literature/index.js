@@ -237,12 +237,22 @@ Page(withStudyTime({
       return;
     }
     await this.loadPage(1, { findResume: Boolean(this._resumeQuestionId) });
+    // Warm the first page for the remaining periods after the visible group is ready.
+    this.prefetchCategories(categories);
   },
 
-  async loadApiPage(page, requestId) {
-    const categoryId = this.data.categoryId;
+  async loadApiPage(page, requestId, options = {}) {
+    const categoryId = options.categoryId || this.data.categoryId;
     const cacheKey = categoryId + ':' + page;
     if (this._questionPages[cacheKey]) return this._questionPages[cacheKey];
+    if (!options.force) {
+      const cached = contentCache.read('literature-category', api.auth, cacheKey);
+      if (cached && cached.payload && Array.isArray(cached.payload.rows)) {
+        const cachedRecord = Object.assign({}, cached.payload, { fromCache: true, stale: Boolean(cached.stale) });
+        this._questionPages[cacheKey] = cachedRecord;
+        return cachedRecord;
+      }
+    }
     const response = await api.content.questions({
       source: SOURCE,
       categoryId,
@@ -260,7 +270,23 @@ Page(withStudyTime({
       restrictedCount: Number(response && response.access && response.access.restrictedCount) || 0
     };
     this._questionPages[cacheKey] = record;
+    contentCache.write('literature-category', api.auth, cacheKey, record);
     return record;
+  },
+
+  async prefetchCategories(categories) {
+    if (this._prefetchPromise || !Array.isArray(categories)) return this._prefetchPromise;
+    const ids = categories.map((item) => item && item.id).filter(Boolean)
+      .filter((id) => String(id) !== String(this.data.categoryId));
+    this._prefetchPromise = (async () => {
+      // Keep background work bounded so opening the page does not saturate mobile data.
+      for (let index = 0; index < ids.length; index += 2) {
+        await Promise.all(ids.slice(index, index + 2).map((categoryId) =>
+          this.loadApiPage(1, this._questionRequest, { categoryId }).catch(() => null)
+        ));
+      }
+    })().finally(() => { this._prefetchPromise = null; });
+    return this._prefetchPromise;
   },
 
   async loadPage(page, options) {
@@ -383,6 +409,10 @@ Page(withStudyTime({
       apiPageSize, restrictedCount: firstPage.restrictedCount, questionProgressLabel: formatQuestionProgress(startIndex, count),
       progressPercent: pageCount ? Math.round(targetPage / pageCount * 100) : 0
     });
+    if (firstPage.fromCache && firstPage.stale) {
+      // The cached page is immediately usable; refresh it without blocking the tap.
+      this.loadApiPage(1, requestId, { force: true }).catch(() => null);
+    }
     this.queueResume();
   },
 
