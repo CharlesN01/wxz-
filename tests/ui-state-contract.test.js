@@ -149,14 +149,16 @@ test('首页红圈主文字字号按视觉要求放大，说明文字保持独�
   assert.match(styles, /\.module-desc\s*\{[^}]*font-size:\s*18rpx;/);
 });
 
-test('退费规则和客服联系弹窗使用已确认文案与二维码', () => {
+test('退费规则保持原文，客服联系弹窗展示QQ且不显示二维码', () => {
   const script = fs.readFileSync(path.join(root, 'miniprogram/pages/mine/index.js'), 'utf8');
   const template = fs.readFileSync(path.join(root, 'miniprogram/pages/mine/index.wxml'), 'utf8');
   const styles = fs.readFileSync(path.join(root, 'miniprogram/pages/mine/index.wxss'), 'utf8');
   assert.match(script, /本产品为刷题题库（线上虚拟权限），开通后即可使用，不支持退款。使用中遇到问题，可联系客服处理。/);
-  assert.match(template, /wx:if="\{\{infoKind === 'customer'\}\}" class="customer-qr"/);
-  assert.match(template, /src="\/assets\/contact-qr\.jpg"/);
-  assert.match(styles, /\.customer-qr\s*\{[^}]*width:\s*240px;[^}]*height:\s*240px;/s);
+  assert.match(script, /如有问题，可联系QQ：24352771/);
+  assert.doesNotMatch(template, /customer-qr|contact-qr\.jpg/);
+  assert.match(template, /customer-sheet/);
+  assert.match(styles, /\.customer-sheet\s*\{[^}]*padding-top:\s*16px;/);
+  assert.match(styles, /\.customer-sheet \.sheet-copy\s*\{[^}]*margin:\s*12px 0 16px;/);
 });
 
 test('首页内容顺序与原型保持一致，学习趋势排在资料群之后', () => {
