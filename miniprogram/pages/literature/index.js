@@ -283,7 +283,7 @@ Page(withStudyTime({
     const background = String(categoryId) !== String(this.data.categoryId);
     const request = Promise.resolve(api.content.questions({ source: SOURCE, categoryId, page }))
       .then((response) => {
-        if (!background && requestId !== this._questionRequest) return null;
+        if (!options.background && !background && requestId !== this._questionRequest) return null;
         const rows = response && Array.isArray(response.results) ? response.results : [];
         const access = response && response.access || {};
         const pageSize = Number(access.pageSize) > 0 ? Number(access.pageSize) : Math.max(rows.length, 1);
@@ -437,7 +437,6 @@ Page(withStudyTime({
     const safeRows = answerDrafts.restrict(rows, lockedPage);
     const statePromise = this.loadStates(safeRows, requestId);
     const cachedFirstPage = Boolean(firstPage.fromCache || firstPage.fromPrefetch);
-    if (!cachedFirstPage) await statePromise;
     if (requestId !== this._questionRequest) return;
     this._questionRows = safeRows;
     this._activated = activated;
@@ -485,14 +484,26 @@ Page(withStudyTime({
     if (firstPage.fromCache && firstPage.stale) {
       this.loadApiPage(1, requestId, { force: true }).catch(() => null);
     }
-    if (cachedFirstPage) {
-      statePromise.then(() => {
-        if (requestId !== this._questionRequest) return;
-        const updated = this.renderRows(this._questionRows, lockedPage);
-        this.setData(Object.assign({ questions: updated }, answerDrafts.progress(updated)));
-      }).catch(() => null);
-    }
+    statePromise.then(() => {
+      if (requestId !== this._questionRequest) return;
+      const updated = this.renderRows(this._questionRows, lockedPage);
+      this.setData(Object.assign({ questions: updated }, answerDrafts.progress(updated)));
+    }).catch(() => null);
+    this.prefetchDisplayPage(targetPage + 1, pageSize, count, apiPageSize, requestId);
     this.queueResume();
+  },
+
+  prefetchDisplayPage(page, pageSize, count, apiPageSize, requestId) {
+    if (page > Math.ceil(count / pageSize)) return;
+    const startIndex = (page - 1) * pageSize;
+    const endIndex = Math.min(startIndex + pageSize, count);
+    const firstApiPage = Math.floor(startIndex / apiPageSize) + 1;
+    const lastApiPage = endIndex > startIndex
+      ? Math.floor((endIndex - 1) / apiPageSize) + 1
+      : firstApiPage;
+    for (let apiPage = firstApiPage; apiPage <= lastApiPage; apiPage += 1) {
+      this.loadApiPage(apiPage, requestId, { categoryId: this.data.categoryId, background: true }).catch(() => null);
+    }
   },
 
   async loadStates(rows, requestId, refresh) {
@@ -720,6 +731,7 @@ Page(withStudyTime({
     const target = Math.max(1, Math.min(this.data.pageCount, this.data.page + delta));
     if (!delta || target === this.data.page) return;
     this._resumeQuestionId = '';
+    this.setData({ loading: true, hasError: false, errorMessage: '' });
     this.loadPage(target);
     wx.pageScrollTo({ scrollTop: 0, duration: 180 });
   },
