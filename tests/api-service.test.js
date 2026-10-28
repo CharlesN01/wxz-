@@ -388,3 +388,11 @@ test('generated idempotency keys satisfy the API character and length contract',
   assert.ok(key.length >= 8 && key.length <= 128);
   assert.match(key, /^[A-Za-z0-9._:-]+$/);
 });
+
+test('group resource requests can resolve the QR image for the current agent scene', async () => {
+  const calls = installWx((options) => respond(options, 200, { enabled: false, agentWechatQrCode: null }));
+  await api.resources.group({ scene: 'a=AGENT001' });
+  assert.equal(calls[0].url, 'http://127.0.0.1:8000/api/student/v1/resources/group/');
+  assert.deepEqual(calls[0].data, { scene: 'a=AGENT001' });
+  assert.equal(calls[0].header.Authorization, undefined);
+});

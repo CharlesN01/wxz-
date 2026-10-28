@@ -11,6 +11,7 @@ from django.test import Client, TestCase, override_settings
 from rest_framework.test import APIClient
 
 from contracts.validation import assert_response
+from distribution.models import AgentProfile
 from resources.models import GroupResourceConfiguration, MAX_QR_IMAGE_SIZE, validate_qr_image
 
 
@@ -21,6 +22,27 @@ PNG = b"\x89PNG\r\n\x1a\n" + b"\x00" * 20
 class GroupResourceAPITests(TestCase):
     def setUp(self):
         self.client = APIClient()
+        self.media_directory = TemporaryDirectory(prefix="agent-qr-api-tests-")
+        self.agent_qr_storage = AgentProfile._meta.get_field("agent_wechat_qr").storage
+        self.original_storage_location = self.agent_qr_storage.location
+        self.agent_qr_storage.location = self.media_directory.name
+
+    def tearDown(self):
+        self.agent_qr_storage.location = self.original_storage_location
+        self.media_directory.cleanup()
+
+    def make_agent(self, code="AGENT001", status="active", upload=True):
+        user = get_user_model().objects.create_user(username=f"{code.lower()}-user")
+        profile = AgentProfile(
+            user=user, agent_code=code, display_name="测试代理", created_by=user,
+            status=status,
+        )
+        if upload:
+            profile.agent_wechat_qr = SimpleUploadedFile(
+                "agent.png", PNG, content_type="image/png",
+            )
+        profile.save(_service=True)
+        return profile
 
     def test_anonymous_reads_only_enabled_public_fields(self):
         response = self.client.get("/api/student/v1/resources/group/")
@@ -41,11 +63,27 @@ class GroupResourceAPITests(TestCase):
         self.assertNotIn("MEDIA_ROOT", str(response.data))
         assert_response(response, "/api/student/v1/resources/group/", "GET")
         self.assertEqual(self.client.get("/api/student/v1/resources/group/?unexpected=1").status_code, 400)
-
         config.is_enabled = False
         config.save()
         response = self.client.get("/api/student/v1/resources/group/")
         self.assertEqual(response.data, {"enabled": False})
+
+    def test_agent_qr_is_returned_only_for_active_agent_scene(self):
+        profile = self.make_agent()
+        response = self.client.get("/api/student/v1/resources/group/", {"scene": profile.scene})
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(response.data["enabled"])
+        self.assertRegex(response.data["agentWechatQrCode"], r"/media/distribution/agent-wechat/[a-f0-9]+\.png$")
+        assert_response(response, "/api/student/v1/resources/group/?scene=a%3DAGENT001", "GET")
+
+        profile.status = "disabled"
+        profile.save(_service=True)
+        response = self.client.get("/api/student/v1/resources/group/", {"scene": profile.scene})
+        self.assertIsNone(response.data["agentWechatQrCode"])
+
+    def test_agent_qr_query_is_validated(self):
+        response = self.client.get("/api/student/v1/resources/group/?scene=a%3DUNKNOWN%21")
+        self.assertEqual(response.status_code, 400)
 
     def test_explicit_invalid_bearer_is_rejected_on_public_endpoint(self):
         self.client.credentials(HTTP_AUTHORIZATION="Bearer invalid")

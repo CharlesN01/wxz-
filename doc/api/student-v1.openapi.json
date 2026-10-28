@@ -4938,6 +4938,7 @@
                       "source": "literature",
                       "categoryId": null,
                       "articleId": null,
+                      "articleTitle": null,
                       "type": "fact",
                       "tag": "test-only-example",
                       "stem": "test-only-example",
@@ -4947,7 +4948,6 @@
                       "sortOrder": 0,
                       "revision": 1,
                       "state": null,
-                      "articleTitle": null,
                       "position": 1
                     }
                   ],
@@ -5731,10 +5731,22 @@
             "studentBearer": []
           }
         ],
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "scene",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "^a=[A-Z0-9][A-Z0-9_-]{2,31}$"
+            },
+            "description": "单次提供，空值或重复值会拒绝。"
+          }
+        ],
         "x-backend-view": "resources.api.GroupResourceConfigurationView",
         "x-request-serializer": null,
-        "x-query-serializer": "resources.api.EmptyQuery",
+        "x-query-serializer": "resources.api.GroupResourceQuery",
         "x-query-policy": "strict",
         "x-idempotency": false,
         "responses": {
@@ -5752,7 +5764,8 @@
                   "claimCode": "EXAMPLE-CODE",
                   "description": "资料领取说明",
                   "announcement": "群公告示例",
-                  "updatedAt": "2026-10-12T00:00:00+08:00"
+                  "updatedAt": "2026-10-12T00:00:00+08:00",
+                  "agentWechatQrCode": "https://example.invalid/media/distribution/agent-wechat/example.webp"
                 }
               }
             },
@@ -7720,6 +7733,16 @@
                     }
                   ]
                 },
+                "articleTitle": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
                 "type": {
                   "type": "string",
                   "enum": [
@@ -7759,16 +7782,6 @@
                     }
                   ]
                 },
-                "articleTitle": {
-                  "anyOf": [
-                    {
-                      "type": "string"
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ]
-                },
                 "position": {
                   "type": "integer",
                   "minimum": 1
@@ -7779,6 +7792,7 @@
                 "source",
                 "categoryId",
                 "articleId",
+                "articleTitle",
                 "type",
                 "tag",
                 "stem",
@@ -7786,7 +7800,6 @@
                 "sortOrder",
                 "revision",
                 "state",
-                "articleTitle",
                 "position"
               ],
               "additionalProperties": false
@@ -8320,6 +8333,16 @@
               {
                 "type": "string",
                 "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "agentWechatQrCode": {
+            "anyOf": [
+              {
+                "type": "string"
               },
               {
                 "type": "null"

@@ -12,7 +12,7 @@ const templateFile = path.join(__dirname, '../miniprogram/pages/home/index.wxml'
 function copy(value) { return JSON.parse(JSON.stringify(value)); }
 
 function createHome(options = {}) {
-  const calls = { timerSettled: 0, statistics: 0, resume: 0, resource: 0, preview: [], toast: [] };
+  const calls = { timerSettled: 0, statistics: 0, resume: 0, resource: 0, resourceParams: [], preview: [], toast: [] };
   let token = options.token === undefined ? 'test-session' : options.token;
   let statistics = options.statistics || {};
   let statisticsError = options.statisticsError;
@@ -25,7 +25,7 @@ function createHome(options = {}) {
       resume() { calls.resume += 1; return Promise.resolve({ valid: false, start: null }); }
     },
     resources: {
-      group() { calls.resource += 1; return resourceError ? Promise.reject(resourceError) : Promise.resolve(resource); }
+      group(params) { calls.resource += 1; calls.resourceParams.push(params); return resourceError ? Promise.reject(resourceError) : Promise.resolve(resource); }
     }
   };
   const localRequire = createRequire(homeFile);
@@ -34,11 +34,17 @@ function createHome(options = {}) {
     require(name) {
       if (name === '../../services/api') return api;
       if (name === '../../utils/navigation') return { openPage() {} };
+      if (name === '../../utils/agent-attribution') return { read: () => options.agentScene || '' };
       if (name === '../../utils/study-timer') return { clock: { async settled() { calls.timerSettled += 1; } } };
       return localRequire(name);
     },
     Page(value) { definition = value; },
     wx: {
+      getStorageSync(key) {
+        return key === 'agent-attribution-v1' && options.agentScene
+          ? { scene: options.agentScene, expiresAt: Date.now() + 3600000 }
+          : null;
+      },
       previewImage(value) { calls.preview.push(copy(value)); },
       showToast(value) { calls.toast.push(copy(value)); }
     }
@@ -167,6 +173,29 @@ test('首页群弹窗固定显示上传的二维码和指定文案，点击仍�
   assert.match(template, /bindload="onGroupQrLoad" binderror="onGroupQrError"/);
   assert.match(template, /wx:if="\{\{groupQrError\}\}"[^>]*bindtap="retryGroupQr"/);
   assert.match(template, /wx:if="\{\{groupQrLoading\}\}"/);
+});
+
+test('代理扫码用户优先显示后台配置的代理微信二维码，未配置时保留默认二维码', async () => {
+  const fixture = createHome({
+    agentScene: 'a=AGENT001',
+    resource: { enabled: true, agentWechatQrCode: 'https://zsbzy.com/media/distribution/agent-wechat/agent.png' }
+  });
+  await fixture.page.loadGroupResource();
+  assert.equal(fixture.calls.resourceParams[0].scene, 'a=AGENT001');
+  assert.equal(fixture.page.data.groupQrCode, 'https://zsbzy.com/media/distribution/agent-wechat/agent.png');
+
+  fixture.setResource({ enabled: true, agentWechatQrCode: null });
+  await fixture.page.loadGroupResource();
+  assert.equal(fixture.page.data.groupQrCode, '/assets/group-qr.jpg');
+});
+
+test('代理二维码存在时不依赖资料群配置开关', async () => {
+  const fixture = createHome({
+    agentScene: 'a=AGENT001',
+    resource: { enabled: false, agentWechatQrCode: 'https://zsbzy.com/media/distribution/agent-wechat/agent.png' }
+  });
+  await fixture.page.loadGroupResource();
+  assert.equal(fixture.page.data.groupQrCode, 'https://zsbzy.com/media/distribution/agent-wechat/agent.png');
 });
 
 test('二维码重试仍使用上传的本地图片，旧图片回调不覆盖当前加载状态', async () => {

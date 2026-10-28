@@ -94,6 +94,7 @@ EXAMPLES = {
         "enabled": True, "groupQrCode": "https://example.invalid/media/resources/group/example.webp",
         "wechatId": "study-example", "claimCode": "EXAMPLE-CODE", "description": "资料领取说明",
         "announcement": "群公告示例", "updatedAt": "2026-10-12T00:00:00+08:00",
+        "agentWechatQrCode": "https://example.invalid/media/distribution/agent-wechat/example.webp",
     },
     "FeedbackSubmission": {"id": 1, "type": "question", "status": "pending", "createdAt": "2026-10-12T00:00:00+08:00"},
 }
@@ -192,6 +193,7 @@ def schemas():
         "GroupResourceConfiguration": obj({
             "enabled": BOOL, "groupQrCode": nullable(STRING), "wechatId": STRING, "claimCode": STRING,
             "description": STRING, "announcement": STRING, "updatedAt": nullable(DATE_TIME),
+            "agentWechatQrCode": nullable(STRING),
         }, required=["enabled"]),
         "FeedbackSubmission": obj({
             "id": POSITIVE,
@@ -214,7 +216,7 @@ def schemas():
 # (response, success status, request serializer, query serializer, idempotency)
 BINDINGS = {
     ("student-wechat-login", "post"): ("LoginResult", 200, "accounts.student_api.LoginInput", None, False),
-    ("student-group-resources", "get"): ("GroupResourceConfiguration", 200, None, "resources.api.EmptyQuery", False),
+    ("student-group-resources", "get"): ("GroupResourceConfiguration", 200, None, "resources.api.GroupResourceQuery", False),
     ("student-logout", "post"): (None, 204, None, None, False),
     ("student-config", "get"): ("LearningConfig", 200, None, "content.student_api.EmptyQuery", False),
     ("student-categories", "get"): ("CategoryPage", 200, None, "content.student_api.StudentPageQuery", False),

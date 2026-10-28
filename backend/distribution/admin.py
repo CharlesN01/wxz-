@@ -20,7 +20,7 @@ class AgentProfileAdmin(ModelAdmin):
     list_filter = ("status",)
     search_fields = ("display_name", "agent_code", "contact", "user__username")
     readonly_fields = ("scene", "created_by", "created_at", "updated_at", "disabled_at", "qr_image", "qr_link")
-    fields = ("user", "agent_code", "display_name", "contact", "status", "scene", "qr_image", "created_by", "created_at", "updated_at", "disabled_at", "disabled_reason", "qr_link")
+    fields = ("user", "agent_code", "display_name", "contact", "status", "scene", "qr_image", "agent_wechat_qr", "created_by", "created_at", "updated_at", "disabled_at", "disabled_reason", "qr_link")
     actions = None
 
     def get_queryset(self, request):
@@ -64,6 +64,11 @@ class AgentProfileAdmin(ModelAdmin):
         if is_agent_self_service_user(request.user):
             return tuple(field.name for field in self.model._meta.fields) + ("qr_link_for_agent",)
         fields = list(super().get_readonly_fields(request, obj))
+        if not (
+            request.user.has_perm("distribution.upload_agentwechatqr_agentprofile")
+            or request.user.has_perm("distribution.manage_agentprofile")
+        ):
+            fields.append("agent_wechat_qr")
         if obj:
             fields.append("agent_code")
         return tuple(dict.fromkeys(fields))
@@ -71,6 +76,14 @@ class AgentProfileAdmin(ModelAdmin):
     def save_model(self, request, obj, form, change):
         if is_agent_self_service_user(request.user):
             raise PermissionDenied("代理本人只能查看资料，不能修改。")
+        if (
+            (request.FILES.get("agent_wechat_qr") or request.POST.get("agent_wechat_qr-clear"))
+            and not (
+                request.user.has_perm("distribution.upload_agentwechatqr_agentprofile")
+                or request.user.has_perm("distribution.manage_agentprofile")
+            )
+        ):
+            raise PermissionDenied("没有上传代理微信二维码的权限。")
         if not change:
             obj.created_by = request.user
         else:

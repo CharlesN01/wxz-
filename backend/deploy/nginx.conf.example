@@ -24,6 +24,11 @@ server {
         autoindex off;
         add_header X-Content-Type-Options nosniff always;
     }
+    location /media/distribution/agent-wechat/ {
+        alias /var/lib/chinese-study/media/distribution/agent-wechat/;
+        autoindex off;
+        add_header X-Content-Type-Options nosniff always;
+    }
     location = /readyz { allow 127.0.0.1; deny all; proxy_pass http://127.0.0.1:8000; proxy_set_header Host $host; proxy_set_header X-Forwarded-Proto https; }
     location / {
         proxy_pass http://127.0.0.1:8000;

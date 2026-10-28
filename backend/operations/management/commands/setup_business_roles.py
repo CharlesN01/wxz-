@@ -47,7 +47,7 @@ ROLES = {
                     | permissions("payments", "paymenttask", "view_paymenttask", "reschedule_paymenttask")
                     | permissions("payments", "paymentevent", "view_paymentevent")
                     | permissions("entitlements", "openingreservation", "view_openingreservation"),
-    "代理管理": permissions("distribution", "agentprofile", "view_agentprofile", "manage_agentprofile", "qrcode_agentprofile"),
+    "代理管理": permissions("distribution", "agentprofile", "view_agentprofile", "manage_agentprofile", "qrcode_agentprofile", "upload_agentwechatqr_agentprofile"),
     "代理业绩": permissions("distribution", "agentvoucher", "view_agentvoucher", "view_agentperformance", "export_agentperformance")
                     | permissions("distribution", "agentorderattribution", "view_agentorderattribution")
                     | permissions("activation", "activationredemption", "view_activationredemption"),

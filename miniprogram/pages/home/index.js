@@ -8,6 +8,7 @@ const navigation = require('../../utils/navigation');
 const { learningTrend, minutes } = require('../../utils/learning-trend');
 const studyTimer = require('../../utils/study-timer').clock;
 const themeStore = require('../../utils/theme');
+const agentAttribution = require('../../utils/agent-attribution');
 const { revealGeometry } = require('../../utils/theme-reveal');
 const dataService = require('../../services/data-service');
 const mockData = require('../../data/mock');
@@ -393,15 +394,18 @@ Page({
   async loadGroupResource() {
     if (!api.resources || typeof api.resources.group !== 'function') return;
     const version = this._groupVersion = (this._groupVersion || 0) + 1;
-    const result = await settle(api.resources.group());
+    const scene = agentAttribution.read();
+    const result = await settle(api.resources.group(scene ? { scene } : undefined));
     if (version !== this._groupVersion) return false;
     if (!result.ok) {
       this.setData({ groupResourceError: describeError(result.error, '资料群配置暂时无法加载') });
       return false;
     }
-    const resource = result.value && result.value.enabled ? result.value : {};
+    const payload = result.value || {};
+    const resource = payload.enabled ? payload : {};
     const claimCode = resource.claimCode || '';
-    const groupQrCode = GROUP_QR_IMAGE;
+    const agentQrCode = payload.agentWechatQrCode || '';
+    const groupQrCode = agentQrCode || GROUP_QR_IMAGE;
     const changed = groupQrCode !== this.data.groupQrCode;
     this.setData({
       groupQrCode,

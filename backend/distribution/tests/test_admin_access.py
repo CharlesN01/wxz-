@@ -2,7 +2,11 @@ import csv
 from io import StringIO
 
 from django.contrib.auth import get_user_model
-from django.contrib.auth.models import Group
+from django.contrib.auth.models import Group, Permission
+from django.contrib.admin.sites import site
+from django.core.exceptions import PermissionDenied
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.test import RequestFactory
 from django.core.management import call_command
 from django.test import TestCase, override_settings
 from django.urls import reverse
@@ -11,6 +15,7 @@ from django.utils import timezone
 from activation.models import ActivationBatch, ActivationCode, ActivationRedemption
 from accounts.models import WeChatIdentity
 from distribution.models import AgentOrderAttribution, AgentProfile, AgentVoucher
+from distribution.admin import AgentProfileAdmin
 from entitlements.services import grant_entitlement
 from payments.models import Order
 from payments.tests.test_preparation import PAYMENT_SETTINGS, fixtures
@@ -120,6 +125,7 @@ class AgentAdminScopeTests(TestCase):
         self.assertEqual(actual, expected)
         self.assertFalse(self.agent_a.has_perm("distribution.manage_agentprofile"))
         self.assertFalse(self.agent_a.has_perm("distribution.qrcode_agentprofile"))
+        self.assertFalse(self.agent_a.has_perm("distribution.upload_agentwechatqr_agentprofile"))
         self.assertFalse(self.agent_a.has_perm("payments.reschedule_paymenttask"))
 
     def test_lists_details_filters_and_qr_action_are_scoped_to_bound_agent(self):
@@ -229,3 +235,33 @@ class AgentAdminScopeTests(TestCase):
         self.assertContains(response, "QM-A1B2-TEST")
         self.assertContains(response, "QM-C3D4-TEST")
         self.assertNotContains(response, "QM-NORMAL-TEST")
+
+    def test_agent_management_role_has_separate_wechat_qr_upload_permission(self):
+        manager = Group.objects.get(name="代理管理")
+        self.assertTrue(manager.permissions.filter(codename="upload_agentwechatqr_agentprofile").exists())
+        self.assertFalse(self.agent_group.permissions.filter(codename="upload_agentwechatqr_agentprofile").exists())
+
+    def test_agent_wechat_qr_upload_requires_its_explicit_permission(self):
+        editor = self.make_staff("agent-admin-editor")
+        editor.user_permissions.add(*Permission.objects.filter(
+            content_type__app_label="distribution",
+            codename="view_agentprofile",
+        ))
+        model_admin = AgentProfileAdmin(AgentProfile, site)
+        request = RequestFactory().post("/admin/")
+        request.user = editor
+        self.assertIn("agent_wechat_qr", model_admin.get_readonly_fields(request, self.profile_a))
+
+        request = RequestFactory().post("/admin/", {"agent_wechat_qr": SimpleUploadedFile(
+            "agent.png", b"\x89PNG\r\n\x1a\n" + b"\x00" * 20, content_type="image/png",
+        )})
+        request.user = editor
+        with self.assertRaises(PermissionDenied):
+            model_admin.save_model(request, self.profile_a, None, True)
+
+        editor.user_permissions.add(Permission.objects.get(
+            content_type__app_label="distribution", codename="manage_agentprofile",
+        ))
+        editor = get_user_model().objects.get(pk=editor.pk)
+        request.user = editor
+        self.assertNotIn("agent_wechat_qr", model_admin.get_readonly_fields(request, self.profile_a))

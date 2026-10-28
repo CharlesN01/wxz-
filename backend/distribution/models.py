@@ -2,11 +2,12 @@ import uuid
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
-from django.core.validators import RegexValidator
+from django.core.validators import FileExtensionValidator, RegexValidator
 from django.db import models
 from django.utils import timezone
 
 from entitlements.models import ServiceOnlyModel
+from .qr import PublicAgentWechatQRStorage, agent_wechat_qr_upload_to, validate_agent_wechat_qr
 
 
 AGENT_CODE_VALIDATOR = RegexValidator(
@@ -25,6 +26,11 @@ class AgentProfile(ServiceOnlyModel):
     status = models.CharField("状态", max_length=16, choices=STATUS_CHOICES, default="active")
     scene = models.CharField("小程序码参数", max_length=40, unique=True, editable=False)
     qr_image = models.FileField("专属二维码", upload_to="distribution/qr/", blank=True)
+    agent_wechat_qr = models.FileField(
+        "代理微信二维码", upload_to=agent_wechat_qr_upload_to, blank=True,
+        storage=PublicAgentWechatQRStorage(),
+        validators=(FileExtensionValidator(allowed_extensions=("png", "jpg", "jpeg", "webp")), validate_agent_wechat_qr),
+    )
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="created_agent_profiles", verbose_name="创建者")
     created_at = models.DateTimeField("创建时间", auto_now_add=True)
     updated_at = models.DateTimeField("更新时间", auto_now=True)
@@ -38,6 +44,7 @@ class AgentProfile(ServiceOnlyModel):
         permissions = (
             ("manage_agentprofile", "可以创建和管理代理"),
             ("qrcode_agentprofile", "可以生成和下载代理二维码"),
+            ("upload_agentwechatqr_agentprofile", "可以上传代理微信二维码"),
         )
         constraints = (
             models.CheckConstraint(condition=models.Q(status__in=("active", "disabled")), name="distribution_agent_status"),

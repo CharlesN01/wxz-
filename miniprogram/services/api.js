@@ -107,7 +107,7 @@ const api = {
   },
 
   resources: {
-    group: (options) => query('GET', ROOT + '/resources/group/', null, options)
+    group: (params, options) => query('GET', ROOT + '/resources/group/', params, options)
   },
 
   pagination: {
