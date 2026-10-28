@@ -12,8 +12,6 @@ try { const loadedCache = require('../../utils/content-cache'); if (loadedCache 
 
 function currentTheme() { try { return wx.getStorageSync('chinese-study.theme') === 'night' ? 'night' : 'day'; } catch (_) { return 'day'; } }
 
-function currentTheme() { try { return wx.getStorageSync('chinese-study.theme') === 'night' ? 'night' : 'day'; } catch (_) { return 'day'; } }
-
 function canRequest() {
   return typeof wx !== 'undefined' && typeof wx.request === 'function';
 }
