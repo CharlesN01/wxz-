@@ -128,6 +128,7 @@ Page(withStudyTime({
     // create a large blank band above the period tabs.
     this.setData({ safeTop: 0 });
     this._questionRequest = 0;
+    this._categoryRequests = Object.create(null);
     this._questionPages = {};
     this._loaded = false;
     this._stateMap = {};
@@ -266,6 +267,7 @@ Page(withStudyTime({
 
   async loadApiPage(page, requestId, options) {
     options = options || {};
+    if (!this._categoryRequests) this._categoryRequests = Object.create(null);
     const categoryId = options.categoryId || this.data.categoryId;
     const cacheKey = categoryId + ':' + page;
     if (this._questionPages[cacheKey] && !options.force) return this._questionPages[cacheKey];
@@ -276,31 +278,35 @@ Page(withStudyTime({
         this._questionPages[cacheKey] = cachedRecord;
         return cachedRecord;
       }
+      if (this._categoryRequests[cacheKey] && !options.priority) return this._categoryRequests[cacheKey];
     }
-    const response = await api.content.questions({
-      source: SOURCE,
-      categoryId,
-      page
-    });
-    if (requestId !== this._questionRequest) return null;
-    const rows = response && Array.isArray(response.results) ? response.results : [];
-    const access = response && response.access || {};
-    const pageSize = Number(response && response.access && response.access.pageSize) > 0
-      ? Number(response.access.pageSize)
-      : Math.max(rows.length, 1);
-    const record = {
-      rows,
-      count: Number(access.totalCount) >= 0 ? Number(access.totalCount) : Number(response && response.count) >= 0 ? Number(response.count) : rows.length,
-      pageSize,
-      activated: Boolean(access.activated),
-      freeCount: Number(access.freeCount) >= 0 ? Number(access.freeCount) : 0,
-      restrictedCount: Number(access.restrictedCount) || 0
-    };
-    this._questionPages[cacheKey] = record;
-    contentCache.write('literature-category', api.auth, cacheKey, record);
-    return record;
+    const background = String(categoryId) !== String(this.data.categoryId);
+    const request = Promise.resolve(api.content.questions({ source: SOURCE, categoryId, page }))
+      .then((response) => {
+        if (!background && requestId !== this._questionRequest) return null;
+        const rows = response && Array.isArray(response.results) ? response.results : [];
+        const access = response && response.access || {};
+        const pageSize = Number(access.pageSize) > 0 ? Number(access.pageSize) : Math.max(rows.length, 1);
+        const record = {
+          rows,
+          count: Number(access.totalCount) >= 0 ? Number(access.totalCount) : Number(response && response.count) >= 0 ? Number(response.count) : rows.length,
+          pageSize,
+          activated: Boolean(access.activated),
+          freeCount: Number(access.freeCount) >= 0 ? Number(access.freeCount) : 0,
+          restrictedCount: Number(access.restrictedCount) || 0,
+          fromPrefetch: background
+        };
+        this._questionPages[cacheKey] = record;
+        contentCache.write('literature-category', api.auth, cacheKey, record);
+        return record;
+      });
+    if (!options.force) this._categoryRequests[cacheKey] = request;
+    try {
+      return await request;
+    } finally {
+      if (this._categoryRequests[cacheKey] === request) delete this._categoryRequests[cacheKey];
+    }
   },
-
   async prefetchCategories(categories) {
     if (this._prefetchPromise || !Array.isArray(categories)) return this._prefetchPromise;
     const ids = categories.map((item) => item && item.id).filter(Boolean)
@@ -323,7 +329,7 @@ Page(withStudyTime({
     this.setData({ loading: !(this.data.questions && this.data.questions.length), hasError: false, errorMessage: '' });
     let firstPage;
     try {
-      firstPage = await this.loadApiPage(1, requestId);
+      firstPage = await this.loadApiPage(1, requestId, { priority: true });
     } catch (error) {
       if (requestId !== this._questionRequest) return;
       this.setData({
@@ -429,7 +435,9 @@ Page(withStudyTime({
       if (row) rows.push(row);
     }
     const safeRows = answerDrafts.restrict(rows, lockedPage);
-    await this.loadStates(safeRows, requestId);
+    const statePromise = this.loadStates(safeRows, requestId);
+    const cachedFirstPage = Boolean(firstPage.fromCache || firstPage.fromPrefetch);
+    if (!cachedFirstPage) await statePromise;
     if (requestId !== this._questionRequest) return;
     this._questionRows = safeRows;
     this._activated = activated;
@@ -476,6 +484,13 @@ Page(withStudyTime({
     });
     if (firstPage.fromCache && firstPage.stale) {
       this.loadApiPage(1, requestId, { force: true }).catch(() => null);
+    }
+    if (cachedFirstPage) {
+      statePromise.then(() => {
+        if (requestId !== this._questionRequest) return;
+        const updated = this.renderRows(this._questionRows, lockedPage);
+        this.setData(Object.assign({ questions: updated }, answerDrafts.progress(updated)));
+      }).catch(() => null);
     }
     this.queueResume();
   },
@@ -573,6 +588,13 @@ Page(withStudyTime({
       categoryId,
       categoryName: category.name,
       page: 1,
+      loading: true,
+      hasError: false,
+      errorMessage: '',
+      questions: [],
+      answeredCount: 0,
+      answerProgressPercent: 0,
+      pageQuestionCount: 0,
       categoryScrollLeft: Math.max(0, index - 1) * 92
     });
     this.loadPage(1);
