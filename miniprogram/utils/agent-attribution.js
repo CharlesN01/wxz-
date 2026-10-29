@@ -45,6 +45,17 @@ function read() {
   } catch (_) { return ''; }
 }
 
+function sharePath(path) {
+  const scene = read();
+  if (!scene) return path;
+  return `${path}${String(path).includes('?') ? '&' : '?'}scene=${encodeURIComponent(scene)}`;
+}
+
+function shareQuery() {
+  const scene = read();
+  return scene ? `scene=${encodeURIComponent(scene)}` : '';
+}
+
 function capture(options, { preserveOnEmpty = false } = {}) {
   // options is supplied by App onLaunch/onShow or page onLoad. When the user
   // enters via an agent QR code the scene parameter is present — save it.
@@ -70,4 +81,4 @@ function capture(options, { preserveOnEmpty = false } = {}) {
   return scene;
 }
 
-module.exports = { capture, read, normalize };
+module.exports = { capture, read, normalize, sharePath, shareQuery };

@@ -1,14 +1,14 @@
 const SHARE_TITLE = '文常记｜山东专升本语文';
 const SHARE_PATH = '/pages/home/index';
 const SHARE_IMAGE = '/assets/share-cover.png';
-function shareAppMessage() { return { title: SHARE_TITLE, path: SHARE_PATH, imageUrl: SHARE_IMAGE }; }
-function shareTimeline() { return { title: SHARE_TITLE, query: '', imageUrl: SHARE_IMAGE }; }
+const agentAttribution = require('../../utils/agent-attribution');
+function shareAppMessage() { return { title: SHARE_TITLE, path: agentAttribution.sharePath(SHARE_PATH), imageUrl: SHARE_IMAGE }; }
+function shareTimeline() { return { title: SHARE_TITLE, query: agentAttribution.shareQuery(), imageUrl: SHARE_IMAGE }; }
 const api = require('../../services/api');
 const navigation = require('../../utils/navigation');
 const { learningTrend, minutes } = require('../../utils/learning-trend');
 const studyTimer = require('../../utils/study-timer').clock;
 const themeStore = require('../../utils/theme');
-const agentAttribution = require('../../utils/agent-attribution');
 const { revealGeometry } = require('../../utils/theme-reveal');
 const dataService = require('../../services/data-service');
 const mockData = require('../../data/mock');
