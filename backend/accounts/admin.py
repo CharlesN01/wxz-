@@ -19,6 +19,12 @@ class UserAdmin(BaseUserAdmin, ModelAdmin):
     add_form = UserCreationForm
     change_password_form = AdminPasswordChangeForm
 
+    def save_model(self, request, obj, form, change):
+        if not change:
+            obj.is_staff = True
+            obj.is_superuser = False
+        super().save_model(request, obj, form, change)
+
 
 admin.site.unregister(Group)
 
