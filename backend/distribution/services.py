@@ -64,7 +64,7 @@ def generate_agent_qr(actor, agent_id):
         raise BusinessError("NOT_FOUND", "代理不存在。", 404) from error
     from payments.gateway import access_token
     token = access_token(settings.WECHAT_APP_ID)
-    body = json.dumps({"scene": profile.scene, "page": "pages/home/index", "check_path": False, "env_version": "trial"}, separators=(",", ":")).encode()
+    body = json.dumps({"scene": profile.scene, "page": "pages/home/index", "check_path": False, "env_version": "release"}, separators=(",", ":")).encode()
     request = Request("https://api.weixin.qq.com/wxa/getwxacodeunlimit?access_token=" + token, data=body, headers={"Content-Type": "application/json"}, method="POST")
     try:
         with urlopen(request, timeout=8) as response:

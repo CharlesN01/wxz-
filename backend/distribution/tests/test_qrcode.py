@@ -1,4 +1,5 @@
 from unittest.mock import patch
+import json
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission
@@ -50,6 +51,8 @@ class AgentQrTests(TestCase):
 
         self.assertTrue(result.qr_image.name.endswith(".jpg"))
         self.assertEqual(result.qr_image.read(), b"\xff\xd8\xffjpeg")
+        request = mocked_urlopen.call_args.args[0]
+        self.assertEqual(json.loads(request.data)["env_version"], "release")
 
     @patch("payments.gateway.access_token", return_value="token")
     @patch("distribution.services.urlopen")
