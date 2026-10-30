@@ -90,12 +90,15 @@ class StudentCatalogView(StudentContentView):
         validate_query_params(request.query_params, StudentPageQuery)
         anonymous = not (request.user and request.user.is_authenticated)
         cache_key = None
+        config = LearningConfiguration.current()
         if anonymous:
-            cache_key = "%s:v%s:%s" % (self.__class__.__name__, content_cache.version(), request.query_params.get("page", "1"))
+            cache_key = "%s:v%s:%s:%s" % (
+                self.__class__.__name__, content_cache.version(), config.page_size,
+                request.query_params.get("page", "1"),
+            )
             cached = content_cache.get(cache_key)
             if cached is not None:
                 return Response(cached)
-        config = LearningConfiguration.current()
         counts = published_questions().filter(**{self.revision_field: OuterRef("pk")}).order_by().values(
             self.revision_field,
         ).annotate(total=Count("pk")).values("total")[:1]
@@ -203,6 +206,16 @@ class StudentQuestionListView(StudentContentView):
         model = Category if source == "literature" else Article
         get_object_or_404(model, pk=scope_id, is_active=True)
         config = LearningConfiguration.current()
+        anonymous = not (request.user and request.user.is_authenticated)
+        cache_key = None
+        if anonymous:
+            cache_key = "question-list:v%s:%s:%s:%s:%s:%s" % (
+                content_cache.version(), source, scope_id, query.get("type", ""),
+                query.get("page", 1), config.page_size,
+            )
+            cached = content_cache.get(cache_key)
+            if cached is not None:
+                return Response(cached)
         queryset = scope_questions(source, scope_id)
         if "type" in query:
             queryset = queryset.filter(published_revision__type=query["type"])
@@ -229,6 +242,8 @@ class StudentQuestionListView(StudentContentView):
             response.data["progress"] = {"masteredCount": QuestionState.objects.filter(
                 user=request.user, mastered=True, question_id__in=Subquery(readable.values("pk")),
             ).count()}
+        if cache_key:
+            content_cache.set(cache_key, response.data)
         return response
 
     @staticmethod

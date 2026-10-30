@@ -3,6 +3,7 @@
 from django.contrib.auth import get_user_model
 from django.db import connection
 from django.test import override_settings
+from django.core.cache import cache
 from django.test.utils import CaptureQueriesContext
 from rest_framework.test import APIClient
 
@@ -39,6 +40,17 @@ class StudentLoadingPerformanceTests(StudentContentFixture):
         self.assertEqual(response.status_code, 200)
         ranked = [row["sql"] for row in captured if "ROW_NUMBER()" in row["sql"].upper()]
         self.assertEqual(len(ranked), 1)
+
+    @override_settings(CONTENT_CACHE_ENABLED=True)
+    def test_anonymous_question_page_uses_shared_cache(self):
+        cache.clear()
+        first = self.client.get(self.questions_url)
+        self.assertEqual(first.status_code, 200)
+        with CaptureQueriesContext(connection) as captured:
+            second = self.client.get(self.questions_url)
+        self.assertEqual(second.status_code, 200)
+        self.assertEqual(second.data, first.data)
+        self.assertFalse(any("content_questionrevision" in row["sql"] for row in captured))
 
     def test_question_page_reads_only_own_state_in_one_query(self):
         self.authenticate()
