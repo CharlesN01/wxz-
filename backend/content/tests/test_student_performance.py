@@ -33,6 +33,13 @@ class StudentLoadingPerformanceTests(StudentContentFixture):
         self.assertIsNone(self.client.get(f"/api/student/v1/questions/{self.first.pk}/").data["state"])
         self.assertEqual(QuestionState.objects.count(), 1)
 
+    def test_question_page_ranks_free_set_once_per_request(self):
+        with CaptureQueriesContext(connection) as captured:
+            response = self.client.get(self.questions_url)
+        self.assertEqual(response.status_code, 200)
+        ranked = [row["sql"] for row in captured if "ROW_NUMBER()" in row["sql"].upper()]
+        self.assertEqual(len(ranked), 1)
+
     def test_question_page_reads_only_own_state_in_one_query(self):
         self.authenticate()
         QuestionState.objects.create(user=self.student, question=self.first, favorite=True, version=4)

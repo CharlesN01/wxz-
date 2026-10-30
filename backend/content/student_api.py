@@ -12,7 +12,14 @@ from rest_framework.response import Response
 from common.api import PublicStudentAPIView
 from common import content_cache
 from common.errors import BusinessError
-from .access import accessible_questions, free_questions, published_questions, question_access, scope_questions
+from .access import (
+    accessible_questions,
+    free_questions,
+    has_full_access,
+    published_questions,
+    question_access,
+    scope_questions,
+)
 from .models import Article, Category, LearningConfiguration
 from .serializers import StudentQuestionSerializer, StrictPositiveIntegerField, validate_query_params
 
@@ -200,8 +207,10 @@ class StudentQuestionListView(StudentContentView):
         if "type" in query:
             queryset = queryset.filter(published_revision__type=query["type"])
         total = queryset.count()
-        free_count = free_questions(queryset, page_size=config.page_size).count()
-        readable, activated = question_access(request.user, queryset, page_size=config.page_size)
+        free_ids = list(free_questions(queryset, page_size=config.page_size).values_list("pk", flat=True))
+        free_count = len(free_ids)
+        activated = has_full_access(request.user)
+        readable = queryset if activated else queryset.filter(pk__in=free_ids)
         response = self.paginated(
             request, readable, config.page_size,
             lambda page: self.serialize_questions(request.user, page),
