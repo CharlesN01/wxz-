@@ -96,8 +96,8 @@ class StudentCatalogView(StudentContentView):
                 self.__class__.__name__, content_cache.version(), config.page_size,
                 request.query_params.get("page", "1"),
             )
-            cached = content_cache.get(cache_key)
-            if cached is not None:
+            cached, should_compute = content_cache.get_or_claim_fill(cache_key)
+            if not should_compute:
                 return Response(cached)
         counts = published_questions().filter(**{self.revision_field: OuterRef("pk")}).order_by().values(
             self.revision_field,
@@ -213,8 +213,8 @@ class StudentQuestionListView(StudentContentView):
                 content_cache.version(), source, scope_id, query.get("type", ""),
                 query.get("page", 1), config.page_size,
             )
-            cached = content_cache.get(cache_key)
-            if cached is not None:
+            cached, should_compute = content_cache.get_or_claim_fill(cache_key)
+            if not should_compute:
                 return Response(cached)
         queryset = scope_questions(source, scope_id)
         if "type" in query:
