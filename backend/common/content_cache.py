@@ -44,6 +44,7 @@ def set(key, value, timeout=None):
         return False
     try:
         cache.set(PREFIX + str(key), value, timeout or settings.CONTENT_CACHE_TTL_SECONDS)
+        cache.delete(PREFIX + "fill:" + str(key))
         return True
     except Exception:
         return False
