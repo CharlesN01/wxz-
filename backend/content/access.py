@@ -1,6 +1,7 @@
 """All student content entrypoints share published snapshots and this policy."""
 
-from django.db.models import F, OuterRef, Q, Subquery
+from django.db.models import F, Q, Subquery, Window
+from django.db.models.functions import RowNumber
 
 from .models import LearningConfiguration, Question, Source
 
@@ -37,14 +38,27 @@ def free_question_ids(source, scope_id):
 
 
 def _free_subquery(size):
-    # Correlate the whole published scope, never a caller's type-filtered query.
-    # SQL WHERE type is applied only outside this LIMIT subquery.
-    return published_questions().filter(
-        published_revision__source=OuterRef("published_revision__source"),
-    ).filter(
-        Q(published_revision__category_id=OuterRef("published_revision__category_id"))
-        | Q(published_revision__article_id=OuterRef("published_revision__article_id"))
-    ).values("pk")[:size]
+    """Return the first ``size`` published questions per content scope.
+
+    The previous correlated subquery ranked each candidate by re-scanning its
+    entire scope. A window rank computes the same set in one pass while still
+    ranking the unfiltered published set before callers apply type filters.
+    """
+    ranked = published_questions().annotate(
+        _free_rank=Window(
+            expression=RowNumber(),
+            partition_by=[
+                F("published_revision__source"),
+                F("published_revision__category_id"),
+                F("published_revision__article_id"),
+            ],
+            order_by=[
+                F("published_revision__sort_order").asc(),
+                F("pk").asc(),
+            ],
+        )
+    ).filter(_free_rank__lte=size)
+    return ranked.values("pk")
 
 
 def free_questions(queryset=None, *, page_size=None):
