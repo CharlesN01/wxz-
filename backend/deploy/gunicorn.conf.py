@@ -1,7 +1,7 @@
 bind = "127.0.0.1:8000"
 workers = 8
 worker_class = "gthread"
-threads = 2
+threads = 4
 timeout = 30
 graceful_timeout = 30
 max_requests = 1000
