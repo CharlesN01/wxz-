@@ -20,9 +20,12 @@
     <view wx:if="{{personalError}}" class="notice-card"><text class="notice-mark">i</text><text class="notice-text">{{personalError}}</text></view>
     <view class="toolbar">
       <view class="toolbar-heading"><text class="section-title">{{categoryName}}练习</text><text class="section-page">{{questionProgressLabel}}</text></view>
-      <view class="modes">
-        <view class="mode {{mode === 'writing' ? 'mode-active' : ''}}" data-mode="writing" bindtap="onModeTap" role="button" aria-label="默写自测" aria-pressed="{{mode === 'writing'}}">默写自测</view>
-        <view class="mode {{mode === 'reciting' ? 'mode-active' : ''}}" data-mode="reciting" bindtap="onModeTap" role="button" aria-label="背诵全览" aria-pressed="{{mode === 'reciting'}}">背诵全览</view>
+      <view class="toolbar-controls">
+        <view wx:if="{{mode === 'writing'}}" class="clear-answer-button" bindtap="clearCurrentPageAnswers" role="button">清空答案</view>
+        <view class="modes">
+          <view class="mode {{mode === 'writing' ? 'mode-active' : ''}}" data-mode="writing" bindtap="onModeTap" role="button" aria-label="默写自测" aria-pressed="{{mode === 'writing'}}">默写自测</view>
+          <view class="mode {{mode === 'reciting' ? 'mode-active' : ''}}" data-mode="reciting" bindtap="onModeTap" role="button" aria-label="背诵全览" aria-pressed="{{mode === 'reciting'}}">背诵全览</view>
+        </view>
       </view>
     </view>
     <view wx:if="{{!loading && !hasError}}" class="membership-status">{{activated ? '会员已开通 · 全部题目可答' : '未开通会员 · 第 1 页免费'}}</view>
@@ -32,7 +35,7 @@
     <view wx:elif="{{hasError}}" class="page-error">
       <view class="error-icon">!</view><text class="error-title">题目加载失败</text><text class="error-copy">{{errorMessage}}</text><view class="retry-button" role="button" bindtap="retry">重新加载</view>
     </view>
-    <view wx:elif="{{questions.length}}" class="question-list {{lockedPage ? 'question-list-locked' : ''}}">
+    <view wx:elif="{{questions.length}}" class="question-list {{lockedPage ? 'question-list-locked' : ''}}" bindtouchstart="onQuestionTouchStart" bindtouchend="onQuestionTouchEnd">
       <view wx:for="{{questions}}" wx:key="id" class="question {{item.locked ? 'question-locked' : ''}}">
         <block wx:if="{{item.locked}}">
           <view class="locked-literature-card" bindtap="openMembership" role="button" aria-label="开通会员查看题目">
@@ -71,9 +74,12 @@
 
     <view wx:if="{{!loading && pageCount}}" class="pagination">
       <view class="page-button {{canPrevious ? '' : 'page-disabled'}}" data-delta="-1" bindtap="goPage" role="button">‹</view>
-      <text class="page-number">第 {{page}} / {{pageCount}} 页</text>
+      <view class="page-number-control">
+        <view class="page-number-editor"><text>第</text><input class="page-number-input" type="number" value="{{pageEditing ? pageInput : page}}" confirm-type="done" bindfocus="editPageNumber" bindinput="onPageInput" bindconfirm="confirmPageJump" /><text> / {{pageCount}} 页</text></view>
+      </view>
       <view class="page-button {{canNext ? '' : 'page-disabled'}}" data-delta="1" bindtap="goPage" role="button">›</view>
     </view>
+    <view class="page-jump-hint">{{pageJumpHint}}</view>
     <view class="tip">学习建议：先在“默写自测”中独立作答，再切换“背诵全览”核对答案。完成后可切换下一个时期继续学习。</view>
   </view>
 

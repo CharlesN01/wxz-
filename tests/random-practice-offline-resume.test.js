@@ -13,7 +13,9 @@ function loadPage(relativePath, overrides, globals = {}) {
     require(name) {
       if (name === '../../utils/study-timer') return { withStudyTime: (definition) => definition };
       if (Object.prototype.hasOwnProperty.call(overrides, name)) return overrides[name];
+      if (name === '../../utils/agent-attribution') return { read: () => '', sharePath: (value) => value, shareQuery: () => '' };
       if (name === '../../utils/answer-drafts') return require('../miniprogram/utils/answer-drafts');
+      if (name === '../../utils/page-swipe') return require('../miniprogram/utils/page-swipe');
       throw new Error('Unexpected module: ' + name);
     },
     Page(value) { definition = value; },
@@ -156,7 +158,10 @@ test('真实随机轮次按题源规范化旧路由参数，文常不会提交wo
         createRound: async body => { request = body; return { id: 'contract-round', groupCount: 1, totalCount: 1, pageSize: 6 }; },
         group: async () => ({ groupIndex: 1, groupCount: 1, totalCount: 1, pageSize: 6, results: [{ ...question('contract-q', source, expectedType || 'fact'), state: {} }] })
       },
-      learning: { saveResume: async () => ({ version: 1 }) }
+      learning: {
+        resume: async () => ({ valid: false, start: null }),
+        saveResume: async () => ({ version: 1 })
+      }
     };
     const page = loadPage('pages/random/index.js', {
       '../../services/api': api, '../../utils/study-store': baseStore(null),

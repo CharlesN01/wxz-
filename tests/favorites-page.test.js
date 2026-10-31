@@ -51,6 +51,7 @@ function createPage(mode = 'writing', apiOverrides = {}) {
       if (name === '../../services/api') return api;
       if (name === '../../utils/navigation') return navigation;
       if (name === '../../utils/answer-drafts') return require('../miniprogram/utils/answer-drafts');
+      if (name === '../../utils/agent-attribution') return { read: () => '', sharePath: (value) => value, shareQuery: () => '' };
       throw new Error('Unexpected module: ' + name);
     },
     Page(value) { definition = value; },

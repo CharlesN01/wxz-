@@ -18,7 +18,7 @@ test('导航标题与副标题分行布局并避开返回按钮及微信胶囊',
   assert.match(template, /header-copy-centered/);
   assert.match(homePage, /<study-navbar[^>]*back="\{\{false\}\}"/);
   assert.match(centeredPage, /<study-navbar[^>]*centered="\{\{true\}\}"/);
-  assert.match(styles, /\.back-hit \{[^}]*left: 8rpx;[^}]*width: 88rpx;/);
+  assert.match(styles, /\.back-hit \{[^}]*left: var\(--study-rpx-8\);[^}]*width: var\(--study-rpx-88\);/);
   assert.match(styles, /\.header-copy \{[^}]*flex-direction: column;/);
   assert.match(styles, /\.brand-title \{[^}]*display: block;[^}]*word-break: break-all;/);
   assert.match(styles, /\.brand-subtitle \{[^}]*display: block;/);

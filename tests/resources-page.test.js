@@ -27,6 +27,7 @@ function createPage(response, options) {
     require(name) {
       if (name === '../../services/api') return api;
       if (name === '../../utils/resource-image') return require('../miniprogram/utils/resource-image');
+      if (name === '../../utils/agent-attribution') return { read: () => '', sharePath: (value) => value, shareQuery: () => '' };
       throw new Error('Unexpected module: ' + name);
     },
     Page(value) { definition = value; },

@@ -89,6 +89,15 @@ test('content requests can opt into the Bearer contract for activated learners',
   assert.equal(calls[0].header.Authorization, 'Bearer activated-token');
 });
 
+test('ordinary activation redemption forwards an optional current agent scene', async () => {
+  session.saveSession({ token: 'activation-learner', expiresAt: '' });
+  const calls = installWx((options) => respond(options, 200, { redemptionId: 'redemption-1' }));
+  await api.activation.redeem('QM-CODE', { scene: 'a=AGENT001' });
+  await api.activation.redeem('QM-CODE-NO-SCENE');
+  assert.deepEqual(calls[0].data, { code: 'QM-CODE', scene: 'a=AGENT001' });
+  assert.deepEqual(calls[1].data, { code: 'QM-CODE-NO-SCENE' });
+});
+
 test('article catalogs carry the learner session for aggregated progress while guests stay public', async () => {
   const calls = installWx((options) => respond(options, 200, { results: [] }));
   await api.content.articles({ page: 1 });

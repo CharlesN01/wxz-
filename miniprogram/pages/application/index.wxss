@@ -51,6 +51,11 @@ page { background: #f5f9ff; }
 .reader-theme-warm .page-nav button { border-color: #e4c7bc; background: #fff6ef; }
 .reader-theme-warm .page-nav button[disabled] { border-color: #eee1d8; color: #c4b8b5; background: #f8f3ef; }
 .page-no { color: var(--reader-muted); font-size: var(--study-rpx-20); text-align: center; }
+.page-number-control { display: flex; align-items: center; justify-content: center; min-width: var(--study-rpx-180); min-height: var(--study-rpx-68); }
+.page-number-editor { display: flex; align-items: center; justify-content: center; gap: var(--study-rpx-4); color: var(--reader-muted); font-size: var(--study-rpx-24); white-space: nowrap; }
+.page-no-prefix, .page-no-suffix { color: var(--reader-muted); font-size: var(--study-rpx-24); line-height: 1.4; }
+.page-number-input { flex: 0 0 24px; width: 24px; height: 24px; min-height: 24px; box-sizing: border-box; padding: 0; border: 1px solid var(--reader-primary); border-radius: var(--study-rpx-6); color: var(--reader-ink); background: var(--reader-paper); font-size: var(--study-rpx-24); line-height: 22px; text-align: center; }
+.page-jump-hint { min-height: var(--study-rpx-28); color: #b45335; font-size: var(--study-rpx-18); line-height: var(--study-rpx-28); text-align: center; }
 .state { margin-top: var(--study-rpx-20); padding: var(--study-rpx-32) var(--study-rpx-24); border: 1px solid var(--reader-border); border-radius: var(--study-rpx-24); color: var(--reader-muted); background: var(--reader-paper); text-align: center; font-size: var(--study-rpx-22); line-height: 1.7; }
 .state.error { color: #b45335; }
 .state-copy { display: block; margin-top: var(--study-rpx-10); }

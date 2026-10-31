@@ -41,7 +41,10 @@
         <text class="toolbar-title">文言文随机测试</text>
         <text class="toolbar-subtitle">全库混合</text>
       </view>
-      <mode-switch mode="{{mode}}" theme="blue" bindchange="onModeChange" />
+      <view class="random-mode-controls">
+        <view wx:if="{{mode === 'writing'}}" class="clear-answer-button" bindtap="clearCurrentPageAnswers" role="button">清空答案</view>
+        <mode-switch mode="{{mode}}" theme="blue" bindchange="onModeChange" />
+      </view>
     </view>
 
     <view wx:if="{{source === 'literature' && !loading && !hasError && questions.length}}" class="page-progress" aria-label="本页已答 {{answeredCount}} / {{pageQuestionCount}}">
@@ -51,7 +54,7 @@
       <view class="page-progress-fill" style="width: {{answerProgressPercent}}%;"></view>
     </view>
 
-    <view class="random-questions" wx:if="{{!loading && !hasError && questions.length}}">
+    <view class="random-questions" wx:if="{{!loading && !hasError && questions.length}}" bindtouchstart="onQuestionTouchStart" bindtouchend="onQuestionTouchEnd">
       <view class="random-question" wx:for="{{questions}}" wx:key="id">
         <question-card class="study-question-card" question="{{item}}" mode="{{mode}}" number="{{index + 1}}" variant="random" show-tag="{{true}}" bindfavorite="onFavorite" bindmaster="onMaster" bindanswerinput="onAnswerInput" bindunlock="openMembership" />
       </view>
@@ -59,11 +62,14 @@
     <empty-state wx:elif="{{!loading && !hasError && roundContentUnavailable}}" title="题库已更新" description="题库已更新，请重新开始本轮" action-text="重新开始本轮" bindaction="restartUpdatedRound" />
     <empty-state wx:elif="{{!loading && !hasError}}" title="暂无随机练习题" description="该模块暂无已发布内容。" action-text="去学习" bindaction="onGoStudy" />
 
-    <view wx:if="{{!loading && !hasError && questions.length}}" class="pagination" aria-label="练习分页">
+    <view wx:if="{{!loading && !hasError && questions.length}}" class="pagination" aria-label="练习分页 第 {{groupNumber || 1}} / {{groupCount || 1}} 页">
       <view class="page-button previous-page {{groupNumber <= 1 ? 'disabled' : ''}}" bindtap="onPreviousGroup" role="button" aria-label="上一组" aria-disabled="{{groupNumber <= 1}}">‹</view>
-      <text class="page-number">第 {{groupNumber || 1}} / {{groupCount || 1}} 页</text>
+      <view class="page-number-control">
+        <view class="page-number-editor"><text>第</text><input class="page-number-input" type="number" value="{{pageEditing ? pageInput : groupNumber || 1}}" confirm-type="done" bindfocus="editPageNumber" bindinput="onPageInput" bindconfirm="confirmPageJump" /><text> / {{groupCount || 1}} 页</text></view>
+      </view>
       <view class="page-button next-page {{groupNumber >= groupCount ? 'disabled' : ''}}" bindtap="onNextGroup" role="button" aria-label="下一组" aria-disabled="{{groupNumber >= groupCount}}">›</view>
     </view>
+    <view class="page-jump-hint">{{pageJumpHint}}</view>
     <view wx:if="{{!loading && !hasError && questions.length}}" class="study-tip">{{mode === 'reciting' ? '答案直接显示，完成本页后继续复习' : '先回忆答案，再点击“查看答案”核对'}}</view>
   </view>
 

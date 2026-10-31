@@ -140,6 +140,8 @@ page {
   width: var(--study-rpx-320);
   max-width: 56%;
 }
+.practice-mode-controls { display: flex; align-items: center; justify-content: flex-end; flex: 1; gap: var(--study-rpx-8); min-width: 0; }
+.practice-mode-controls .clear-answer-button { display: flex; align-items: center; justify-content: center; min-height: 30px; padding: 0 9px; border: 1px solid var(--theme-accent-border, #C5DDFB); border-radius: var(--study-rpx-30); color: var(--theme-accent, #237BEA); background: var(--theme-soft, #EDF5FF); font-size: var(--study-rpx-22); line-height: normal; white-space: nowrap; }
 
 .progress-track {
   width: 100%;
@@ -265,6 +267,10 @@ page {
   line-height: 1.4;
   white-space: nowrap;
 }
+.page-number-control { display: flex; align-items: center; justify-content: center; width: 112px; height: 32px; }
+.page-number-editor { display: flex; align-items: center; justify-content: center; gap: 3px; color: var(--theme-muted, #8995a8); font-size: var(--study-rpx-24); white-space: nowrap; }
+.page-number-input { flex: 0 0 24px; width: 24px; height: 24px; min-height: 24px; box-sizing: border-box; padding: 0; border: 1px solid var(--theme-border, #e9eef5); border-radius: 5px; color: var(--theme-ink, #18243b); background: var(--theme-paper, #fff); font-size: var(--study-rpx-24); line-height: 22px; text-align: center; }
+.page-jump-hint { min-height: 18px; color: var(--theme-danger, #c2413a); font-size: var(--study-rpx-20); line-height: 18px; text-align: center; }
 
 .practice-tip {
   display: block;

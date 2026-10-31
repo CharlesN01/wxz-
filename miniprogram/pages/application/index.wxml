@@ -27,7 +27,7 @@
       <view wx:if="{{detailLoading}}" class="state">正在加载正文…</view>
       <view wx:elif="{{detailError}}" class="state error"><text>{{detailError}}</text><button class="retry-button" bindtap="retryDetail">重试</button></view>
       <view wx:elif="{{!detailItems.length}}" class="state">{{restrictedCount && !items.length ? '当前内容需要开通权益，开通后请刷新内容。' : '当前筛选暂无已发布内容，可切换文种或选择全部内容。'}}</view>
-      <view wx:elif="{{selected && reader}}" class="panel">
+      <view wx:elif="{{selected && reader}}" class="panel" bindtouchstart="onPageTouchStart" bindtouchend="onPageTouchEnd">
         <view class="article-heading"><text class="article-title">{{selected.title}}</text><text class="source-label">{{reader.sourceLabel}}</text></view>
         <block wx:if="{{mode === 'template'}}">
           <view wx:if="{{reader.requirement}}" class="requirement"><text class="requirement-title">题目要求</text><text class="requirement-body">{{reader.requirement}}</text></view>
@@ -41,7 +41,14 @@
           <text wx:else class="content-empty">该内容尚未单独提供写作要点，请查看写作样例或原文。</text>
         </block>
       </view>
-      <view wx:if="{{detailItems.length}}" class="page-nav"><button disabled="{{selectedIndex <= 0}}" data-direction="-1" bindtap="changePage">‹ 上一篇</button><text class="page-no">第 {{selectedIndex + 1}} / {{detailItems.length}} 篇</text><button disabled="{{selectedIndex >= detailItems.length - 1}}" data-direction="1" bindtap="changePage">下一篇 ›</button></view>
+      <view wx:if="{{detailItems.length}}" class="page-nav">
+        <button disabled="{{selectedIndex <= 0}}" data-direction="-1" bindtap="changePage">‹ 上一篇</button>
+        <view class="page-number-control">
+          <view class="page-number-editor"><text class="page-no-prefix">第</text><input class="page-number-input" type="number" value="{{pageEditing ? pageInput : selectedIndex + 1}}" confirm-type="done" bindfocus="editPageNumber" bindinput="onPageInput" bindconfirm="confirmPageJump" /><text class="page-no-suffix">/ {{detailItems.length}} 篇</text></view>
+        </view>
+        <button disabled="{{selectedIndex >= detailItems.length - 1}}" data-direction="1" bindtap="changePage">下一篇 ›</button>
+      </view>
+      <view wx:if="{{pageJumpHint}}" class="page-jump-hint">{{pageJumpHint}}</view>
     </block>
   </view>
 </view>
