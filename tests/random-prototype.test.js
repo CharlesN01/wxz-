@@ -61,10 +61,30 @@ test('随机页按实际轮次数动态更新进度，不固定使用原型示�
   assert.equal(page.data.progressPercent, 100);
 });
 
+test('随机答题页允许输入首尾页和中间页，非法页码不改变当前组', () => {
+  const page = createPage();
+  page.onLoad({ source: 'literature', mode: 'writing' });
+  page.data.pageInput = '4';
+  page.confirmPageJump();
+  assert.equal(page.data.groupNumber, 1);
+  assert.equal(page.data.pageJumpHint, '请输入 1 至 3 页');
+  page.data.pageInput = '1.5';
+  page.confirmPageJump();
+  assert.equal(page.data.groupNumber, 1);
+  page.data.pageInput = '1';
+  page.confirmPageJump();
+  assert.equal(page.data.groupNumber, 1);
+  page.data.pageInput = '3';
+  page.confirmPageJump();
+  assert.equal(page.data.groupNumber, 3);
+});
+
 test('文常和文言随机输入独立更新本页已答，末组分母用实际题数且切模式不虚增', async () => {
   for (const source of ['literature', 'classical']) {
     const page = createPage();
     page.onLoad({ source, type: source === 'classical' ? 'word' : 'fact', mode: 'writing' });
+    page._activated = true;
+    page.refreshLocalGroup();
     page.saveResume = () => { throw new Error('typing must not write resume'); };
     const firstId = page.data.questions[0].id;
     page.onAnswerInput({ detail: { id: firstId, values: ['已填写'] } });
@@ -133,11 +153,11 @@ test('文言随机页不显示原型中不存在的顶部进度条', () => {
 
 test('文言随机题卡字号对齐原型 11/12，且不缩小文常随机题卡', () => {
   const styles = fs.readFileSync(questionCardStyleFile, 'utf8');
-  assert.match(styles, /\.classical-random-card \.question-index\s*\{[^}]*font-size:\s*18rpx/s);
-  assert.match(styles, /\.classical-random-card \.stem\s*\{[^}]*font-size:\s*22rpx/s);
-  assert.match(styles, /\.classical-random-card \.answer-toggle\s*\{[^}]*font-size:\s*18rpx/s);
-  assert.match(styles, /\.classical-random-card \.answer-box\s*\{[^}]*font-size:\s*18rpx/s);
-  assert.match(styles, /\.variant-random \.stem[^}]*font-size:\s*26rpx/);
+  assert.match(styles, /\.classical-random-card \.question-index\s*\{[^}]*font-size:\s*var\(--study-rpx-18\)/s);
+  assert.match(styles, /\.classical-random-card \.stem\s*\{[^}]*font-size:\s*var\(--study-rpx-22\)/s);
+  assert.match(styles, /\.classical-random-card \.answer-toggle\s*\{[^}]*font-size:\s*var\(--study-rpx-18\)/s);
+  assert.match(styles, /\.classical-random-card \.answer-box\s*\{[^}]*font-size:\s*var\(--study-rpx-18\)/s);
+  assert.match(styles, /\.variant-random \.stem[^}]*font-size:\s*var\(--study-rpx-26\)/);
 });
 
 test('文言随机题卡模板保留后端篇名出处展示', () => {

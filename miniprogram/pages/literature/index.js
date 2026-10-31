@@ -6,6 +6,8 @@ function shareAppMessage() { return { title: SHARE_TITLE, path: agentAttribution
 function shareTimeline() { return { title: SHARE_TITLE, query: agentAttribution.shareQuery(), imageUrl: SHARE_IMAGE }; }
 const { withStudyTime } = require('../../utils/study-timer');
 const api = require('../../services/api');
+let studyStore = { saveResume() {}, getResume() { return null; } };
+try { studyStore = require('../../utils/study-store'); } catch (_) { /* isolated page tests may omit local storage */ }
 const navigation = require('../../utils/navigation');
 const safeTop = require('../../utils/safe-top');
 const UI_PAGE_SIZE = 6;
@@ -99,6 +101,9 @@ Page(withStudyTime({
     mode: 'writing',
     questions: [],
     page: 1,
+    pageInput: '',
+    pageEditing: false,
+    pageJumpHint: '',
     pageSize: UI_PAGE_SIZE,
     isTablet: false,
     questionProgressLabel: '00 / 00',
@@ -146,21 +151,14 @@ Page(withStudyTime({
     const cached = contentCache.read('literature-first', api.auth, 'v1');
     if (cached && cached.payload && Array.isArray(cached.payload.categories)) {
       const snapshot = cached.payload;
+      const cachedPage = Number(snapshot.page) > 0 ? Number(snapshot.page) : 1;
       this._lastRefreshAt = Number(cached.savedAt) || Date.now();
       this._questionRows = Array.isArray(snapshot.rows) ? snapshot.rows : [];
       this._questionPages = {};
-      if (snapshot.categoryId) this._questionPages[String(snapshot.categoryId) + ':1'] = {
-        rows: this._questionRows,
-        count: Number(snapshot.totalQuestions) || this._questionRows.length,
-        pageSize: Number(snapshot.apiPageSize) || Math.max(this._questionRows.length, 1),
-        activated: Boolean(snapshot.activated),
-        freeCount: Number(snapshot.freeCount) || 0,
-        restrictedCount: Number(snapshot.restrictedCount) || 0
-      };
-      this._loaded = true;
+      this._cachedCategoryId = snapshot.categoryId || '';
       this.setData({ loading: false, categories: snapshot.categories, categoryId: snapshot.categoryId || '',
         categoryName: snapshot.categoryName || '文学常识', mode: snapshot.mode || 'writing',
-        questions: Array.isArray(snapshot.questions) ? snapshot.questions : [], page: Number(snapshot.page) || 1,
+        questions: Array.isArray(snapshot.questions) ? snapshot.questions : [], page: cachedPage,
         pageSize: UI_PAGE_SIZE, totalQuestions: Number(snapshot.totalQuestions) || this._questionRows.length,
         pageCount: Number(snapshot.pageCount) || 0, restrictedCount: Number(snapshot.restrictedCount) || 0,
         questionProgressLabel: snapshot.questionProgressLabel || '00 / 00', progressPercent: Number(snapshot.progressPercent) || 0,
@@ -191,7 +189,8 @@ Page(withStudyTime({
     if (this._loaded) return this.loadPage(this.data.page || 1);
   },
 
-  onHide() { this._needsRemoteRefresh = true; },
+  onHide() { this._needsRemoteRefresh = true; this.queueResume(); },
+  onUnload() { this.queueResume(); },
 
   async bootstrap() {
     // Start independent reads together; categories must not delay preferences
@@ -200,7 +199,9 @@ Page(withStudyTime({
     const results = await Promise.all([
       settle(api.content.categories({ page: 1 })),
       signedIn ? settle(api.learning.preferences()) : Promise.resolve({ ok: true, value: null }),
-      signedIn ? settle(api.learning.resume()) : Promise.resolve({ ok: true, value: null })
+      signedIn ? settle(api.learning.resume(this._options.categoryId ? {
+        board: 'sequence', source: SOURCE, categoryId: this._options.categoryId, type: 'fact'
+      } : null)) : Promise.resolve({ ok: true, value: null })
     ]);
     const categoriesResult = results[0];
     if (!categoriesResult.ok) {
@@ -216,6 +217,9 @@ Page(withStudyTime({
       ? categoriesResult.value.results.map((item) => Object.assign({}, item, { name: displayCategoryName(item) }))
       : [];
     const preference = results[1].ok ? results[1].value : null;
+    const localResume = !signedIn && (this._options.categoryId
+      ? studyStore.getResume({ board: 'sequence', source: SOURCE, categoryId: this._options.categoryId, type: 'fact' })
+      : studyStore.getResume({ board: 'sequence', source: SOURCE, partial: true }));
     const resumeSnapshot = results[2].ok ? results[2].value : null;
     const preferenceError = results[1].error;
     const resumeError = results[2].error;
@@ -223,7 +227,7 @@ Page(withStudyTime({
     const mayRestore = this._options.resume === '1' || Boolean(this._options.questionId);
     const resume = resumeSnapshot
       ? (resumeSnapshot.valid ? resumeSnapshot.resume : resumeSnapshot.start)
-      : null;
+      : (localResume && localResume.options || null);
     const requestedCategory = this._options.categoryId || (mayRestore && resume && resume.categoryId);
     const category = categories.find((item) => item.id === requestedCategory) || categories[0];
     const categoryIndex = category ? categories.indexOf(category) : 0;
@@ -262,7 +266,8 @@ Page(withStudyTime({
       });
       return;
     }
-    await this.loadPage(1, { findResume: Boolean(this._resumeQuestionId) });
+    const cachedPage = String(category.id) === String(this._cachedCategoryId) ? Number(this.data.page) || 1 : 1;
+    await this.loadPage(cachedPage, { findResume: Boolean(this._resumeQuestionId) });
     this.prefetchCategories(categories);
   },
 
@@ -275,6 +280,16 @@ Page(withStudyTime({
     if (!options.force) {
       const cached = contentCache.read('literature-category', api.auth, cacheKey);
       if (cached && cached.payload && Array.isArray(cached.payload.rows)) {
+        // An empty first-page snapshot may have been cached while the catalog
+        // was unavailable or unpublished. Revalidate it immediately so a
+        // restored server catalog is not hidden for the cache freshness window.
+        if (cached.stale || (page === 1 && Number(cached.payload.count) === 0)) {
+          try {
+            return await this.loadApiPage(page, requestId, Object.assign({}, options, { force: true }));
+          } catch (_) {
+            // Keep the last usable page when revalidation fails.
+          }
+        }
         const cachedRecord = Object.assign({}, cached.payload, { fromCache: true, stale: Boolean(cached.stale) });
         this._questionPages[cacheKey] = cachedRecord;
         return cachedRecord;
@@ -454,8 +469,8 @@ Page(withStudyTime({
       totalQuestions: count,
       pageCount,
       progressPercent: pageCount ? Math.round(targetPage / pageCount * 100) : 0,
-      restrictedCount: activated ? 0 : Math.max(0, count - UI_PAGE_SIZE),
-      restrictedQuestionCount: Math.max(0, count - UI_PAGE_SIZE),
+      restrictedCount: activated ? 0 : Math.max(0, Number(firstPage.restrictedCount) || count - UI_PAGE_SIZE),
+      restrictedQuestionCount: Math.max(0, Number(firstPage.restrictedCount) || count - UI_PAGE_SIZE),
       restrictedPageCount: Math.max(0, pageCount - 1),
       activated,
       lockedPage,
@@ -482,9 +497,6 @@ Page(withStudyTime({
       questionProgressLabel: formatQuestionProgress(startIndex, count),
       progressPercent: pageCount ? Math.round(targetPage / pageCount * 100) : 0
     });
-    if (firstPage.fromCache && firstPage.stale) {
-      this.loadApiPage(1, requestId, { force: true }).catch(() => null);
-    }
     statePromise.then(() => {
       if (requestId !== this._questionRequest) return;
       const updated = this.renderRows(this._questionRows, lockedPage);
@@ -732,9 +744,32 @@ Page(withStudyTime({
     const target = Math.max(1, Math.min(this.data.pageCount, this.data.page + delta));
     if (!delta || target === this.data.page) return;
     this._resumeQuestionId = '';
+    this.setData({ pageEditing: false, pageJumpHint: '', pageInput: '' });
     this.setData({ loading: true, hasError: false, errorMessage: '' });
-    this.loadPage(target);
+    return this.loadPage(target);
     wx.pageScrollTo({ scrollTop: 0, duration: 180 });
+  },
+
+  editPageNumber() {
+    this.setData({ pageEditing: true, pageInput: String(this.data.page), pageJumpHint: '' });
+  },
+
+  onPageInput(event) {
+    this.setData({ pageInput: event.detail.value || '', pageJumpHint: '' });
+  },
+
+  confirmPageJump() {
+    const raw = String(this.data.pageInput || '').trim();
+    const target = Number(raw);
+    if (!/^[1-9]\d*$/.test(raw) || !Number.isSafeInteger(target) || target > this.data.pageCount) {
+      this.setData({ pageJumpHint: '请输入 1 至 ' + this.data.pageCount + ' 页' });
+      return;
+    }
+    if (target === this.data.page) {
+      this.setData({ pageEditing: false, pageInput: '', pageJumpHint: '' });
+      return;
+    }
+    return this.goPage({ currentTarget: { dataset: { delta: target - this.data.page } } });
   },
 
   openMembership() {
@@ -772,9 +807,15 @@ Page(withStudyTime({
   },
 
   queueResume() {
-    if (this.data.lockedPage || !hasToken() || !this.data.questions.length || this.data.questions[0].locked) return;
+    if (this.data.lockedPage || !this.data.questions.length || this.data.questions[0].locked) return;
     const question = this.data.questions[0];
+    studyStore.saveResume({ path: '/pages/literature/index', options: {
+      board: 'sequence', source: SOURCE, categoryId: this.data.categoryId, type: 'fact',
+      questionId: question.id, mode: this.data.mode, page: this.data.page
+    }, groupIndex: Math.max(0, this.data.page - 1), groupCount: this.data.pageCount });
+    if (!hasToken()) return;
     this._resumePending = {
+      board: 'sequence',
       source: SOURCE,
       categoryId: this.data.categoryId,
       articleId: null,
@@ -783,7 +824,8 @@ Page(withStudyTime({
       questionId: question.id,
       roundId: null,
       groupIndex: null,
-      baseVersion: this._resumeVersion
+      baseVersion: this._resumeVersion,
+      completed: Number(this.data.progressPercent) >= 100
     };
     this.flushResume();
   },

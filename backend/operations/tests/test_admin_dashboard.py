@@ -1,4 +1,5 @@
 from unittest.mock import Mock, patch
+from django.db.models import Q
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission
@@ -99,6 +100,48 @@ class AdminDashboardTests(TestCase):
         ).save(_service=True)
         context = dashboard_callback(self.request, {})
         self.assertIn("代理激活明细", [link["title"] for link in context["workbench_links"]])
+
+    def test_agent_dashboard_shows_distinct_paid_and_redeemed_people(self):
+        self.grant(
+            "distribution.view_agentprofile",
+            "distribution.view_agentorderattribution",
+            "distribution.view_agentvoucher",
+            "distribution.view_agentperformance",
+            "distribution.export_agentperformance",
+            "activation.view_activationredemption",
+        )
+        AgentProfile(
+            user=self.user,
+            agent_code="AGENT003",
+            display_name="统计代理",
+            created_by=self.user,
+        ).save(_service=True)
+
+        paid_people = Mock()
+        paid_people.values.return_value.distinct.return_value.count.return_value = 7
+        redeemed_people = Mock()
+        redeemed_people.values.return_value.distinct.return_value.count.return_value = 4
+        with (
+            patch("payments.models.Order.objects.filter", return_value=paid_people) as orders,
+            patch("activation.models.ActivationRedemption.objects.filter", return_value=redeemed_people) as redemptions,
+        ):
+            context = dashboard_callback(self.request, {})
+
+        agent_cards = [card for card in context["workbench_cards"] if card["title"] in ("支付人数", "兑换人数")]
+        self.assertEqual([(card["title"], card["count"]) for card in agent_cards], [("支付人数", 7), ("兑换人数", 4)])
+        self.assertEqual(agent_cards[0]["url"], reverse("admin:distribution_agentorderattribution_changelist"))
+        self.assertEqual(agent_cards[1]["url"], reverse("admin:activation_activationredemption_changelist"))
+        orders.assert_called_once_with(
+            agent_attribution__agent=AgentProfile.objects.get(user=self.user),
+            paid_at__isnull=False,
+            status__in=("paid", "code_pending", "code_issued", "code_redeemed", "fulfilled"),
+        )
+        redemptions.assert_called_once()
+        self.assertEqual(
+            redemptions.call_args.args[0],
+            Q(attributed_agent=AgentProfile.objects.get(user=self.user))
+            | Q(agent_voucher__order__agent_attribution__agent=AgentProfile.objects.get(user=self.user)),
+        )
 
     def test_admin_index_renders_workbench_for_staff(self):
         self.user.is_superuser = True

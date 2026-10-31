@@ -41,7 +41,14 @@
           <text wx:else class="content-empty">该内容尚未单独提供写作要点，请查看写作样例或原文。</text>
         </block>
       </view>
-      <view wx:if="{{detailItems.length}}" class="page-nav"><button disabled="{{selectedIndex <= 0}}" data-direction="-1" bindtap="changePage">‹ 上一篇</button><text class="page-no">第 {{selectedIndex + 1}} / {{detailItems.length}} 篇</text><button disabled="{{selectedIndex >= detailItems.length - 1}}" data-direction="1" bindtap="changePage">下一篇 ›</button></view>
+      <view wx:if="{{detailItems.length}}" class="page-nav">
+        <button disabled="{{selectedIndex <= 0}}" data-direction="-1" bindtap="changePage">‹ 上一篇</button>
+        <view class="page-number-control">
+          <view class="page-number-editor"><text class="page-no-prefix">第</text><input class="page-number-input" type="number" value="{{pageEditing ? pageInput : selectedIndex + 1}}" confirm-type="done" bindfocus="editPageNumber" bindinput="onPageInput" bindconfirm="confirmPageJump" /><text class="page-no-suffix">/ {{detailItems.length}} 篇</text></view>
+        </view>
+        <button disabled="{{selectedIndex >= detailItems.length - 1}}" data-direction="1" bindtap="changePage">下一篇 ›</button>
+      </view>
+      <view wx:if="{{pageJumpHint}}" class="page-jump-hint">{{pageJumpHint}}</view>
     </block>
   </view>
 </view>

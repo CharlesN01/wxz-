@@ -69,7 +69,14 @@ const api = {
     setQuestionState: (id, data, options) => write('PUT', ROOT + '/me/questions/' + encodeId(id) + '/state/', data, options),
     statistics: (options) => query('GET', ROOT + '/me/statistics/', null, Object.assign({ auth: true }, options || {})),
     studyTime: (data, options) => write('POST', ROOT + '/me/study-time/', data, options),
-    resume: (options) => query('GET', ROOT + '/me/resume/', null, Object.assign({ auth: true }, options || {})),
+    resume: (params, options) => {
+      // Keep the old resume(options) call shape while allowing pages to read
+      // their own persisted board/filter position.
+      if (params && (params.board || params.source || params.categoryId || params.articleId || params.type)) {
+        return query('GET', ROOT + '/me/resume/', params, Object.assign({ auth: true }, options || {}));
+      }
+      return query('GET', ROOT + '/me/resume/', null, Object.assign({ auth: true }, params || {}));
+    },
     saveResume: (data, options) => write('PUT', ROOT + '/me/resume/', data, options),
     preferences: (options) => query('GET', ROOT + '/me/preferences/', null, Object.assign({ auth: true }, options || {})),
     savePreferences: (data, options) => write('PUT', ROOT + '/me/preferences/', data, options),
@@ -99,7 +106,11 @@ const api = {
   },
 
   activation: {
-    redeem: (code, options) => write('POST', ROOT + '/activation/redeem/', { code }, options)
+    redeem: (code, options) => {
+      const body = { code };
+      if (options && options.scene) body.scene = options.scene;
+      return write('POST', ROOT + '/activation/redeem/', body, options);
+    }
   },
 
   feedback: {

@@ -8,6 +8,7 @@ from django.conf import settings
 from django.core.files.base import ContentFile
 from django.core.exceptions import ValidationError
 from django.db import transaction
+from django.db.models import Q
 from django.utils import timezone
 
 from common import idempotency
@@ -64,7 +65,7 @@ def generate_agent_qr(actor, agent_id):
         raise BusinessError("NOT_FOUND", "代理不存在。", 404) from error
     from payments.gateway import access_token
     token = access_token(settings.WECHAT_APP_ID)
-    body = json.dumps({"scene": profile.scene, "page": "pages/home/index", "check_path": False, "env_version": "release"}, separators=(",", ":")).encode()
+    body = json.dumps({"scene": profile.scene, "page": "pages/home/index", "check_path": False, "env_version": "trial"}, separators=(",", ":")).encode()
     request = Request("https://api.weixin.qq.com/wxa/getwxacodeunlimit?access_token=" + token, data=body, headers={"Content-Type": "application/json"}, method="POST")
     try:
         with urlopen(request, timeout=8) as response:
@@ -159,9 +160,11 @@ def disable_voucher_for_refund(order, reason="平台退款"):
 def agent_performance_queryset(agent_id=None, start=None, end=None):
     from activation.models import ActivationRedemption
 
-    queryset = ActivationRedemption.objects.filter(agent_voucher__isnull=False).select_related("agent_voucher__order__agent_attribution__agent", "user")
+    queryset = ActivationRedemption.objects.filter(
+        Q(attributed_agent__isnull=False) | Q(agent_voucher__isnull=False)
+    ).select_related("attributed_agent", "agent_voucher__order__agent_attribution__agent", "user")
     if agent_id:
-        queryset = queryset.filter(agent_voucher__order__agent_attribution__agent_id=agent_id)
+        queryset = queryset.filter(Q(attributed_agent_id=agent_id) | Q(agent_voucher__order__agent_attribution__agent_id=agent_id))
     if start:
         queryset = queryset.filter(redeemed_at__gte=start)
     if end:

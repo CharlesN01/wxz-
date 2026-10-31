@@ -1,4 +1,5 @@
 from django.urls import reverse
+from django.db.models import Q
 
 from config.admin_navigation import is_agent_account
 
@@ -12,6 +13,7 @@ def dashboard_callback(request, context):
     from distribution.models import AgentProfile
     from feedback.models import Feedback
     from payments.models import Order, PaymentTask
+    from activation.models import ActivationRedemption
     from writing.models import WritingContent
     from writing.import_services import has_import_permission
 
@@ -52,6 +54,40 @@ def dashboard_callback(request, context):
             "count": Order.objects.filter(status="code_pending", agent_attribution__isnull=False).count(),
             "url": reverse("admin:payments_order_changelist") + "?status__exact=code_pending",
         })
+
+    if is_agent_account(user):
+        agent = AgentProfile.objects.filter(user=user).first()
+        if agent is not None:
+            paid_people = (
+                Order.objects.filter(
+                    agent_attribution__agent=agent,
+                    paid_at__isnull=False,
+                    status__in=("paid", "code_pending", "code_issued", "code_redeemed", "fulfilled"),
+                )
+                .values("user_id")
+                .distinct()
+                .count()
+            )
+            redeemed_people = (
+                ActivationRedemption.objects.filter(
+                    Q(attributed_agent=agent) | Q(agent_voucher__order__agent_attribution__agent=agent),
+                )
+                .values("user_id")
+                .distinct()
+                .count()
+            )
+            cards.extend((
+                {
+                    "title": "支付人数",
+                    "count": paid_people,
+                    "url": reverse("admin:distribution_agentorderattribution_changelist"),
+                },
+                {
+                    "title": "兑换人数",
+                    "count": redeemed_people,
+                    "url": reverse("admin:activation_activationredemption_changelist"),
+                },
+            ))
 
     shortcuts = (
         ("导入题库", "admin:content_question_import", ("content.import_question",)),

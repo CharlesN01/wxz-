@@ -100,13 +100,18 @@ describe('agent-attribution', () => {
     assert.equal(agentAttribution.read(), '');
   });
 
-  it('代理归因随好友分享链接和朋友圈查询参数传递', () => {
-    agentAttribution.capture({ scene: 'a%3DTEST-01' });
-    assert.equal(agentAttribution.sharePath('/pages/home/index'), '/pages/home/index?scene=a%3DTEST-01');
-    assert.equal(agentAttribution.shareQuery(), 'scene=a%3DTEST-01');
+  it('好友分享路径携带 URL 编码后的代理 scene', () => {
+    agentAttribution.capture({ scene: 'a%3DAGENT-01' });
+    assert.equal(agentAttribution.sharePath('/pages/home/index'), '/pages/home/index?scene=a%3DAGENT-01');
+    assert.equal(agentAttribution.sharePath('/pages/home/index?from=menu'), '/pages/home/index?from=menu&scene=a%3DAGENT-01');
   });
 
-  it('普通访问分享时不附加代理参数', () => {
+  it('朋友圈分享 query 携带 URL 编码后的代理 scene', () => {
+    agentAttribution.capture({ scene: 'a%3DAGENT-01' });
+    assert.equal(agentAttribution.shareQuery(), 'scene=a%3DAGENT-01');
+  });
+
+  it('无代理归因时分享链接不附加空 scene', () => {
     assert.equal(agentAttribution.sharePath('/pages/home/index'), '/pages/home/index');
     assert.equal(agentAttribution.shareQuery(), '');
   });

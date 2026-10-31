@@ -71,9 +71,12 @@
 
     <view wx:if="{{!loading && pageCount}}" class="pagination">
       <view class="page-button {{canPrevious ? '' : 'page-disabled'}}" data-delta="-1" bindtap="goPage" role="button">‹</view>
-      <text class="page-number">第 {{page}} / {{pageCount}} 页</text>
+      <view class="page-number-control">
+        <view class="page-number-editor"><text>第</text><input class="page-number-input" type="number" value="{{pageEditing ? pageInput : page}}" confirm-type="done" bindfocus="editPageNumber" bindinput="onPageInput" bindconfirm="confirmPageJump" /><text> / {{pageCount}} 页</text></view>
+      </view>
       <view class="page-button {{canNext ? '' : 'page-disabled'}}" data-delta="1" bindtap="goPage" role="button">›</view>
     </view>
+    <view class="page-jump-hint">{{pageJumpHint}}</view>
     <view class="tip">学习建议：先在“默写自测”中独立作答，再切换“背诵全览”核对答案。完成后可切换下一个时期继续学习。</view>
   </view>
 

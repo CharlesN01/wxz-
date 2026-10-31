@@ -1,6 +1,4 @@
 """Best-effort shared cache for public content; database remains authoritative."""
-import time
-
 from django.conf import settings
 from django.core.cache import cache
 
@@ -17,34 +15,11 @@ def get(key):
         return None
 
 
-def get_or_claim_fill(key, *, wait_seconds=2.0):
-    """Return a cached value or elect one request to fill a missing cache key."""
-    if not getattr(settings, "CONTENT_CACHE_ENABLED", False):
-        return None, True
-    value = get(key)
-    if value is not None:
-        return value, False
-    lock_key = PREFIX + "fill:" + str(key)
-    try:
-        if cache.add(lock_key, True, timeout=5):
-            return None, True
-    except Exception:
-        return None, True
-    deadline = time.monotonic() + wait_seconds
-    while time.monotonic() < deadline:
-        time.sleep(0.025)
-        value = get(key)
-        if value is not None:
-            return value, False
-    return None, True
-
-
 def set(key, value, timeout=None):
     if not getattr(settings, "CONTENT_CACHE_ENABLED", False):
         return False
     try:
         cache.set(PREFIX + str(key), value, timeout or settings.CONTENT_CACHE_TTL_SECONDS)
-        cache.delete(PREFIX + "fill:" + str(key))
         return True
     except Exception:
         return False

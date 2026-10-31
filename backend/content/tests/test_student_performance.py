@@ -1,16 +1,12 @@
 """Protect page/group loading from per-question state and catalog query storms."""
 
 from django.contrib.auth import get_user_model
-from concurrent.futures import ThreadPoolExecutor
 from django.db import connection
 from django.test import override_settings
-from django.core.cache import cache
-import time
 from django.test.utils import CaptureQueriesContext
 from rest_framework.test import APIClient
 
 from content.models import Article, LearningConfiguration, Question
-from common.content_cache import get_or_claim_fill, set as cache_set
 from content.tests.test_student_access import StudentContentFixture
 from entitlements.services import grant_entitlement, revoke_entitlement
 from learning.models import QuestionState
@@ -36,38 +32,6 @@ class StudentLoadingPerformanceTests(StudentContentFixture):
         self.assertTrue(all(row["state"] is None for row in response.data["results"]))
         self.assertIsNone(self.client.get(f"/api/student/v1/questions/{self.first.pk}/").data["state"])
         self.assertEqual(QuestionState.objects.count(), 1)
-
-    def test_question_page_ranks_free_set_once_per_request(self):
-        with CaptureQueriesContext(connection) as captured:
-            response = self.client.get(self.questions_url)
-        self.assertEqual(response.status_code, 200)
-        ranked = [row["sql"] for row in captured if "ROW_NUMBER()" in row["sql"].upper()]
-        self.assertEqual(len(ranked), 1)
-
-    @override_settings(CONTENT_CACHE_ENABLED=True)
-    def test_anonymous_question_page_uses_shared_cache(self):
-        cache.clear()
-        first = self.client.get(self.questions_url)
-        self.assertEqual(first.status_code, 200)
-        with CaptureQueriesContext(connection) as captured:
-            second = self.client.get(self.questions_url)
-        self.assertEqual(second.status_code, 200)
-        self.assertEqual(second.data, first.data)
-        self.assertFalse(any("content_questionrevision" in row["sql"] for row in captured))
-
-    @override_settings(CONTENT_CACHE_ENABLED=True)
-    def test_concurrent_cache_miss_waits_for_the_single_fill(self):
-        cache.clear()
-        value, should_compute = get_or_claim_fill("concurrent-question-page")
-        self.assertIsNone(value)
-        self.assertTrue(should_compute)
-        with ThreadPoolExecutor(max_workers=1) as pool:
-            waiter = pool.submit(get_or_claim_fill, "concurrent-question-page", wait_seconds=1)
-            time.sleep(0.05)
-            cache_set("concurrent-question-page", {"ready": True})
-            value, should_compute = waiter.result(timeout=2)
-        self.assertEqual(value, {"ready": True})
-        self.assertFalse(should_compute)
 
     def test_question_page_reads_only_own_state_in_one_query(self):
         self.authenticate()

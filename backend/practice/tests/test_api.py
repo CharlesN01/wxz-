@@ -123,7 +123,7 @@ class PracticeAPITests(StudentContentFixture):
                            if any(item["id"] == self.other.pk for item in group["results"]))
         classical_resume = self.save_resume(
             self.other,
-            version=1,
+            version=0,
             source="classical",
             categoryId=None,
             articleId=None,
@@ -288,6 +288,22 @@ class PracticeAPITests(StudentContentFixture):
         self.assertEqual(replay.data["current"]["version"], 2)
         self.assertEqual(ResumePosition.objects.get(user=self.user).question_id, self.second.pk)
 
+    def test_resume_keeps_sequence_and_random_boards_separate_for_same_scope(self):
+        grant_entitlement(self.user, "activation", "p08-resume-board-isolation")
+        round_id = self.create_round({**self.scope, "type": "word"}, key="p08-resume-board-round").data["id"]
+        random = self.save_resume(self.first, roundId=round_id, groupIndex=1, type="word", board="random", key="p08-resume-board-random")
+        self.assertEqual(random.status_code, 200, random.data)
+        sequence = self.save_resume(self.first, type="word", key="p08-resume-board-sequence")
+        self.assertEqual(random.status_code, 200, random.data)
+        self.assertEqual(sequence.status_code, 200, sequence.data)
+        self.assertEqual(ResumePosition.objects.filter(user=self.user).count(), 2)
+        random_snapshot = self.client.get(self.resume_url, {"source": "classical", "articleId": self.article.pk, "type": "word", "board": "random"}).data
+        sequence_snapshot = self.client.get(self.resume_url, {"source": "classical", "articleId": self.article.pk, "type": "word", "board": "sequence"}).data
+        self.assertEqual(random_snapshot["resume"]["roundId"], str(round_id))
+        self.assertEqual(random_snapshot["resume"]["board"], "random")
+        self.assertEqual(sequence_snapshot["resume"]["questionId"], self.first.pk)
+        self.assertEqual(sequence_snapshot["resume"]["board"], "sequence")
+
     def test_resume_rejects_paid_draft_wrong_scope_and_arbitrary_routes(self):
         for question, extra, status in ((self.paid, {}, 403), (self.draft, {}, 400),
                                          (self.other, {}, 400), (self.first, {"route": "/pages/secret"}, 400),
@@ -350,7 +366,7 @@ class PracticeAPITests(StudentContentFixture):
         current = self.client.get(self.resume_url)
         self.assertFalse(current.data["valid"])
         self.assertEqual(current.data["reason"], "ENTITLEMENT_REQUIRED")
-        self.assertEqual(current.data["start"]["questionId"], self.first.pk)
+        self.assertEqual(current.data["start"]["questionId"], self.second.pk)
         self.assertNotIn(self.paid.stem, str(current.data))
         self.assertNotIn(self.paid.answers[0], str(current.data))
         replay = self.save_resume(self.paid)

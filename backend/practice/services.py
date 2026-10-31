@@ -38,7 +38,13 @@ def _scope_fields(context):
 
 def scope_context(record):
     return {"source": record.source, "categoryId": record.category_id,
-            "articleId": record.article_id, "type": record.question_type or None}
+            "articleId": record.article_id, "type": record.question_type or None,
+            "board": getattr(record, "position_kind", "sequence")}
+
+
+def resume_scope_key(context):
+    """Stable account-local key for one board/filter combination."""
+    return ":".join(str(context.get(field) or "") for field in ("board", "source", "categoryId", "articleId", "type"))
 
 
 def _query(context):
@@ -60,7 +66,8 @@ def _check_scope(context):
 
 
 def round_metadata(round_):
-    return {"id": str(round_.pk), **scope_context(round_), "mode": round_.mode,
+    return {"id": str(round_.pk), "source": round_.source, "categoryId": round_.category_id,
+            "articleId": round_.article_id, "type": round_.question_type or None, "mode": round_.mode,
             "pageSize": round_.group_size, "totalCount": round_.item_count,
             "groupCount": round_.group_count, "createdAt": round_.created_at.isoformat()}
 
@@ -137,11 +144,12 @@ def read_group(user, round_id, group_index):
 def _resume_data(position):
     return {**scope_context(position), "mode": position.mode, "questionId": position.question_id,
             "roundId": str(position.round_id) if position.round_id else None,
-            "groupIndex": position.group_index}
+            "groupIndex": position.group_index, "scopeIndex": position.scope_index,
+            "completed": bool(position.completed)}
 
 
 def _round_context_matches(round_, context):
-    return scope_context(round_) == {key: context.get(key) for key in ("source", "categoryId", "articleId", "type")}
+    return {key: scope_context(round_)[key] for key in ("source", "categoryId", "articleId", "type")} == {key: context.get(key) for key in ("source", "categoryId", "articleId", "type")}
 
 
 def _random_item(round_, question_id, group_index):
@@ -153,27 +161,33 @@ def _random_item(round_, question_id, group_index):
     return item
 
 
-def resume_snapshot(user):
-    position = ResumePosition.objects.filter(user=user).select_related("round").first()
+def resume_snapshot(user, context=None):
+    positions = ResumePosition.objects.filter(user=user).select_related("round", "question__published_revision")
+    if context and context.get("source"):
+        context = {key: context.get(key) for key in ("source", "categoryId", "articleId", "type", "board")}
+        position = positions.filter(scope_key=resume_scope_key(context)).first()
+    else:
+        position = positions.order_by("-updated_at", "-pk").first()
     if position is None:
         return {"version": 0, "resume": None, "valid": False, "reason": "NO_RESUME", "start": None}
     context = scope_context(position)
     query = accessible_questions(user, _query(context))
     round_ = position.round
-    random_valid = round_ is None or (
+    random_valid = (position.position_kind == "sequence" and round_ is None) or (position.position_kind == "random" and round_ is not None and
         round_.user_id == user.pk and _round_context_matches(round_, context)
         and _random_item(round_, position.question_id, position.group_index) is not None
     )
-    valid = random_valid and query.filter(pk=position.question_id).exists()
-    reason = None if valid else (_invalid_reason(context, position.question_id) if random_valid else "ROUND_UNAVAILABLE")
+    valid = random_valid and not position.completed and query.filter(pk=position.question_id).exists()
+    reason = "COMPLETED" if position.completed else (None if valid else (_invalid_reason(context, position.question_id) if random_valid else "ROUND_UNAVAILABLE"))
     data = _resume_data(position)
     start = data.copy() if valid else None
     if not valid:
-        if round_ is None:
-            first_id = query.values_list("pk", flat=True).first()
-            if first_id:
-                start = {**data, "questionId": first_id}
-        elif random_valid:
+        if round_ is None and not position.completed:
+            ids = list(query.values_list("pk", flat=True))
+            if ids:
+                index = min(max(int(position.scope_index or 0), 0), len(ids) - 1)
+                start = {**data, "questionId": ids[index], "scopeIndex": index, "completed": False}
+        elif random_valid and not position.completed:
             first_item = round_.items.filter(question_id__in=Subquery(query.values("pk"))).first()
             if first_item:
                 start = {**data, "questionId": first_item.question_id,
@@ -187,12 +201,14 @@ def save_resume(user, payload, key):
     key = require_key(key)
     previous = lookup(user, "practice.resume.save", key, payload)
     if previous:
-        return {**previous.response, "current": resume_snapshot(user)}
-    position = ResumePosition.objects.filter(user=user).first()
+        return {**previous.response, "current": resume_snapshot(user, payload)}
+    payload.setdefault("board", "random" if payload.get("roundId") else "sequence")
+    context_key = resume_scope_key(payload)
+    position = ResumePosition.objects.select_for_update().filter(user=user, scope_key=context_key).first()
     version = position.version if position else 0
     if payload["baseVersion"] != version:
         raise BusinessError("VERSION_CONFLICT", "续学位置已被其他设备更新。", 409,
-                            fields={"current": resume_snapshot(user)})
+                            fields={"current": resume_snapshot(user, payload)})
     _check_scope(payload)
     question = accessible_questions(user, _query(payload).filter(pk=payload["questionId"])).first()
     if question is None:
@@ -206,12 +222,23 @@ def save_resume(user, payload, key):
         if not _round_context_matches(round_, payload) or not _random_item(round_, question.pk, payload["groupIndex"]):
             raise BusinessError("INVALID_CONTEXT", "题目不属于此轮次、范围或组号。")
     if position is None:
-        position = ResumePosition(user=user)
+        position = ResumePosition(user=user, scope_key=context_key)
     for field, value in _scope_fields(payload).items():
         setattr(position, field, value)
     position.mode, position.question, position.round = payload["mode"], question, round_
-    position.group_index, position.version = payload["groupIndex"], version + 1
+    position.position_kind = payload["board"]
+    position.group_index = payload["groupIndex"]
+    if round_ is not None:
+        position.scope_index = max(0, (round_.items.get(question=question).position - 1))
+    else:
+        ids = list(_query(payload).values_list("pk", flat=True))
+        try:
+            position.scope_index = ids.index(question.pk)
+        except ValueError:
+            position.scope_index = 0
+    position.completed = bool(payload.get("completed", False))
+    position.version = version + 1
     position.save(_service=True)
     result = {"version": position.version, "resume": _resume_data(position)}
     remember(user, "practice.resume.save", key, payload, result)
-    return {**result, "current": resume_snapshot(user)}
+    return {**result, "current": resume_snapshot(user, payload)}

@@ -7,17 +7,18 @@ from common.idempotency import require_key
 from common.limits import check_rate
 from content.serializers import validate_query_params
 from content.student_api import EmptyQuery
-from .serializers import ResumeRequest, RoundRequest
+from .serializers import ResumeQuery, ResumeRequest, RoundRequest
 from .services import create_round, read_group, resume_snapshot, save_resume
 
 
 class PracticeView(StudentAPIView):
     parser_classes = (JSONParser,)
     http_method_names = ("get", "post", "put", "head", "options")
+    query_serializer = EmptyQuery
 
     def initial(self, request, *args, **kwargs):
         super().initial(request, *args, **kwargs)
-        validate_query_params(request.query_params, EmptyQuery)
+        validate_query_params(request.query_params, self.query_serializer)
 
     def finalize_response(self, request, response, *args, **kwargs):
         response = super().finalize_response(request, response, *args, **kwargs)
@@ -42,8 +43,16 @@ class RoundGroupView(PracticeView):
 
 
 class ResumeView(PracticeView):
+    query_serializer = ResumeQuery
+
     def get(self, request):
-        return Response(resume_snapshot(request.user))
+        query = request.query_params
+        context = validate_query_params(query, self.query_serializer)
+        context = context if context.get("source") else None
+        if context:
+            from .services import _check_scope
+            _check_scope(context)
+        return Response(resume_snapshot(request.user, context))
 
     def put(self, request):
         check_rate("practice.resume.save", str(request.user.pk), limit=60)

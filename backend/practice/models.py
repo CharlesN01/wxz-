@@ -122,10 +122,15 @@ class RoundItem(PracticeRecord):
 
 
 class ResumePosition(ScopeRecord):
-    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, verbose_name="学员")
+    POSITION_KINDS = (("sequence", "顺序练习"), ("random", "随机练习"))
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="resume_positions", verbose_name="学员")
+    scope_key = models.CharField("续学范围键", max_length=220, default="", editable=False)
+    position_kind = models.CharField("板块类型", max_length=12, choices=POSITION_KINDS, default="sequence")
     question = models.ForeignKey("content.Question", on_delete=models.PROTECT, verbose_name="续学题目")
     round = models.ForeignKey(PracticeRound, on_delete=models.PROTECT, null=True, blank=True, verbose_name="轮次")
     group_index = models.PositiveIntegerField("组号", null=True, blank=True)
+    scope_index = models.PositiveIntegerField("范围序号", default=0)
+    completed = models.BooleanField("已完成", default=False)
     version = models.PositiveIntegerField("版本", default=1)
     updated_at = models.DateTimeField("更新时间", auto_now=True)
 
@@ -135,6 +140,9 @@ class ResumePosition(ScopeRecord):
         constraints = [
             models.CheckConstraint(condition=scope_condition(), name="practice_resume_scope"),
             models.CheckConstraint(condition=models.Q(version__gte=1), name="practice_resume_version"),
+            models.CheckConstraint(condition=models.Q(position_kind__in=("sequence", "random")), name="practice_resume_position_kind"),
+            models.CheckConstraint(condition=models.Q(scope_index__gte=0), name="practice_resume_scope_index"),
             models.CheckConstraint(condition=models.Q(mode__in=("writing", "reciting")), name="practice_resume_mode"),
             models.CheckConstraint(condition=(models.Q(round__isnull=True, group_index__isnull=True) | models.Q(round__isnull=False, group_index__isnull=False, group_index__gte=1)), name="practice_resume_random_context"),
+            models.UniqueConstraint(fields=("user", "scope_key"), name="practice_resume_user_scope_unique"),
         ]

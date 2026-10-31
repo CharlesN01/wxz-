@@ -189,7 +189,7 @@ class StudentEndToEndTests(StudentFlowFixture, TestCase):
         self.call("get", "/api/student/v1/me/resume/")
         group_index = (old["contract-3"]["position"] - 1) // created["pageSize"] + 1
         resumed = self.call("put", "/api/student/v1/me/resume/",
-            {**context, "questionId": question.pk, "roundId": created["id"], "groupIndex": group_index, "baseVersion": 0}, key="resume-contract-first")
+            {**context, "board": "random", "questionId": question.pk, "roundId": created["id"], "groupIndex": group_index, "baseVersion": 0}, key="resume-contract-first")
         self.assertTrue(resumed.data["current"]["valid"])
         self.revoke_activation()
         groups = self.groups(created)

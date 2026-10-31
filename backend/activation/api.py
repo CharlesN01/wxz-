@@ -12,10 +12,11 @@ from .services import redeem_code
 
 class RedeemInput(serializers.Serializer):
     code = serializers.CharField(max_length=128, trim_whitespace=False)
+    scene = serializers.CharField(max_length=40, required=False, allow_blank=True, trim_whitespace=False)
 
     def to_internal_value(self, data):
-        if isinstance(data, dict) and set(data) != {"code"}:
-            raise serializers.ValidationError({"fields": "只允许提供激活码 code。"})
+        if isinstance(data, dict) and set(data) - {"code", "scene"}:
+            raise serializers.ValidationError({"fields": "只允许提供激活码 code 和代理场景 scene。"})
         return super().to_internal_value(data)
 
 
@@ -33,5 +34,10 @@ class RedeemView(StudentAPIView):
         check_rate("activation-ip", client_ip(request), max(limit * 3, 30), seconds=60)
         serializer = RedeemInput(data=request.data)
         serializer.is_valid(raise_exception=True)
-        result = redeem_code(request.user, serializer.validated_data["code"], request.headers.get("Idempotency-Key"))
+        result = redeem_code(
+            request.user,
+            serializer.validated_data["code"],
+            request.headers.get("Idempotency-Key"),
+            scene=serializer.validated_data.get("scene", ""),
+        )
         return Response(result, headers={"Cache-Control": "no-store, private"})

@@ -52,7 +52,7 @@ function compatibleType(source, type) {
 }
 
 Page(withStudyTime({
-  data: { theme: 'day', loading: true, hasError: false, errorMessage: '', dataSource: 'local', personalError: '', roundContentUnavailable: false, source: 'literature', safeTop: 0, typeFilter: 'word', mode: 'writing', sourceName: '文学常识', subtitle: '8 类混合随机 · 每页 6 题', questions: [], groupNumber: 0, groupCount: 0, roundQuestionCount: 0, groupPageSize: GROUP_SIZE, progressPercent: 0, answeredCount: 0, answerProgressPercent: 0, pageQuestionCount: 0, nextLabel: '下一组', activated: false, lockedPage: false, membershipVisible: false, restrictedPageCount: 0, restrictedQuestionCount: 0 },
+  data: { theme: 'day', loading: true, hasError: false, errorMessage: '', dataSource: 'local', personalError: '', roundContentUnavailable: false, source: 'literature', safeTop: 0, typeFilter: 'word', mode: 'writing', sourceName: '文学常识', subtitle: '8 类混合随机 · 每页 6 题', questions: [], groupNumber: 0, groupCount: 0, roundQuestionCount: 0, groupPageSize: GROUP_SIZE, progressPercent: 0, answeredCount: 0, answerProgressPercent: 0, pageQuestionCount: 0, nextLabel: '下一组', activated: false, lockedPage: false, membershipVisible: false, restrictedPageCount: 0, restrictedQuestionCount: 0, pageInput: '', pageEditing: false, pageJumpHint: '' },
 
   onLoad(options = {}) {
     this._answerViewport = tabletSheet.viewport(typeof wx === 'undefined' ? null : wx);
@@ -98,7 +98,7 @@ Page(withStudyTime({
       groupPageSize: GROUP_SIZE,
       subtitle: this._source === 'classical' ? '字词与翻译 · 每页 6 题' : '8 类混合随机 · 每页 6 题'
     });
-    const restoreRequested = options.resume === '1' || (this._requestedRoundId && this._requestedGroupIndex > 0);
+    const restoreRequested = true;
     if (typeof wx !== 'undefined' && typeof wx.request === 'function' && hasToken()) this.startRemoteRound(restoreRequested);
     else {
       this.startLocalRound(restoreRequested);
@@ -134,11 +134,13 @@ Page(withStudyTime({
     this._answerViewport = next;
     if ((this.data.dataSource === 'remote' || this.data.loading) && this._roundId && hasToken()) return this.loadRemoteGroup(this._groupIndex);
   },
+  onHide() { this.saveResume(); },
+  onUnload() { this.saveResume(); },
 
   startLocalRound(restore) {
     this._tabletBatchSize = 1;
     this._activated = false;
-    const resume = restore ? studyStore.getResume() : null;
+    const resume = restore ? studyStore.getResume({ board: 'random', source: this._source, articleId: this._articleId || null, type: this._type || null }) : null;
     const resumeOptions = resume && resume.options || {};
     const matchesContext = resumeOptions.source === this._source
       && compatibleType(this._source, resumeOptions.type)
@@ -188,7 +190,7 @@ Page(withStudyTime({
     this._contentAccountKey = getAccountKey();
     this._activated = false;
     if (!restore) { this._roundId = ''; this._roundIds = []; this._groupIndex = 1; }
-    const localResume = restore ? studyStore.getResume() : null;
+    const localResume = restore ? studyStore.getResume({ board: 'random', source: this._source, articleId: this._articleId || null, type: this._type || null }) : null;
     if (restore) this.hydrateLocalResume(localResume);
     this.setData({ loading: true, hasError: false, errorMessage: '', roundContentUnavailable: false });
     if (restore && this._requestedRoundId && this._requestedGroupIndex > 0) {
@@ -199,7 +201,9 @@ Page(withStudyTime({
       return;
     }
     if (restore) {
-      const savedResult = await settle(api.learning.resume());
+      const savedResult = await settle(api.learning.resume({
+        board: 'random', source: this._source, categoryId: null, articleId: this._articleId || null, type: this._type || null
+      }));
       if (!savedResult.ok && savedResult.error && savedResult.error.code === 'NETWORK_ERROR') {
         if (!this.renderCachedGroup(this._groupIndex, errorText(savedResult.error))) {
           this.startLocalRound(true);
@@ -360,7 +364,7 @@ Page(withStudyTime({
     if (this.data.lockedPage || (this.data.questions || []).some(q => q.locked)) return;
     studyStore.saveResume({
       path: PAGE_PATH,
-      options: { source: this._source, type: this._type, articleId: this._articleId || null, mode: this.data.mode },
+      options: { board: 'random', source: this._source, type: this._type, articleId: this._articleId || null, mode: this.data.mode },
       groupIds: this._roundIds.slice(),
       groupIndex: Math.max(0, this._groupIndex - 1),
       roundId: this._roundId || null,
@@ -369,11 +373,11 @@ Page(withStudyTime({
       groupPageSize: this._groupPageSize || GROUP_SIZE,
       groupCache: this._groupCache
     });
-    if (!hasToken() || !this._roundIds.length) return;
+    if (!hasToken() || !this._roundIds.length || !this._roundId) return;
     const id = this.data.questions[0] && this.data.questions[0].id || this._roundIds[0];
     if (this.data.lockedPage || (this.data.questions || []).some(q => String(q.id) === String(id) && q.locked)) return this.openMembership();
     if (!id) return;
-    const body = { source: this._source, categoryId: null, articleId: this._articleId, type: this._type, mode: this.data.mode, questionId: id, roundId: this._roundId || null, groupIndex: this._groupIndex, baseVersion: this._resumeVersion };
+    const body = { board: 'random', source: this._source, categoryId: null, articleId: this._articleId, type: this._type, mode: this.data.mode, questionId: id, roundId: this._roundId || null, groupIndex: this._groupIndex, baseVersion: this._resumeVersion, completed: false };
     settle(api.learning.saveResume(body)).then((result) => {
       if (result.ok && Number(result.value && result.value.version) >= 0) this._resumeVersion = Number(result.value.version);
       else if (!result.ok && result.error && result.error.code === 'VERSION_CONFLICT') {
@@ -475,12 +479,13 @@ Page(withStudyTime({
     this._groups = [];
     this._groupIndex = 1;
     this._stateMap = {};
-    this.setData({ typeFilter: type, questions: [], groupNumber: 0, groupCount: 0, roundQuestionCount: 0, progressPercent: 0 });
+    this.setData({ typeFilter: type, questions: [], groupNumber: 0, groupCount: 0, roundQuestionCount: 0, progressPercent: 0, pageEditing: false, pageInput: '', pageJumpHint: '' });
     if (this.data.dataSource === 'remote') this.startRemoteRound(false);
     else { this.startLocalRound(false); this.refreshLocalGroup(); }
   },
   onPreviousGroup() {
     if (this.data.groupNumber <= 1) return;
+    this.setData({ pageEditing: false, pageInput: '', pageJumpHint: '' });
     if (this.data.dataSource === 'remote') {
       const pending = this.loadRemoteGroup(Math.max(1, this._groupIndex - (this._tabletBatchSize || 1)));
       if (typeof wx !== 'undefined' && wx.pageScrollTo) wx.pageScrollTo({ scrollTop: 0, duration: 180 });
@@ -491,6 +496,7 @@ Page(withStudyTime({
   },
   onNextGroup() {
     if (!this.data.groupCount || this.data.groupNumber >= this.data.groupCount) return;
+    this.setData({ pageEditing: false, pageInput: '', pageJumpHint: '' });
     if (this.data.dataSource === 'remote') {
       const pending = this.loadRemoteGroup(this._groupIndex + (this._tabletBatchSize || 1));
       if (typeof wx !== 'undefined' && wx.pageScrollTo) wx.pageScrollTo({ scrollTop: 0, duration: 200 });
@@ -498,6 +504,26 @@ Page(withStudyTime({
     }
     else { this._groupIndex += 1; this.refreshLocalGroup(); }
     if (typeof wx !== 'undefined' && wx.pageScrollTo) wx.pageScrollTo({ scrollTop: 0, duration: 200 });
+  },
+  editPageNumber() { this.setData({ pageEditing: true, pageInput: String(this.data.groupNumber || 1), pageJumpHint: '' }); },
+  onPageInput(event) { this.setData({ pageInput: event.detail.value || '', pageJumpHint: '' }); },
+  confirmPageJump() {
+    const raw = String(this.data.pageInput || '').trim();
+    const target = Number(raw);
+    if (!/^[1-9]\d*$/.test(raw) || !Number.isSafeInteger(target) || target > this.data.groupCount) {
+      this.setData({ pageJumpHint: '请输入 1 至 ' + this.data.groupCount + ' 页' });
+      return;
+    }
+    if (target === this.data.groupNumber) {
+      this.setData({ pageEditing: false, pageInput: '', pageJumpHint: '' });
+      return;
+    }
+    this.setData({ pageEditing: false, pageInput: '', pageJumpHint: '' });
+    const step = this._tabletBatchSize || 1;
+    const index = (target - 1) * step + 1;
+    if (this.data.dataSource === 'remote') return this.loadRemoteGroup(index);
+    this._groupIndex = index;
+    this.refreshLocalGroup();
   },
   openHome() { navigation.openPage('/pages/home/index'); },
   openFavorites() { navigation.openPage('/pages/favorites/index'); },

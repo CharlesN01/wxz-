@@ -10,6 +10,7 @@ from common.errors import BusinessError
 from common.models import IdempotencyRecord
 from entitlements.models import AuditEvent, EntitlementSource
 from entitlements.services import grant_entitlement, reserve_opening, revoke_entitlement
+from distribution.models import AgentProfile
 
 
 class ActivationServiceTests(TestCase):
@@ -79,6 +80,31 @@ class ActivationServiceTests(TestCase):
         self.assertEqual(ActivationCode.objects.filter(state="redeemed").count(), 1)
         self.assert_error("IDEMPOTENCY_CONFLICT", lambda: redeem_code(self.user, codes[1], "redeem-key-1"))
         self.assertTrue(redeem_code(self.user, codes[1], "redeem-key-2")["entitlement"]["active"])
+
+    def test_regular_code_redemption_attributes_only_to_enabled_scene_and_replay_is_unique(self):
+        _, codes = self.enabled_codes(4)
+        first_agent = AgentProfile(user=self.admin, agent_code="ATTRIB001", display_name="有效代理", created_by=self.admin)
+        first_agent.save(_service=True)
+        second_user = get_user_model().objects.create_user(username="attribution-agent-two", is_staff=True)
+        second_agent = AgentProfile(user=second_user, agent_code="ATTRIB002", display_name="第二代理", created_by=self.admin)
+        second_agent.save(_service=True)
+        disabled_user = get_user_model().objects.create_user(username="attribution-agent-disabled", is_staff=True)
+        disabled_agent = AgentProfile(user=disabled_user, agent_code="ATTRIB003", display_name="停用代理", status="disabled", created_by=self.admin)
+        disabled_agent.save(_service=True)
+
+        first = redeem_code(self.user, codes[0], "attributed-redemption-1", scene="a=attrib001")
+        replay = redeem_code(self.user, codes[0], "attributed-redemption-1")
+        self.assertEqual(replay["redemptionId"], first["redemptionId"])
+        self.assertEqual(ActivationRedemption.objects.get(code__mask__startswith="QM-").attributed_agent_id, first_agent.pk)
+        self.assertEqual(ActivationRedemption.objects.filter(attributed_agent=first_agent).count(), 1)
+
+        no_scene_user = get_user_model().objects.create_user(username="attribution-no-scene")
+        redeem_code(no_scene_user, codes[1], "attributed-redemption-2")
+        invalid_scene_user = get_user_model().objects.create_user(username="attribution-invalid-scene")
+        redeem_code(invalid_scene_user, codes[2], "attributed-redemption-3", scene="a=NOT-REAL")
+        disabled_scene_user = get_user_model().objects.create_user(username="attribution-disabled-scene")
+        redeem_code(disabled_scene_user, codes[3], "attributed-redemption-4", scene=disabled_agent.scene)
+        self.assertEqual(ActivationRedemption.objects.filter(attributed_agent__isnull=True).count(), 3)
 
     def test_cross_batch_generation_idempotency_and_failed_delivery_are_permanent(self):
         batch, raw = generate_batch(self.admin, 1, "首次生成", "generate-key-1")

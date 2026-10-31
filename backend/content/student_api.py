@@ -12,14 +12,7 @@ from rest_framework.response import Response
 from common.api import PublicStudentAPIView
 from common import content_cache
 from common.errors import BusinessError
-from .access import (
-    accessible_questions,
-    free_questions,
-    has_full_access,
-    published_questions,
-    question_access,
-    scope_questions,
-)
+from .access import accessible_questions, free_questions, published_questions, question_access, scope_questions
 from .models import Article, Category, LearningConfiguration
 from .serializers import StudentQuestionSerializer, StrictPositiveIntegerField, validate_query_params
 
@@ -90,15 +83,12 @@ class StudentCatalogView(StudentContentView):
         validate_query_params(request.query_params, StudentPageQuery)
         anonymous = not (request.user and request.user.is_authenticated)
         cache_key = None
-        config = LearningConfiguration.current()
         if anonymous:
-            cache_key = "%s:v%s:%s:%s" % (
-                self.__class__.__name__, content_cache.version(), config.page_size,
-                request.query_params.get("page", "1"),
-            )
-            cached, should_compute = content_cache.get_or_claim_fill(cache_key)
-            if not should_compute:
+            cache_key = "%s:v%s:%s" % (self.__class__.__name__, content_cache.version(), request.query_params.get("page", "1"))
+            cached = content_cache.get(cache_key)
+            if cached is not None:
                 return Response(cached)
+        config = LearningConfiguration.current()
         counts = published_questions().filter(**{self.revision_field: OuterRef("pk")}).order_by().values(
             self.revision_field,
         ).annotate(total=Count("pk")).values("total")[:1]
@@ -206,24 +196,12 @@ class StudentQuestionListView(StudentContentView):
         model = Category if source == "literature" else Article
         get_object_or_404(model, pk=scope_id, is_active=True)
         config = LearningConfiguration.current()
-        anonymous = not (request.user and request.user.is_authenticated)
-        cache_key = None
-        if anonymous:
-            cache_key = "question-list:v%s:%s:%s:%s:%s:%s" % (
-                content_cache.version(), source, scope_id, query.get("type", ""),
-                query.get("page", 1), config.page_size,
-            )
-            cached, should_compute = content_cache.get_or_claim_fill(cache_key)
-            if not should_compute:
-                return Response(cached)
         queryset = scope_questions(source, scope_id)
         if "type" in query:
             queryset = queryset.filter(published_revision__type=query["type"])
         total = queryset.count()
-        free_ids = list(free_questions(queryset, page_size=config.page_size).values_list("pk", flat=True))
-        free_count = len(free_ids)
-        activated = has_full_access(request.user)
-        readable = queryset if activated else queryset.filter(pk__in=free_ids)
+        free_count = free_questions(queryset, page_size=config.page_size).count()
+        readable, activated = question_access(request.user, queryset, page_size=config.page_size)
         response = self.paginated(
             request, readable, config.page_size,
             lambda page: self.serialize_questions(request.user, page),
@@ -242,8 +220,6 @@ class StudentQuestionListView(StudentContentView):
             response.data["progress"] = {"masteredCount": QuestionState.objects.filter(
                 user=request.user, mastered=True, question_id__in=Subquery(readable.values("pk")),
             ).count()}
-        if cache_key:
-            content_cache.set(cache_key, response.data)
         return response
 
     @staticmethod

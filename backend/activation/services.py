@@ -145,7 +145,7 @@ def disable_code(code_id, actor, reason, expected_fingerprint=None):
 
 @sensitive_variables("code", "digest", "payload")
 @transaction.atomic
-def redeem_code(user, code, key):
+def redeem_code(user, code, key, scene=""):
     digest = code_digest(code)
     user = lock_user(user)
     if not user.is_active or user.is_staff or user.is_superuser:
@@ -201,7 +201,9 @@ def redeem_code(user, code, key):
     current.redeemed_by = user
     current.redeemed_at = timezone.now()
     current.save(_service=True)
-    redemption = ActivationRedemption(code=current, user=user, source=source)
+    from distribution.services import resolve_agent_scene
+    agent = resolve_agent_scene(scene)
+    redemption = ActivationRedemption(code=current, user=user, source=source, attributed_agent=agent)
     redemption.save(_service=True)
     history = {"redemptionId": str(redemption.pk), "redeemedAt": redemption.redeemed_at.isoformat()}
     idempotency.remember(user, "activation.redeem", key, payload, history)

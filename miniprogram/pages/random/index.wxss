@@ -40,6 +40,10 @@ page { background: var(--theme-background, #f6f8fb); }
 .page-button { display: flex; align-items: center; justify-content: center; line-height: normal; width: 32px; height: 30px; border: 1px solid var(--theme-border, #e9eef5); border-radius: 8px; color: var(--theme-muted, #6d7b90); background: var(--theme-paper, #fff); font-size: var(--study-rpx-44); }
 .page-button.disabled { color: var(--theme-disabled, #c9d1dc); background: var(--theme-background, #f7f9fc); }
 .page-number { color: var(--theme-muted, #8995a8); font-size: var(--study-rpx-22); }
+.page-number-control { display: flex; align-items: center; justify-content: center; width: 112px; height: 32px; }
+.page-number-editor { display: flex; align-items: center; justify-content: center; gap: 3px; color: var(--theme-muted, #8995a8); white-space: nowrap; }
+.page-number-input { flex: 0 0 24px; width: 24px; height: 24px; min-height: 24px; box-sizing: border-box; padding: 0; border: 1px solid var(--theme-border, #e9eef5); border-radius: 5px; color: var(--theme-ink, #18243b); background: var(--theme-paper, #fff); font-size: var(--study-rpx-24); line-height: 22px; text-align: center; }
+.page-jump-hint { min-height: 18px; color: var(--theme-danger, #c2413a); font-size: var(--study-rpx-20); line-height: 18px; text-align: center; }
 .study-tip { margin: 10px 0 6px; padding: 8px 10px; border-radius: 9px; color: var(--theme-muted, #8995a8); background: var(--theme-paper, #fff); font-size: var(--study-rpx-20); line-height: 1.45; }
 .bottom-nav-item { color: var(--theme-muted, #a0abb9); }
 .bottom-nav-active { color: var(--theme-accent, #237bea); font-weight: 700; }

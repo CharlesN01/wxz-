@@ -5,6 +5,7 @@ from io import StringIO
 from django.contrib import admin, messages
 from django.core import signing
 from django.core.exceptions import PermissionDenied
+from django.db.models import Q
 from django.http import HttpResponse, HttpResponseRedirect
 from django.shortcuts import get_object_or_404
 from django.template.response import TemplateResponse
@@ -13,7 +14,6 @@ from django.views.decorators.debug import sensitive_variables
 from unfold.admin import ModelAdmin
 
 from common.errors import BusinessError
-from distribution.admin_access import scope_to_agent_user
 from entitlements.admin import ReadOnlyBusinessAdmin
 from operations.admin_ui import action_group, action_link
 from .forms import GenerateBatchForm
@@ -181,15 +181,18 @@ class ActivationCodeAdmin(ReadOnlyBusinessAdmin):
 @admin.register(ActivationRedemption)
 class ActivationRedemptionAdmin(ReadOnlyBusinessAdmin):
     list_display = ("id", "code_display", "agent_display", "user", "source", "redeemed_at")
-    list_select_related = ("code", "agent_voucher", "user", "source")
+    list_select_related = ("code", "agent_voucher", "attributed_agent", "user", "source")
     search_fields = ("user__username", "code__mask", "agent_voucher__mask", "agent_voucher__order__id")
 
     def get_queryset(self, request):
-        return scope_to_agent_user(
-            request,
-            super().get_queryset(request),
-            "agent_voucher__order__agent_attribution__agent_id",
-        )
+        queryset = super().get_queryset(request)
+        if not request.user.groups.filter(name="代理本人").exists():
+            return queryset
+        from distribution.models import AgentProfile
+        agent_id = AgentProfile.objects.filter(user_id=request.user.pk).values_list("pk", flat=True).first()
+        if agent_id is None:
+            return queryset.none()
+        return queryset.filter(Q(attributed_agent_id=agent_id) | Q(agent_voucher__order__agent_attribution__agent_id=agent_id))
 
     @admin.display(description="激活码掩码")
     def code_display(self, obj):
@@ -197,6 +200,8 @@ class ActivationRedemptionAdmin(ReadOnlyBusinessAdmin):
 
     @admin.display(description="代理")
     def agent_display(self, obj):
+        if obj.attributed_agent_id:
+            return obj.attributed_agent.display_name
         if not obj.agent_voucher_id:
             return "普通批次"
         return obj.agent_voucher.order.agent_attribution.agent.display_name
@@ -210,15 +215,19 @@ class ActivationRedemptionAdmin(ReadOnlyBusinessAdmin):
         response = HttpResponse(content_type="text/csv; charset=utf-8")
         response["Content-Disposition"] = 'attachment; filename="agent-redemptions.csv"'
         writer = csv.writer(response)
-        writer.writerow(("代理", "订单号", "激活码掩码", "兑换用户", "兑换时间", "金额（分）", "支付状态"))
-        queryset = ActivationRedemption.objects.filter(agent_voucher__isnull=False).select_related("agent_voucher__order__agent_attribution__agent", "user")
-        queryset = scope_to_agent_user(
-            request,
-            queryset,
-            "agent_voucher__order__agent_attribution__agent_id",
-        )
+        writer.writerow(("代理", "来源", "订单号", "激活码掩码", "兑换用户", "兑换时间", "金额（分）", "支付状态"))
+        queryset = ActivationRedemption.objects.filter(
+            Q(attributed_agent__isnull=False) | Q(agent_voucher__isnull=False)
+        ).select_related("attributed_agent", "agent_voucher__order__agent_attribution__agent", "user")
+        if request.user.groups.filter(name="代理本人").exists():
+            from distribution.models import AgentProfile
+            agent_id = AgentProfile.objects.filter(user_id=request.user.pk).values_list("pk", flat=True).first()
+            queryset = queryset.filter(Q(attributed_agent_id=agent_id) | Q(agent_voucher__order__agent_attribution__agent_id=agent_id)) if agent_id else queryset.none()
         for item in queryset.order_by("-redeemed_at"):
-            voucher = item.agent_voucher
-            order = voucher.order
-            writer.writerow((order.agent_attribution.agent.display_name, order.pk, voucher.mask, item.user.username, item.redeemed_at.isoformat(), order.price_fen, order.status))
+            if item.attributed_agent_id:
+                writer.writerow((item.attributed_agent.display_name, "普通激活码", "", item.code.mask, item.user.username, item.redeemed_at.isoformat(), "", ""))
+            else:
+                voucher = item.agent_voucher
+                order = voucher.order
+                writer.writerow((order.agent_attribution.agent.display_name, "代理订单激活码", order.pk, voucher.mask, item.user.username, item.redeemed_at.isoformat(), order.price_fen, order.status))
         return response

@@ -60,7 +60,9 @@ class RoundRequest(StrictSerializer):
 
 
 class ResumeRequest(RoundRequest):
+    board = StrictChoice(choices=("sequence", "random"), required=False)
     questionId = StrictSlug(max_length=64)
+    completed = serializers.BooleanField(required=False, default=False)
     roundId = StrictUUID(required=False, allow_null=True)
     groupIndex = StrictInteger(min_value=1, max_value=10000, required=False, allow_null=True)
     baseVersion = StrictInteger(min_value=0, max_value=2147483646)
@@ -69,8 +71,38 @@ class ResumeRequest(RoundRequest):
         values = super().validate(values)
         values.setdefault("roundId", None)
         values.setdefault("groupIndex", None)
+        values.setdefault("board", "random" if values["roundId"] is not None else "sequence")
         if (values["roundId"] is None) != (values["groupIndex"] is None):
             raise serializers.ValidationError({"groupIndex": "随机续学必须同时提供轮次和组号。"})
         if values["roundId"] is not None:
             values["roundId"] = str(values["roundId"])
+        if values["board"] == "random" and values["roundId"] is None:
+            raise serializers.ValidationError({"board": "随机练习续学必须提供轮次。"})
+        if values["board"] == "sequence" and values["roundId"] is not None:
+            raise serializers.ValidationError({"board": "顺序练习续学不能提供轮次。"})
+        return values
+
+
+class ResumeQuery(StrictSerializer):
+    board = StrictChoice(choices=("sequence", "random"), required=False)
+    source = StrictChoice(choices=("literature", "classical"), required=False)
+    categoryId = StrictSlug(max_length=64, required=False, allow_null=True)
+    articleId = StrictSlug(max_length=64, required=False, allow_null=True)
+    type = StrictChoice(choices=("fact", "word", "translation"), required=False, allow_null=True)
+
+    def validate(self, values):
+        source = values.get("source")
+        values.setdefault("categoryId", None)
+        values.setdefault("articleId", None)
+        values.setdefault("type", None)
+        values.setdefault("board", "sequence")
+        if source == "literature":
+            if values["articleId"] is not None:
+                raise serializers.ValidationError({"articleId": "文学常识范围不能指定文言篇目。"})
+            if values["type"] not in (None, "fact"):
+                raise serializers.ValidationError({"type": "文学分类只支持 fact。"})
+        elif source == "classical" and values["categoryId"] is not None:
+            raise serializers.ValidationError({"categoryId": "文言文范围不能指定文学分类。"})
+        elif source is None and (values["categoryId"] is not None or values["articleId"] is not None or values["type"] is not None):
+            raise serializers.ValidationError({"source": "指定续学范围时必须同时提供 source。"})
         return values

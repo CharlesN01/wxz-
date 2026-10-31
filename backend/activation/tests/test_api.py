@@ -52,6 +52,16 @@ class ActivationAPITests(TestCase):
         self.assertEqual(after_revoke.data["redemptionId"], response.data["redemptionId"])
         self.assertFalse(after_revoke.data["entitlement"]["active"])
 
+    def test_scene_is_optional_and_resolved_to_active_agent_on_regular_redemption(self):
+        from distribution.models import AgentProfile
+        profile = AgentProfile(user=self.admin, agent_code="APIATTRIB1", display_name="API代理", created_by=self.admin)
+        profile.save(_service=True)
+        response = self.post(scene=profile.scene)
+        self.assertEqual(response.status_code, 200)
+        redemption = ActivationRedemption.objects.get()
+        self.assertEqual(redemption.attributed_agent_id, profile.pk)
+        self.assertEqual(redemption.code.batch.created_by_id, self.admin.pk)
+
     def test_auth_cookie_and_disabled_user_cannot_redeem(self):
         self.client.credentials()
         self.assertEqual(self.post().status_code, 401)

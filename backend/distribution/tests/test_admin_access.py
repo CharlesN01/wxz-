@@ -202,6 +202,32 @@ class AgentAdminScopeTests(TestCase):
         self.assertNotIn("QM-C3D4-TEST", rendered)
         self.assertNotIn("QM-NORMAL-TEST", rendered)
 
+    def test_agent_scope_and_export_include_regular_code_redemptions_attributed_by_scene(self):
+        other_student = get_user_model().objects.create_user(username="attributed-code-student")
+        batch = ActivationBatch(quantity=1, created_by=self.creator)
+        batch.save(_service=True)
+        code = ActivationCode(batch=batch, digest="f" * 64, mask="QM-ATTRIBUTED-TEST", state="redeemed", redeemed_by=other_student, redeemed_at=timezone.now())
+        code.save(_service=True)
+        source = grant_entitlement(other_student, "activation", str(code.pk))
+        attributed = ActivationRedemption(code=code, user=other_student, source=source, attributed_agent=self.profile_a)
+        attributed.save(_service=True)
+
+        self.client.force_login(self.agent_a)
+        response = self.client.get(reverse("admin:activation_activationredemption_changelist"))
+        self.assertContains(response, "QM-ATTRIBUTED-TEST")
+        self.assertNotContains(response, "QM-NORMAL-TEST")
+        self.assertNotContains(response, "QM-C3D4-TEST")
+        export = self.client.get(reverse("admin:activation_redemption_export_agent"))
+        text = export.content.decode("utf-8-sig")
+        self.assertIn("QM-ATTRIBUTED-TEST", text)
+        self.assertIn("普通激活码", text)
+        self.assertNotIn("QM-C3D4-TEST", text)
+
+        self.client.force_login(self.agent_b)
+        scoped = self.client.get(reverse("admin:activation_activationredemption_changelist"))
+        self.assertNotContains(scoped, "QM-ATTRIBUTED-TEST")
+        self.assertContains(scoped, "QM-C3D4-TEST")
+
     def test_unbound_agent_role_fails_closed_for_rows_and_export(self):
         unbound = self.make_staff("agent-admin-unbound")
         unbound.groups.add(self.agent_group)

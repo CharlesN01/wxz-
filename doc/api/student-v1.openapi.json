@@ -203,6 +203,10 @@
                     "type": "string",
                     "maxLength": 128,
                     "minLength": 1
+                  },
+                  "scene": {
+                    "type": "string",
+                    "maxLength": 40
                   }
                 },
                 "required": [
@@ -2686,10 +2690,13 @@
                     "categoryId": null,
                     "articleId": "quanxue",
                     "type": null,
+                    "board": "sequence",
                     "mode": "writing",
                     "questionId": "example-quanxue-001",
                     "roundId": null,
-                    "groupIndex": null
+                    "groupIndex": null,
+                    "scopeIndex": 0,
+                    "completed": false
                   },
                   "current": {
                     "version": 0,
@@ -2893,11 +2900,21 @@
                       "reciting"
                     ]
                   },
+                  "board": {
+                    "type": "string",
+                    "enum": [
+                      "sequence",
+                      "random"
+                    ]
+                  },
                   "questionId": {
                     "type": "string",
                     "maxLength": 64,
                     "minLength": 1,
                     "pattern": "^[A-Za-z0-9_-]+$"
+                  },
+                  "completed": {
+                    "type": "boolean"
                   },
                   "roundId": {
                     "anyOf": [
@@ -7888,6 +7905,13 @@
               }
             ]
           },
+          "board": {
+            "type": "string",
+            "enum": [
+              "sequence",
+              "random"
+            ]
+          },
           "mode": {
             "type": "string",
             "enum": [
@@ -7919,6 +7943,13 @@
                 "type": "null"
               }
             ]
+          },
+          "scopeIndex": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "completed": {
+            "type": "boolean"
           }
         },
         "required": [
@@ -7926,10 +7957,13 @@
           "categoryId",
           "articleId",
           "type",
+          "board",
           "mode",
           "questionId",
           "roundId",
-          "groupIndex"
+          "groupIndex",
+          "scopeIndex",
+          "completed"
         ],
         "additionalProperties": false
       },
