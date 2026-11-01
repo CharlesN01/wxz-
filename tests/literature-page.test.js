@@ -6,7 +6,7 @@ const path = require('node:path');
 
 const pagePath = path.join(__dirname, '..', 'miniprogram', 'pages', 'literature', 'index.js');
 
-function createPage(questionCount, apiPageSize) {
+function createPage(questionCount, apiPageSize, options = {}) {
   let definition;
   const calls = [];
   const questions = Array.from({ length: questionCount }, (_value, index) => ({
@@ -25,7 +25,7 @@ function createPage(questionCount, apiPageSize) {
         return Promise.resolve({
           count: questionCount,
           results: questions.slice(start, start + apiPageSize),
-          access: { pageSize: apiPageSize, restrictedCount: 0 }
+          access: { pageSize: apiPageSize, restrictedCount: 0, activated: options.activated !== false }
         });
       }
     },
@@ -41,6 +41,9 @@ function createPage(questionCount, apiPageSize) {
       if (name === '../../utils/safe-top') return { getSafeTop: () => 0 };
       if (name === '../../utils/question-utils') return require('../miniprogram/utils/question-utils');
       if (name === '../../utils/answer-drafts') return require('../miniprogram/utils/answer-drafts');
+      if (name === '../../utils/page-swipe') return require('../miniprogram/utils/page-swipe');
+      if (name === '../../utils/agent-attribution') return { read: () => '', sharePath: (value) => value, shareQuery: () => '' };
+      if (name === '../../utils/content-cache') return options.cache || { read: () => null, write: () => false };
       throw new Error('Unexpected module: ' + name);
     },
     Page(value) { definition = value; },
@@ -75,6 +78,55 @@ test('文学常识页面固定每组 6 题，适配后端 20 题分页并正确�
   assert.equal(page.data.questionProgressLabel, '19 / 26');
   assert.deepEqual(Array.from(page.data.questions, (item) => item.id), ['q19', 'q20', 'q21', 'q22', 'q23', 'q24']);
   assert.deepEqual(calls, [1, 2]);
+});
+
+test('无效页码不改变当前题目，合法输入跳转并加载目标页', async () => {
+  const { page } = createPage(40, 20);
+  await page.loadPage(2);
+  const before = Array.from(page.data.questions, (item) => item.id);
+  for (const value of ['', '0', '1.5', 'abc', '8']) {
+    page.data.pageInput = value;
+    page.confirmPageJump();
+    assert.equal(page.data.page, 2);
+    assert.deepEqual(Array.from(page.data.questions, (item) => item.id), before);
+    assert.match(page.data.pageJumpHint, /请输入 1 至 7 页/);
+  }
+  page.data.pageInput = '4';
+  await page.confirmPageJump();
+  assert.equal(page.data.page, 4);
+  assert.equal(page.data.pageJumpHint, '');
+  assert.deepEqual(Array.from(page.data.questions, (item) => item.id), ['q19', 'q20', 'q21', 'q22', 'q23', 'q24']);
+});
+
+test('首屏快照不会把非第一页题目伪装为 API 第一页恢复', async () => {
+  const cachedSnapshot = { categories: [{ id: 'pre-qin', name: '先秦文学' }], categoryId: 'pre-qin', categoryName: '先秦', rows: [{ id: 'q19' }], questions: [{ id: 'q19' }], page: 4, totalQuestions: 40, pageCount: 7, apiPageSize: 20 };
+  const cache = { read: (scope) => scope === 'literature-first' ? { payload: cachedSnapshot, savedAt: Date.now(), stale: false } : null, write: () => true };
+  const { page } = createPage(40, 20, { cache });
+  page.onLoad({});
+  assert.equal(page.data.loading, false);
+  assert.equal(page.data.page, 4);
+  assert.deepEqual(Array.from(page.data.questions, (item) => item.id), ['q19']);
+  await page.bootstrap();
+  assert.equal(page.data.page, 4);
+  assert.deepEqual(Array.from(page.data.questions, (item) => item.id), ['q19', 'q20', 'q21', 'q22', 'q23', 'q24']);
+});
+
+test('过期分页缓存先重新验证，刷新后的新题目直接用于页面渲染', async () => {
+  const cache = { read: (scope) => scope === 'literature-category' ? { payload: { rows: [{ id: 'old' }], count: 1, pageSize: 20 }, savedAt: 1, stale: true } : null, write: () => true };
+  const { page, api } = createPage(1, 20, { cache });
+  api.content.questions = async () => ({ count: 1, results: [{ id: 'fresh', source: 'literature', stem: '新题 {{0}}', answers: ['答案'] }], access: { pageSize: 20 } });
+  await page.loadPage(1);
+  assert.deepEqual(Array.from(page.data.questions, (item) => item.id), ['fresh']);
+});
+
+test('新鲜但为空的第一页缓存也会立即重新验证恢复后的题库', async () => {
+  const cache = { read: (scope) => scope === 'literature-category'
+    ? { payload: { rows: [], count: 0, pageSize: 20 }, savedAt: Date.now(), stale: false }
+    : null, write: () => true };
+  const { page, api } = createPage(1, 20, { cache });
+  api.content.questions = async () => ({ count: 1, results: [{ id: 'restored', source: 'literature', categoryId: 'pre-qin', stem: '恢复题 {{0}}', answers: ['答案'] }], access: { pageSize: 20, totalCount: 1 } });
+  await page.loadPage(1);
+  assert.deepEqual(Array.from(page.data.questions, (item) => item.id), ['restored']);
 });
 
 test('文学常识首次加载完成后退出 loading 并显示首组题目', async () => {
@@ -199,7 +251,7 @@ test('开通权益返回文学页面重新获取完整题量并清除免费分�
   api.content.questions = async ({ page: number }) => {
     reads += 1;
     const count = activated ? 30 : 20;
-    return { count, access: { pageSize: 20, restrictedCount: activated ? 0 : 10 },
+    return { count, access: { pageSize: 20, activated, restrictedCount: activated ? 0 : 10 },
       results: Array.from({ length: Math.min(20, count - (number - 1) * 20) }, (_, index) => ({ id: 'q' + ((number - 1) * 20 + index + 1), stem: '题干', answers: [] })) };
   };
   page.queueResume = () => {};

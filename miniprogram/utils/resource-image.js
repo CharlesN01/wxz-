@@ -10,9 +10,18 @@ function resourceImageUrl(value) {
   else if (!/^[a-z][a-z\d+.-]*:/i.test(target)) target = base[1] + '/' + target.replace(/^\/+/, '');
   const url = /^(https?):\/\/([^/?#@]+)(\/[^#]*)?$/i.exec(target);
   if (!url) return '';
+  const baseHost = base[1].slice(base[1].indexOf('://') + 3).toLowerCase();
+  const targetHost = url[2].toLowerCase();
+  // Older records may contain the apex hostname while production now uses
+  // the canonical www hostname. Treat the two as the same media origin.
+  const sameMediaOrigin = targetHost === baseHost ||
+    (baseHost === 'www.zsbzy.com' && targetHost === 'zsbzy.com');
   if (base[2].toLowerCase() === 'https' && url[1].toLowerCase() === 'http') {
-    if (url[2].toLowerCase() !== base[1].slice(base[1].indexOf('://') + 3).toLowerCase()) return '';
+    if (!sameMediaOrigin) return '';
     target = target.replace(/^http:/i, 'https:');
+  }
+  if (sameMediaOrigin && targetHost !== baseHost) {
+    target = target.replace(/^(https?:\/\/)[^/?#]+/i, '$1' + baseHost);
   }
   return target;
 }

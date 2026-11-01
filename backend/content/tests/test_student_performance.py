@@ -89,6 +89,30 @@ class StudentLoadingPerformanceTests(StudentContentFixture):
         detail = self.client.get(f"/api/student/v1/questions/{self.first.pk}/")
         self.assertEqual(detail.data["state"], response.data["results"][0]["state"])
 
+    @override_settings(CONTENT_CACHE_ENABLED=True)
+    def test_authenticated_question_page_caches_content_and_personalizes_state(self):
+        cache.clear()
+        self.authenticate()
+        first = self.client.get(self.questions_url)
+        self.assertEqual(first.status_code, 200)
+        QuestionState.objects.create(user=self.student, question=self.first, favorite=True, version=4)
+        with CaptureQueriesContext(connection) as captured:
+            second = self.client.get(self.questions_url)
+        self.assertEqual(second.status_code, 200)
+        self.assertEqual(second.data["results"][0]["state"]["favorite"], True)
+        self.assertTrue(any(
+            '"learning_questionstate"' in row["sql"]
+            and "COUNT" in row["sql"].upper()
+            and "content_questionrevision" in row["sql"]
+            for row in captured
+        ))
+        self.assertTrue(any('"learning_questionstate"' in row["sql"] for row in captured))
+        self.client.force_authenticate(self.other_student)
+        other = self.client.get(self.questions_url)
+        self.assertEqual(other.status_code, 200)
+        self.assertFalse(other.data["results"][0]["state"]["favorite"])
+        self.assertEqual(other.data["progress"], {"masteredCount": 0})
+
     def test_batch_state_query_count_is_constant_and_empty_reads_do_not_write(self):
         with self.assertNumQueries(1):
             states = batch_question_states(self.student, [self.first.pk, self.second.pk, self.paid.pk])

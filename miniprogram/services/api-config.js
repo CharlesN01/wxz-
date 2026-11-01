@@ -1,4 +1,7 @@
-const PRODUCTION_API_BASE_URL = 'https://zsbzy.com';
+// Use the canonical public hostname configured for the production server.
+// Keeping one hostname avoids different TLS/virtual-host routes between the
+// simulator, trial build, and release build.
+const PRODUCTION_API_BASE_URL = 'https://www.zsbzy.com';
 // A phone cannot reach the developer computer's loopback interface. Keep the
 // public HTTPS service as the default and use extension config for local work.
 const DEFAULT_API_BASE_URL = PRODUCTION_API_BASE_URL;

@@ -42,6 +42,8 @@ function createPage(resume, questionPayload) {
       if (name === '../../utils/navigation') return { openPage: (url) => routes.push(url) };
       if (name === '../../services/api') return api;
       if (name === '../../utils/answer-drafts') return require('../miniprogram/utils/answer-drafts');
+      if (name === '../../utils/page-swipe') return require('../miniprogram/utils/page-swipe');
+      if (name === '../../utils/agent-attribution') return { read: () => '', sharePath: (value) => value, shareQuery: () => '' };
       throw new Error('Unexpected module: ' + name);
     },
     Page(value) { definition = value; },
@@ -72,8 +74,28 @@ test('专项练习按 API 约定只用 questionId 恢复顺序题组', async () 
   assert.equal(page.data.groupIndex, 1);
 });
 
+test('专项页码输入校验范围并只在有效时切到目标组', async () => {
+  const { page } = createPage(null);
+  page.allQuestions = Array.from({ length: 18 }, (_value, index) => ({ id: 'jump-' + index }));
+  page.data.groupCount = 3;
+  page.data.loading = false;
+  page.changeGroup = async (index) => page.setData({ groupIndex: index });
+  page.data.pageInput = '0';
+  page.confirmPageJump();
+  assert.equal(page.data.groupIndex, 0);
+  assert.equal(page.data.pageJumpHint, '请输入 1 至 3 页');
+  page.data.pageInput = '2.5';
+  page.confirmPageJump();
+  assert.equal(page.data.groupIndex, 0);
+  page.data.pageInput = '3';
+  await page.confirmPageJump();
+  assert.equal(page.data.groupIndex, 2);
+  assert.equal(page.data.pageJumpHint, '');
+});
+
 test('专项已答进度与掌握统计独立，末页实际两题输入后能达到100%', () => {
   const { page, api } = createPage(null);
+  page._activated = true;
   page.allQuestions = Array.from({ length: 8 }, (_value, index) => ({ id: 'draft-practice-' + index, stem: '{{0}}与{{1}}', answers: ['甲', '乙'] }));
   page._stateMap['draft-practice-6'] = { mastered: true, version: 1 };
   page.data.groupIndex = 1;
@@ -241,7 +263,7 @@ test('跨篇续学先定位目标篇目，不加载其前面一千道题目', as
   api.content.questions = async params => {
     calls.push(params.articleId + ':' + params.page);
     assert.equal(params.articleId, 'b');
-    return { count: 12, results: Array.from({ length: 12 }, (_v, index) => ({ id: 'b' + (index + 1) })), access: { pageSize: 20 }, next: null };
+    return { count: 12, results: Array.from({ length: 12 }, (_v, index) => ({ id: 'b' + (index + 1) })), access: { pageSize: 20, activated: true }, next: null };
   };
   await page.loadRemote(true);
   assert.equal(page.data.groupIndex, 167);
@@ -262,6 +284,7 @@ test('跨篇续学先定位目标篇目，不加载其前面一千道题目', as
 
 test('按需翻页断网保留当前题组，重试仅请求失败页', async () => {
   const { page, api } = createPage(null);
+  page._activated = true;
   let disconnected = true;
   const calls = [];
   api.content.questions = async params => {
@@ -287,8 +310,8 @@ test('无可读题时使用目录已发布类型计数显示受限空态，不�
   const { page, api } = createPage(null);
   page.articleId = '';
   api.content.articles = async () => ({ results: [
-    { id: 'a', wordCount: 0, translationCount: 5, publishedWordCount: 30, publishedTranslationCount: 40 },
-    { id: 'b', wordCount: 0, translationCount: 5, publishedWordCount: 20, publishedTranslationCount: 30 }
+    { id: 'a', wordCount: 0, translationCount: 0, publishedWordCount: 30, publishedTranslationCount: 40 },
+    { id: 'b', wordCount: 0, translationCount: 0, publishedWordCount: 20, publishedTranslationCount: 30 }
   ], next: null });
   api.content.questions = async () => { throw new Error('empty scope should not request questions'); };
   await page.loadRemote(false);
@@ -302,6 +325,11 @@ test('收藏使用随题状态版本提交，冲突后只按服务器版本重�
     count: 1, results: [{ id: 'q1', state: { favorite: true, mastered: false, version: 7 } }], next: null
   });
   await page.loadRemote(false);
+  let refreshes = 0;
+  page.refreshQuestions = () => { refreshes += 1; };
+  page.data.groupIndex = 1;
+  page.data.pageInput = '2';
+  page.data.questions[0].draftAnswers = ['保留中的答案'];
   const writes = [];
   api.learning.setQuestionState = async (id, body) => {
     writes.push({ id, body });
@@ -314,6 +342,30 @@ test('收藏使用随题状态版本提交，冲突后只按服务器版本重�
   assert.equal(writes[1].body.baseVersion, 8);
   assert.equal(writes[1].body.favorite, false);
   assert.equal(page.data.questions[0].favorite, false);
+  assert.equal(refreshes, 0);
+  assert.equal(page.data.groupIndex, 1);
+  assert.equal(page.data.pageInput, '2');
+  assert.deepEqual(page.data.questions[0].draftAnswers, ['保留中的答案']);
+});
+
+test('收藏写入失败保留原星标和当前题目，不触发整页刷新', async () => {
+  const { page, api } = createPage(null, {
+    count: 1, results: [{ id: 'q1', state: { favorite: true, mastered: false, version: 7 } }], next: null
+  });
+  await page.loadRemote(false);
+  page.data.groupIndex = 1;
+  page.data.questions[0].draftAnswers = ['未提交草稿'];
+  let refreshes = 0;
+  page.refreshQuestions = () => { refreshes += 1; };
+  api.learning.setQuestionState = async () => { throw { code: 'NETWORK_ERROR', message: '网络暂不可用' }; };
+
+  await page.onFavorite({ detail: { id: 'q1' } });
+
+  assert.equal(page.data.questions[0].favorite, true);
+  assert.equal(page.data.questions[0].draftAnswers[0], '未提交草稿');
+  assert.equal(page.data.groupIndex, 1);
+  assert.equal(refreshes, 0);
+  assert.match(page.data.personalError, /网络暂不可用/);
 });
 
 

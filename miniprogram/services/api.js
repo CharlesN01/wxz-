@@ -11,10 +11,17 @@ function encodeId(id) {
 
 function query(method, path, params, options) {
   const opts = options || {};
+  const queryParams = Object.keys(params || {}).reduce((result, key) => {
+    // WeChat serializes null as the literal string "null" in query strings.
+    // Optional filters should be omitted so strict API serializers can apply
+    // their documented defaults instead of validating a fake value.
+    if (params[key] !== null && params[key] !== undefined) result[key] = params[key];
+    return result;
+  }, {});
   return http.request({
     method,
     path,
-    query: params || {},
+    query: queryParams,
     auth: opts.auth === undefined ? false : opts.auth,
     headers: opts.headers,
     timeout: opts.timeout
@@ -69,7 +76,21 @@ const api = {
     setQuestionState: (id, data, options) => write('PUT', ROOT + '/me/questions/' + encodeId(id) + '/state/', data, options),
     statistics: (options) => query('GET', ROOT + '/me/statistics/', null, Object.assign({ auth: true }, options || {})),
     studyTime: (data, options) => write('POST', ROOT + '/me/study-time/', data, options),
-    resume: (options) => query('GET', ROOT + '/me/resume/', null, Object.assign({ auth: true }, options || {})),
+    resume: (params, options) => {
+      // Keep the old resume(options) call shape while allowing pages to read
+      // their own persisted board/filter position.
+      if (params && (params.board || params.source || params.categoryId || params.articleId || params.type)) {
+        const requestOptions = Object.assign({ auth: true }, options || {});
+        return query('GET', ROOT + '/me/resume/', params, requestOptions).catch((error) => {
+          // Older deployed servers expose only the unscoped resume endpoint and
+          // reject these filters as unknown query parameters. Retry in the
+          // legacy shape so login does not block otherwise valid question data.
+          if (!error || error.status !== 400) throw error;
+          return query('GET', ROOT + '/me/resume/', null, requestOptions);
+        });
+      }
+      return query('GET', ROOT + '/me/resume/', null, Object.assign({ auth: true }, params || {}));
+    },
     saveResume: (data, options) => write('PUT', ROOT + '/me/resume/', data, options),
     preferences: (options) => query('GET', ROOT + '/me/preferences/', null, Object.assign({ auth: true }, options || {})),
     savePreferences: (data, options) => write('PUT', ROOT + '/me/preferences/', data, options),
@@ -99,7 +120,11 @@ const api = {
   },
 
   activation: {
-    redeem: (code, options) => write('POST', ROOT + '/activation/redeem/', { code }, options)
+    redeem: (code, options) => {
+      const body = { code };
+      if (options && options.scene) body.scene = options.scene;
+      return write('POST', ROOT + '/activation/redeem/', body, options);
+    }
   },
 
   feedback: {

@@ -92,3 +92,33 @@ test('学习状态版本变化不影响相同内容修订的草稿，重建store
   assert.deepEqual(restored.read(question), ['保留输入']);
   assert.deepEqual(restored.read({ ...question, revision: 4 }), ['']);
 });
+
+test('清空当前页只清除可答题目的持久化草稿并重算本页进度', () => {
+  const { store } = makeStore('clear-page-user');
+  const first = { id: 'clear-page-first', stem: '{{0}} 和 {{1}}', answers: ['甲', '乙'], draftAnswers: ['作答', '完成'] };
+  const second = { id: 'clear-page-second', type: 'translation', stem: '原文', answers: ['译文'], draftAnswers: ['已翻译'] };
+  const locked = { id: 'clear-page-locked', stem: '{{0}}', answers: ['答案'], draftAnswers: ['保留'], locked: true };
+  store.save(first, first.draftAnswers);
+  store.save(second, second.draftAnswers);
+  store.save(locked, locked.draftAnswers);
+  const page = { data: { mode: 'writing', questions: [first, second, locked] } };
+
+  const update = drafts.clearPage(page, store);
+
+  assert.deepEqual(update.questions[0].draftAnswers, ['', '']);
+  assert.deepEqual(update.questions[1].draftAnswers, ['']);
+  assert.deepEqual(update.questions[2].draftAnswers, ['保留']);
+  assert.equal(update.answeredCount, 0);
+  assert.equal(update.answerProgressPercent, 0);
+  assert.deepEqual(store.read(first), ['', '']);
+  assert.deepEqual(store.read(second), ['']);
+  assert.deepEqual(store.read(locked), ['保留']);
+});
+
+test('背诵模式不能触发清空草稿', () => {
+  const { store } = makeStore('clear-page-reciting-user');
+  const question = { id: 'clear-page-reciting', stem: '{{0}}', answers: ['答案'], draftAnswers: ['我的作答'] };
+  store.save(question, question.draftAnswers);
+  assert.equal(drafts.clearPage({ data: { mode: 'reciting', questions: [question] } }, store), null);
+  assert.deepEqual(store.read(question), ['我的作答']);
+});

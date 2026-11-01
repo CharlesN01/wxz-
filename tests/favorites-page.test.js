@@ -51,6 +51,7 @@ function createPage(mode = 'writing', apiOverrides = {}) {
       if (name === '../../services/api') return api;
       if (name === '../../utils/navigation') return navigation;
       if (name === '../../utils/answer-drafts') return require('../miniprogram/utils/answer-drafts');
+      if (name === '../../utils/agent-attribution') return { read: () => '', sharePath: (value) => value, shareQuery: () => '' };
       throw new Error('Unexpected module: ' + name);
     },
     Page(value) { definition = value; },
@@ -88,7 +89,7 @@ test('收藏页来源筛选显示该来源的完整列表，6 条混合收藏不
   assert.equal(page.data.hasQuestions, true);
 });
 
-test('收藏页远端列表超过 5 条时在无分页控件的原型布局中仍全部可见', () => {
+test('收藏页每页显示 6 条并可切换下一页', () => {
   const { page } = createPage();
   page._categoryId = '';
   page._sourceFilter = 'literature';
@@ -99,8 +100,42 @@ test('收藏页远端列表超过 5 条时在无分页控件的原型布局中�
   }));
 
   page._renderRemote({ count: 7 });
-  assert.equal(page.data.questions.length, 7);
+  assert.equal(page.data.questions.length, 6);
+  assert.equal(page.data.pageNumber, 1);
+  assert.equal(page.data.pageCount, 2);
+  assert.equal(page.data.canNext, true);
+  page.onNextPage();
+  assert.equal(page.data.questions.length, 1);
+  assert.equal(page.data.questions[0].id, 'l7');
+  assert.equal(page.data.pageNumber, 2);
+  assert.equal(page.data.canPrevious, true);
   assert.equal(page.data.hasQuestions, true);
+});
+
+test('收藏页页码支持合法跳转并拒绝非法输入', () => {
+  const { page } = createPage();
+  page._categoryId = '';
+  page._sourceFilter = 'literature';
+  page._remoteRows = Array.from({ length: 13 }, (_value, index) => ({
+    id: 'l' + (index + 1), source: 'literature', stem: '文常 ' + (index + 1)
+  }));
+  page._renderRemote({ count: 13 });
+
+  page.editPageNumber();
+  page.onPageInput({ detail: { value: '3' } });
+  page.confirmPageJump();
+  assert.equal(page.data.pageNumber, 3);
+  assert.equal(page.data.questions.length, 1);
+  assert.equal(page.data.questions[0].id, 'l13');
+
+  for (const invalid of ['', '0', '2.5', 'abc', '4']) {
+    const current = page.data.pageNumber;
+    page.editPageNumber();
+    page.onPageInput({ detail: { value: invalid } });
+    page.confirmPageJump();
+    assert.equal(page.data.pageNumber, current, `invalid page ${invalid} must not jump`);
+    assert.match(page.data.pageJumpHint, /请输入 1 至 3 页/);
+  }
 });
 
 test('收藏翻译题即使带placeholder也用独立多行输入，保留完整原句和长答案', () => {

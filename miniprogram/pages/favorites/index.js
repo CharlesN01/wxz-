@@ -11,6 +11,7 @@ const questionUtils = require('../../utils/question-utils');
 const api = require('../../services/api');
 const navigation = require('../../utils/navigation');
 const answerDrafts = require('../../utils/answer-drafts');
+const PAGE_SIZE = 6;
 function currentTheme() { try { return wx.getStorageSync('chinese-study.theme') === 'night' ? 'night' : 'day'; } catch (_) { return 'day'; } }
 
 function settle(promise) { return Promise.resolve(promise).then((value) => ({ ok: true, value }), (error) => ({ ok: false, error })); }
@@ -48,7 +49,7 @@ function decorateFavorite(question) {
 }
 
 Page(withStudyTime({
-  data: { theme: 'day', categoryRows: [], categoryId: '', activeCategoryElement: '', activeCategoryRow: 'literature', sourceFilter: 'literature', mode: 'writing', questions: [], hasQuestions: false, pageNumber: 0, pageCount: 0, totalFavorites: 0, todayAdded: 0, nextLabel: '下一页', loading: true, hasError: false, errorMessage: '', dataSource: 'local', personalError: '', requiresLogin: false },
+  data: { theme: 'day', categoryRows: [], categoryId: '', activeCategoryElement: '', activeCategoryRow: 'literature', sourceFilter: 'literature', mode: 'writing', questions: [], hasQuestions: false, pageNumber: 0, pageCount: 0, pageInput: '', pageEditing: false, pageJumpHint: '', totalFavorites: 0, todayAdded: 0, nextLabel: '下一页', loading: true, hasError: false, errorMessage: '', dataSource: 'local', personalError: '', requiresLogin: false },
   onLoad(options = {}) { this._categories = dataService.getCategories('favorites'); this._pageIndex = 0; this._categoryId = options.categoryId || ''; this._sourceFilter = options.source === 'classical' ? 'classical' : 'literature'; this._remoteRows = []; this._remoteLoaded = false; this._stateInFlight = Object.create(null); this._ready = true; this._setupCategories(); this._refreshFavorites(); },
   onShow() { this.setData({ theme: currentTheme() }); if (this._ready) this._refreshFavorites(); },
   _setupCategories() {
@@ -88,9 +89,9 @@ Page(withStudyTime({
   _extractRows(payload) { const rows = payload && Array.isArray(payload.results) ? payload.results : (Array.isArray(payload) ? payload : []); return rows.map(normalizeFavoriteRow).filter((item) => item.id); },
   _renderRemote(payload) {
     const filtered = answerDrafts.decorate(this._remoteRows.filter((item) => this._matchesCategory(item)).map(decorateFavorite), this.draftStore());
-    // 原型在来源筛选下展示该分类的完整收藏列表，页面没有分页控件；不要截断超过 5 条的收藏。
-    this._pageIndex = 0;
-    this.setData(Object.assign({ loading: false, hasError: false, errorMessage: '', dataSource: 'remote', personalError: '', mode: studyStore.getMode(), questions: filtered, hasQuestions: filtered.length > 0, pageNumber: filtered.length ? 1 : 0, pageCount: filtered.length ? 1 : 0, totalFavorites: Number(payload && payload.count) || this._remoteRows.length, todayAdded: Number(payload && payload.todayAdded) || 0, nextLabel: '下一页' }, answerDrafts.progress(filtered)));
+    this._filteredQuestions = filtered;
+    this._pageIndex = Math.min(Math.max(0, this._pageIndex || 0), Math.max(0, Math.ceil(filtered.length / PAGE_SIZE) - 1));
+    this._renderPage(Object.assign({ loading: false, hasError: false, errorMessage: '', dataSource: 'remote', personalError: '', mode: studyStore.getMode(), totalFavorites: Number(payload && payload.count) || this._remoteRows.length, todayAdded: Number(payload && payload.todayAdded) || 0 }, answerDrafts.progress(filtered)));
   },
   _matchesCategory(question) {
     if (question.source && question.source !== this._sourceFilter) return false;
@@ -102,11 +103,31 @@ Page(withStudyTime({
   },
   _renderLocal(error) {
     const state = studyStore.getState(); const favoriteIds = new Set(state.favorites); const items = dataService.getQuestions({ source: this._sourceFilter }).filter((question) => favoriteIds.has(question.id)); const questions = dataService.decorateQuestions(items);
-    this._pageIndex = 0;
     const decorated = answerDrafts.decorate(questions.map(decorateFavorite), this.draftStore());
+    this._filteredQuestions = decorated;
+    this._pageIndex = Math.min(Math.max(0, this._pageIndex || 0), Math.max(0, Math.ceil(decorated.length / PAGE_SIZE) - 1));
     const today = studyStore.todayKey();
     const todayAdded = state.favorites.filter((id) => state.favoriteDates && state.favoriteDates[id] === today).length;
-    this.setData(Object.assign({ loading: false, dataSource: 'local', personalError: error ? errorText(error) : '', hasError: false, errorMessage: '', categoryId: this._categoryId, sourceFilter: this._sourceFilter, mode: state.mode, questions: decorated, hasQuestions: questions.length > 0, pageNumber: questions.length ? 1 : 0, pageCount: questions.length ? 1 : 0, totalFavorites: favoriteIds.size, todayAdded, nextLabel: '下一页' }, answerDrafts.progress(decorated)));
+    this._renderPage(Object.assign({ loading: false, dataSource: 'local', personalError: error ? errorText(error) : '', hasError: false, errorMessage: '', categoryId: this._categoryId, sourceFilter: this._sourceFilter, mode: state.mode, totalFavorites: favoriteIds.size, todayAdded }, answerDrafts.progress(decorated)));
+  },
+  _renderPage(baseData) {
+    const rows = Array.isArray(this._filteredQuestions) ? this._filteredQuestions : [];
+    const pageCount = Math.ceil(rows.length / PAGE_SIZE);
+    this._pageIndex = Math.min(Math.max(0, this._pageIndex || 0), Math.max(0, pageCount - 1));
+    const start = this._pageIndex * PAGE_SIZE;
+    const questions = rows.slice(start, start + PAGE_SIZE);
+    this.setData(Object.assign({}, baseData, {
+      questions,
+      hasQuestions: rows.length > 0,
+      pageNumber: rows.length ? this._pageIndex + 1 : 0,
+      pageCount,
+      pageEditing: false,
+      pageInput: '',
+      pageJumpHint: '',
+      canPrevious: this._pageIndex > 0,
+      canNext: this._pageIndex < pageCount - 1,
+      nextLabel: '下一页'
+    }, answerDrafts.progress(questions)));
   },
   onRetry() { this._refreshFavorites(); },
   draftStore() {
@@ -132,8 +153,9 @@ Page(withStudyTime({
     const mode = event.detail.mode;
     if (mode !== 'writing' && mode !== 'reciting') return;
     studyStore.setMode(mode);
-    const questions = answerDrafts.decorate(this.data.questions.map(decorateFavorite), this.draftStore());
-    this.setData(Object.assign({ mode, questions }, answerDrafts.progress(questions)));
+    const questions = answerDrafts.decorate((this._filteredQuestions || this.data.questions).map(decorateFavorite), this.draftStore());
+    this._filteredQuestions = questions;
+    this._renderPage(Object.assign({ mode }, answerDrafts.progress(questions)));
   },
   onSourceChange(event) { const source = event.currentTarget.dataset.source; if (source !== 'literature' && source !== 'classical') return; this._sourceFilter = source; this._categoryId = ''; this._pageIndex = 0; this.setData({ sourceFilter: source, categoryId: '', activeCategoryElement: '', activeCategoryRow: source }); this._refreshFavorites(); },
   onToggleAnswer(event) { const id = event.currentTarget.dataset.id; const questions = this.data.questions.map((item) => item.id === id ? Object.assign({}, item, { answerVisible: !item.answerVisible }) : item); this.setData({ questions, hasQuestions: questions.length > 0 }); },
@@ -155,13 +177,27 @@ Page(withStudyTime({
       let result = await settle(api.learning.setQuestionState(id, { [field]: next, baseVersion: current.version }, createWriteOptions()));
       if (!result.ok && result.error && result.error.code === 'VERSION_CONFLICT') { const server = result.error.current || result.error.fields && result.error.fields.current; if (server) result = await settle(api.learning.setQuestionState(id, { [field]: next, baseVersion: normalizeState(server).version }, createWriteOptions())); }
       if (!result.ok) { this.setData({ personalError: errorText(result.error) }); return; }
-      this.setData({ personalError: '' }); this._pageIndex = 0; await this._refreshFavorites();
+      this.setData({ personalError: '' }); await this._refreshFavorites();
     } finally {
       delete this._stateInFlight[lockKey];
     }
   },
   onFavorite(event) { const id = event && event.currentTarget && event.currentTarget.dataset ? event.currentTarget.dataset.id : event && event.detail && event.detail.id; return this._updateState(id, 'favorite'); },
   onMaster(event) { return this._updateState(event.detail.id, 'mastered'); },
+  onPreviousPage() { if (this._pageIndex <= 0) return; this._pageIndex -= 1; this._renderPage({}); },
+  onNextPage() { if (this._pageIndex >= Math.ceil((this._filteredQuestions || []).length / PAGE_SIZE) - 1) return; this._pageIndex += 1; this._renderPage({}); },
+  editPageNumber() { this.setData({ pageEditing: true, pageInput: String(this.data.pageNumber || 1), pageJumpHint: '' }); },
+  onPageInput(event) { this.setData({ pageInput: event.detail.value || '', pageJumpHint: '' }); },
+  confirmPageJump() {
+    const raw = String(this.data.pageInput || '').trim();
+    const total = Number(this.data.pageCount) || 0;
+    if (!/^\d+$/.test(raw) || Number(raw) < 1 || Number(raw) > total) {
+      this.setData({ pageEditing: true, pageJumpHint: `请输入 1 至 ${total || 1} 页` });
+      return;
+    }
+    this._pageIndex = Number(raw) - 1;
+    this._renderPage({});
+  },
   onGoStudy() { if (this._sourceFilter === 'classical' || this._categoryId.indexOf('classical-') === 0) navigation.openPage('/pages/classical/index'); else navigation.openPage('/pages/literature/index', this._categoryId ? { categoryId: this._categoryId } : undefined); },
   onShareAppMessage() { return shareAppMessage(); },
   onShareTimeline() { return shareTimeline(); }

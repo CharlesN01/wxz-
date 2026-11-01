@@ -80,6 +80,33 @@ test('全部与真实文种分页工作正常，模式切换不再请求详情',
   assert.equal(page.data.selectedIndex, 0);
 });
 
+test('应用文页码输入仅接受当前筛选范围内的正整数并加载目标篇目', async () => {
+  const entries = [entry('a'), entry('b'), entry('c'), entry('d')];
+  const loaded = [];
+  const { page } = pageWith({ content: {
+    writings: async () => ({ results: entries }),
+    writing: async (id) => { loaded.push(id); return entries.find((item) => item.id === id); }
+  } });
+  await page.onLoad();
+  loaded.length = 0;
+  page.data.pageInput = '0';
+  await page.confirmPageJump();
+  assert.equal(page.data.selectedIndex, 0);
+  assert.equal(page.data.selected.id, 'a');
+  assert.equal(page.data.pageJumpHint, '请输入 1 至 4 篇');
+  for (const invalid of ['', '2.5', '5', 'abc']) {
+    page.data.pageInput = invalid;
+    await page.confirmPageJump();
+    assert.equal(page.data.selectedIndex, 0);
+    assert.equal(page.data.selected.id, 'a');
+  }
+  page.data.pageInput = '3';
+  await page.confirmPageJump();
+  assert.equal(page.data.selectedIndex, 2);
+  assert.equal(page.data.selected.id, 'c');
+  assert.deepEqual(loaded, ['c']);
+});
+
 test('快速翻篇后的晚到详情及错误不会覆盖当前正文', async () => {
   const pending = {};
   const entries = [entry('a'), entry('b')];

@@ -20,7 +20,10 @@
 
     <view class="practice-switch-row">
       <text class="question-hint">每页 {{groupPageSize}} 题</text>
-      <view class="mode-switch-wrap"><mode-switch mode="{{mode}}" theme="blue" bindchange="onModeChange" /></view>
+      <view class="practice-mode-controls">
+        <view wx:if="{{mode === 'writing'}}" class="clear-answer-button" bindtap="clearCurrentPageAnswers" role="button">清空答案</view>
+        <view class="mode-switch-wrap"><mode-switch mode="{{mode}}" theme="blue" bindchange="onModeChange" /></view>
+      </view>
     </view>
     <view wx:if="{{!loading && !hasError}}" class="membership-status">{{activated ? '会员已开通 · 全部题目可答' : '未开通会员 · 第 1 页免费'}}</view>
     <view class="progress-track"><view class="progress-fill" style="width: {{pageProgressPercent || 0}}%;"></view></view>
@@ -32,7 +35,7 @@
       <text class="state-icon">!</text><text class="state-title">专项题目暂不可用</text><text class="state-copy">{{errorMessage}}</text>
       <view class="state-retry" bindtap="onRetry" role="button">重新加载</view>
     </view>
-    <view wx:elif="{{total}}" class="question-list">
+    <view wx:elif="{{total}}" class="question-list" bindtouchstart="onQuestionTouchStart" bindtouchend="onQuestionTouchEnd">
       <view wx:for="{{questions}}" wx:key="id" class="question-item">
         <question-card class="study-question-card" question="{{item}}" mode="{{mode}}" number="{{groupIndex * groupPageSize + index + 1}}" variant="{{isWord ? 'practice-word' : 'practice-translation'}}" show-tag="{{true}}" bindfavorite="onFavorite" bindmaster="onMaster" bindanswerinput="onAnswerInput" bindunlock="openMembership" />
       </view>
@@ -46,9 +49,12 @@
 
     <view wx:if="{{!loading && !hasError && total}}" class="pagination">
       <view class="page-button {{groupIndex === 0 ? 'page-disabled' : ''}}" role="button" bindtap="onPreviousGroup" hover-class="page-button-pressed" aria-label="上一页" aria-disabled="{{groupIndex === 0}}">‹</view>
-      <text class="page-number">第 {{groupIndex + 1}} / {{groupCount}} 页</text>
+      <view class="page-number-control">
+        <view class="page-number-editor"><text>第</text><input class="page-number-input" type="number" value="{{pageEditing ? pageInput : groupIndex + 1}}" confirm-type="done" bindfocus="editPageNumber" bindinput="onPageInput" bindconfirm="confirmPageJump" /><text> / {{groupCount}} 页</text></view>
+      </view>
       <view class="page-button {{groupIndex >= groupCount - 1 ? 'page-disabled' : ''}}" role="button" bindtap="onNextGroup" hover-class="page-button-pressed" aria-label="下一页" aria-disabled="{{groupIndex >= groupCount - 1}}">›</view>
     </view>
+    <view class="page-jump-hint">{{pageJumpHint}}</view>
     <text wx:if="{{groupLoading}}" class="practice-tip">正在读取题目，请稍候…</text>
     <text wx:if="{{!loading && !hasError && total}}" class="practice-tip">{{mode === 'writing' ? '独立作答后，可切换背诵全览核对答案' : '答案直接显示，完成本页后进入下一页'}}</text>
   </view>

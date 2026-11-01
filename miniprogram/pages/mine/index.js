@@ -233,7 +233,8 @@ Page({
     if (!code || this.data.busy) { if (!code) showToast('请输入激活码'); return; }
     this.setData({ busy: true, activationError: '' });
     try {
-      const result = await api.activation.redeem(code);
+      const scene = agentAttribution.read();
+      const result = await api.activation.redeem(code, scene ? { scene } : undefined);
       if (!result.entitlement || !result.entitlement.active) {
         this.setData({ entitlement: result.entitlement || this.data.entitlement, activationError: '服务端尚未确认权益生效，请刷新后重试。' });
         return;
@@ -382,7 +383,7 @@ Page({
     }
     const info = {
       refund: ['退费规则', '温馨提示：本产品为刷题题库（线上虚拟权限），开通后即可使用，不支持退款。使用中遇到问题，可联系客服处理。'],
-      customer: ['联系客服', '如有问题，可联系QQ：24352771']
+      customer: ['联系客服', '如有使用问题，请通过本小程序公布的官方渠道联系我们，我们会尽快处理。']
     }[kind];
     this.setData({ infoTitle: info[0], infoText: info[1], infoKind: kind, infoVisible: true });
   },

@@ -7,6 +7,7 @@ function shareTimeline() { return { title: SHARE_TITLE, query: agentAttribution.
 const { withStudyTime } = require('../../utils/study-timer');
 const api = require('../../services/api');
 const navigation = require('../../utils/navigation');
+const pageSwipe = require('../../utils/page-swipe');
 let contentCache = { read: () => null, write: () => false };
 try {
   const loadedCache = require('../../utils/content-cache');
@@ -30,7 +31,7 @@ function readGlobalTheme() {
 Page(withStudyTime({
   data: {
     kinds, items: [], genres: [], detailItems: [], selectedGenre: '', selectedKind: '', selectedKindLabel: '全部内容',
-    selected: null, selectedIndex: 0, reader: null, mode: 'template', theme: 'warm', globalTheme: 'day', kindFilterVisible: false,
+    selected: null, selectedIndex: 0, pageInput: '', pageEditing: false, pageJumpHint: '', reader: null, mode: 'template', theme: 'warm', globalTheme: 'day', kindFilterVisible: false,
     originalVisible: false, detailVisible: false, detailLoading: false, detailError: '', loading: true, error: '', restrictedCount: 0
   },
   onLoad() {
@@ -114,7 +115,7 @@ Page(withStudyTime({
     const kind = kinds.find((item) => item.id === this.data.selectedKind);
     this._detailRequest = (this._detailRequest || 0) + 1;
     const selectedIndex = Math.max(0, entries.findIndex((item) => item.id === preferredId));
-    this.setData({ detailItems: entries, selectedIndex, selectedKindLabel: kind ? kind.label : '全部内容',
+    this.setData({ detailItems: entries, selectedIndex, pageInput: '', pageEditing: false, pageJumpHint: '', selectedKindLabel: kind ? kind.label : '全部内容',
       selected: null, reader: null, detailVisible: Boolean(entries.length), detailLoading: false, detailError: '', originalVisible: false });
     return entries[selectedIndex] ? this.loadDetail(entries[selectedIndex]) : Promise.resolve();
   },
@@ -168,14 +169,43 @@ Page(withStudyTime({
     const item = this.data.items.find((entry) => String(entry.id) === String(id));
     if (!item) return;
     const selectedIndex = this.data.detailItems.findIndex((entry) => String(entry.id) === String(id));
-    if (selectedIndex >= 0) this.setData({ selectedIndex });
+    if (selectedIndex >= 0) this.setData({ selectedIndex, pageInput: '', pageEditing: false, pageJumpHint: '' });
     return this.loadDetail(item);
   },
   changePage(event) {
     const next = this.data.selectedIndex + Number(event.currentTarget.dataset.direction);
     if (!Number.isInteger(next) || next < 0 || next >= this.data.detailItems.length) return;
-    this.setData({ selectedIndex: next });
+    this.setData({ selectedIndex: next, pageInput: '', pageEditing: false, pageJumpHint: '' });
     return this.loadDetail(this.data.detailItems[next]);
+  },
+  editPageNumber() {
+    this.setData({ pageEditing: true, pageInput: String(this.data.selectedIndex + 1), pageJumpHint: '' });
+  },
+  onPageInput(event) {
+    this.setData({ pageInput: event.detail.value || '', pageJumpHint: '' });
+  },
+  confirmPageJump() {
+    const raw = String(this.data.pageInput || '').trim();
+    const target = Number(raw);
+    const total = this.data.detailItems.length;
+    if (!/^\d+$/.test(raw) || !Number.isSafeInteger(target) || target < 1 || target > total) {
+      this.setData({ pageJumpHint: '请输入 1 至 ' + total + ' 篇' });
+      return;
+    }
+    const next = target - 1;
+    if (next === this.data.selectedIndex) {
+      this.setData({ pageEditing: false, pageInput: '', pageJumpHint: '' });
+      return;
+    }
+    this.setData({ selectedIndex: next, pageEditing: false, pageInput: '', pageJumpHint: '' });
+    if (typeof wx !== 'undefined' && wx.pageScrollTo) wx.pageScrollTo({ scrollTop: 0, duration: 180 });
+    return this.loadDetail(this.data.detailItems[next]);
+  },
+  onPageTouchStart(event) { pageSwipe.start.call(this, event); },
+  onPageTouchEnd(event) {
+    return pageSwipe.end.call(this, event,
+      () => this.changePage({ currentTarget: { dataset: { direction: -1 } } }),
+      () => this.changePage({ currentTarget: { dataset: { direction: 1 } } }));
   },
   changeMode(event) {
     const mode = event.currentTarget.dataset.mode;

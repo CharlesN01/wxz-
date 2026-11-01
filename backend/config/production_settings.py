@@ -37,6 +37,9 @@ STATIC_ROOT = Path(os.environ.get("DJANGO_STATIC_ROOT", "/srv/chinese-study/stat
 MEDIA_ROOT = Path(os.environ.get("DJANGO_MEDIA_ROOT", "/var/lib/chinese-study/media"))
 WRITING_IMPORT_TMP_DIR = Path(os.environ.get("WRITING_IMPORT_TMP_DIR", "/var/lib/chinese-study/writing-imports"))
 DATABASES["default"]["OPTIONS"] = {"connect_timeout": 10, "options": "-c statement_timeout=120000"}
+# Revalidate persistent connections after a proxy/database restart instead of
+# surfacing a stale socket as a request failure.
+DATABASES["default"]["CONN_HEALTH_CHECKS"] = True
 MIDDLEWARE = ["operations.logging.RequestLoggingMiddleware", *MIDDLEWARE]
 LOGGING = {
     "version": 1, "disable_existing_loggers": False,

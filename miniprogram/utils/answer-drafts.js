@@ -50,6 +50,9 @@ function createStore(auth, storage) {
         try { storage.setStorageSync(key, next); } catch (_) {}
       }
       return next.slice();
+    },
+    clear(question) {
+      return this.save(question, []);
     }
   };
 }
@@ -95,4 +98,18 @@ function acceptInput(page, event, store) {
   return Object.assign({ questions }, progress(questions));
 }
 
-module.exports = { accountKey, createStore, decorate, progress, acceptInput, restrict };
+function clearPage(page, store) {
+  if (!page || !page.data || page.data.mode !== 'writing') return null;
+  const rows = page.data.questions || [];
+  if (!rows.length || page.data.lockedPage) return null;
+  let cleared = false;
+  const questions = rows.map(question => {
+    if (!question || question.locked || question.unavailable) return question;
+    const values = store.clear ? store.clear(question) : store.save(question, []);
+    cleared = cleared || (question.draftAnswers || []).some(value => String(value || '').trim());
+    return Object.assign({}, question, { draftAnswers: values });
+  });
+  return cleared ? Object.assign({ questions }, progress(questions)) : null;
+}
+
+module.exports = { accountKey, createStore, decorate, progress, acceptInput, clearPage, restrict };

@@ -61,6 +61,17 @@ function normalizeResume(input) {
   return resume;
 }
 
+function resumeKey(record) {
+  const options = record && record.options || record || {};
+  const board = options.board || (record && record.roundId ? 'random' : 'sequence');
+  const inferredPath = board === 'random' ? '/pages/random/index'
+    : options.source === 'literature' ? '/pages/literature/index' : '/pages/practice/index';
+  return [
+    record && record.path || options.path || inferredPath,
+    board, options.source || '', options.categoryId || '', options.articleId || '', options.type || ''
+  ].map((value) => String(value == null ? '' : value)).join('|');
+}
+
 function normalize(input) {
   if (!input || typeof input !== 'object' || input.version !== 1) return freshState();
   const mastered = {};
@@ -75,15 +86,36 @@ function normalize(input) {
   });
   const studyDates = Array.isArray(input.studyDates) ? input.studyDates.filter((day) => /^\d{4}-\d{2}-\d{2}$/.test(day)) : [];
   const allowedPaths = ['/pages/literature/index', '/pages/practice/index', '/pages/random/index'];
+  const resumes = {};
+  if (input.resumes && typeof input.resumes === 'object' && !Array.isArray(input.resumes)) {
+    Object.keys(input.resumes).forEach((key) => {
+      const value = input.resumes[key];
+      if (value && allowedPaths.indexOf(value.path) !== -1) {
+        const normalized = normalizeResume(value);
+        if (normalized) resumes[resumeKey(normalized)] = normalized;
+      }
+    });
+  }
   const resume = input.resume && allowedPaths.indexOf(input.resume.path) !== -1 ? normalizeResume(input.resume) : null;
-  return { version: 1, favorites: Array.from(new Set(favorites)), favoriteDates, mastered, studyDates: Array.from(new Set(studyDates)), mode: input.mode === 'reciting' ? 'reciting' : 'writing', resume };
+  if (resume) resumes[resumeKey(resume)] = resume;
+  return { version: 1, favorites: Array.from(new Set(favorites)), favoriteDates, mastered, studyDates: Array.from(new Set(studyDates)), mode: input.mode === 'reciting' ? 'reciting' : 'writing', resume, resumes };
 }
 
 function getState() {
   const key = storageKey();
   if (!cached || cachedKey !== key) {
     cachedKey = key;
-    try { cached = normalize(typeof wx !== 'undefined' ? wx.getStorageSync(key) : null); }
+    try {
+      cached = normalize(typeof wx !== 'undefined' ? wx.getStorageSync(key) : null);
+      if (key !== STORAGE_KEY && typeof wx !== 'undefined') {
+        const guest = normalize(wx.getStorageSync(STORAGE_KEY));
+        Object.keys(guest.resumes || {}).forEach((resumeId) => {
+          if (!cached.resumes[resumeId]) cached.resumes[resumeId] = guest.resumes[resumeId];
+        });
+        if (!cached.resume && guest.resume) cached.resume = guest.resume;
+        wx.setStorageSync(key, cached);
+      }
+    }
     catch (_) { cached = freshState(); }
   }
   return JSON.parse(JSON.stringify(cached));
@@ -140,7 +172,14 @@ function setMode(mode) {
 
 function saveResume(record) {
   const state = getState();
-  state.resume = record ? normalizeResume(record) : null;
+  const normalized = record ? normalizeResume(record) : null;
+  if (normalized) {
+    state.resumes = state.resumes || {};
+    state.resumes[resumeKey(normalized)] = normalized;
+    state.resume = normalized;
+  } else {
+    state.resume = null;
+  }
   save(state);
 }
 function clear() {
@@ -149,7 +188,18 @@ function clear() {
   cachedKey = key;
   try { if (typeof wx !== 'undefined') wx.removeStorageSync(key); } catch (_) {}
 }
-function getResume() { return getState().resume; }
+function getResume(context) {
+  const state = getState();
+  if (context && typeof context === 'object') {
+    if (context.partial) {
+      const entries = Object.values(state.resumes || {}).reverse();
+      return entries.find((resume) => Object.keys(context).filter((key) => key !== 'partial')
+        .every((key) => String((resume.options || {})[key] || '') === String(context[key] || ''))) || null;
+    }
+    return (state.resumes || {})[resumeKey(context)] || null;
+  }
+  return state.resume;
+}
 
 function getStats(now) {
   const state = getState();

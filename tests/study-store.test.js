@@ -107,6 +107,32 @@ test('远端随机续学保留非 mock 题目 ID、当前组和题组缓存', ()
   assert.deepEqual(reloaded.groupCache['2'], group);
 });
 
+test('游客续学按板块、题源、篇目和题型分别保存，登录后合并未覆盖的位置', () => {
+  const { store, read } = createStore();
+  const sequence = { path: '/pages/practice/index', options: { board: 'sequence', source: 'classical', articleId: 'a', type: 'word', questionId: 'seq-3' }, groupIndex: 2 };
+  const random = { path: '/pages/random/index', options: { board: 'random', source: 'classical', articleId: 'a', type: 'word', questionId: 'rnd-8' }, roundId: 'round-a', groupIndex: 1 };
+  const otherType = { path: '/pages/practice/index', options: { board: 'sequence', source: 'classical', articleId: 'a', type: 'translation', questionId: 'trans-1' }, groupIndex: 0 };
+  store.saveResume(sequence);
+  store.saveResume(random);
+  store.saveResume(otherType);
+  assert.equal(store.getResume({ board: 'sequence', source: 'classical', articleId: 'a', type: 'word' }).options.questionId, 'seq-3');
+  assert.equal(store.getResume({ board: 'random', source: 'classical', articleId: 'a', type: 'word' }).options.questionId, 'rnd-8');
+  assert.equal(store.getResume({ board: 'sequence', source: 'classical', articleId: 'a', type: 'translation' }).options.questionId, 'trans-1');
+  const guest = read();
+  const keys = Object.keys(guest.resumes);
+  const accountKey = 'chinese-study.frontend.v1:user:student-7';
+  const values = { [store.STORAGE_KEY]: guest, [accountKey]: { version: 1, resumes: {} } };
+  global.wx.getStorageSync = (key) => values[key] || null;
+  global.wx.setStorageSync = (key, value) => { values[key] = JSON.parse(JSON.stringify(value)); };
+  const sessionPath = require.resolve('../miniprogram/utils/session');
+  delete require.cache[sessionPath];
+  const session = require(sessionPath);
+  session.saveSession({ token: 'logged-in', user: { id: 'student-7' } });
+  delete require.cache[storePath];
+  const accountStore = require(storePath);
+  assert.deepEqual(Object.keys(accountStore.getState().resumes).sort(), keys.sort());
+});
+
 test('专项稀疏续学重启后保留全局页码，并通过当前题目恢复而非按已读 ID 索引', () => {
   const { store, read } = createStore();
   const group = [{ id: 'remote-question-421', type: 'word', stem: '当前题目' }];

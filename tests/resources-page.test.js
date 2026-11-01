@@ -27,6 +27,7 @@ function createPage(response, options) {
     require(name) {
       if (name === '../../services/api') return api;
       if (name === '../../utils/resource-image') return require('../miniprogram/utils/resource-image');
+      if (name === '../../utils/agent-attribution') return { read: () => '', sharePath: (value) => value, shareQuery: () => '' };
       throw new Error('Unexpected module: ' + name);
     },
     Page(value) { definition = value; },
@@ -101,14 +102,14 @@ test('资料接口失败时保留可见主体并提供重试错误态', async ()
 });
 
 test('资料图片相对路径补全API地址，同站HTTP升级HTTPS，非法来源关闭显示', () => {
-  assert.equal(resourceImageUrl('/media/resources/group/test.png'), 'https://zsbzy.com/media/resources/group/test.png');
-  assert.equal(resourceImageUrl('media/resources/group/test.png'), 'https://zsbzy.com/media/resources/group/test.png');
-  assert.equal(resourceImageUrl('http://zsbzy.com/media/qr.png'), 'https://zsbzy.com/media/qr.png');
+  assert.equal(resourceImageUrl('/media/resources/group/test.png'), 'https://www.zsbzy.com/media/resources/group/test.png');
+  assert.equal(resourceImageUrl('media/resources/group/test.png'), 'https://www.zsbzy.com/media/resources/group/test.png');
+  assert.equal(resourceImageUrl('http://zsbzy.com/media/qr.png'), 'https://www.zsbzy.com/media/qr.png');
   assert.equal(resourceImageUrl('https://cdn.example.test/qr.png'), 'https://cdn.example.test/qr.png');
   assert.equal(resourceImageUrl('http://127.0.0.1/media/qr.png'), '');
   assert.equal(resourceImageUrl('javascript:alert(1)'), '');
   assert.equal(resourceImageUrl('https://name:secret@example.test/qr.png'), '');
-  assert.equal(retryImageUrl('/media/qr.png', 123), 'https://zsbzy.com/media/qr.png?qr_retry=123');
+  assert.equal(retryImageUrl('/media/qr.png', 123), 'https://www.zsbzy.com/media/qr.png?qr_retry=123');
 });
 
 test('二维码404或加载失败显示明确错误，重试重新读配置并刷新图片缓存', async () => {
@@ -121,7 +122,7 @@ test('二维码404或加载失败显示明确错误，重试重新读配置并�
   assert.equal(calls.preview.length, 0);
   await page.retryQr();
   assert.equal(page.data.qrError, '');
-  assert.match(page.data.qrCode, /^https:\/\/zsbzy\.com\/media\/resources\/group\/qr\.png\?qr_retry=/);
+  assert.match(page.data.qrCode, /^https:\/\/www\.zsbzy\.com\/media\/resources\/group\/qr\.png\?qr_retry=/);
   page.onQrLoad({ currentTarget: { dataset: { source: page.data.qrCode } } });
   assert.equal(page.data.qrLoading, false);
   const template = fs.readFileSync(templatePath, 'utf8');

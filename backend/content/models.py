@@ -274,6 +274,10 @@ class QuestionRevision(QuestionContent):
         constraints = [
             models.UniqueConstraint(fields=("question", "version"), name="content_unique_question_revision"),
         ]
+        indexes = [
+            models.Index(fields=("article", "type", "sort_order", "question"), name="content_rev_article_type_idx"),
+            models.Index(fields=("category", "type", "sort_order", "question"), name="content_rev_category_type_idx"),
+        ]
 
     def __str__(self):
         return f"{self.question_id} · v{self.version}"

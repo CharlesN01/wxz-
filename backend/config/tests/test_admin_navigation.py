@@ -107,6 +107,19 @@ class AdminNavigationTests(TestCase):
             1,
         )
 
+    def test_workbench_sidebar_button_toggles_evaluated_state(self):
+        self.user.is_superuser = True
+        self.user.save(update_fields=("is_superuser",))
+        self.client.force_login(self.user)
+
+        response = self.client.get(reverse("admin:index"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(
+            response,
+            "sidebarOpen = typeof sidebarOpen === 'function' ? !sidebarOpen() : !sidebarOpen",
+        )
+
     def test_empty_change_list_uses_chinese_empty_state(self):
         self.user.is_superuser = True
         self.user.save(update_fields=("is_superuser",))

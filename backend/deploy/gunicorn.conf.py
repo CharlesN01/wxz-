@@ -10,3 +10,4 @@ accesslog = None  # Application logger omits query/body/headers.
 errorlog = "-"
 capture_output = True
 forwarded_allow_ips = "127.0.0.1"
+no_control_socket = True

@@ -29,7 +29,7 @@ test('原生按钮即使只有最小高度，也将文字放在按钮中央', ()
   const copy = declarations('pages/resources/index.wxss', '.bottom button');
   assertCentered(copy, 'resource copy');
   assert.equal(copy['min-height'], '42px');
-  assert.equal(copy['font-size'], '24rpx');
+  assert.equal(copy['font-size'], 'var(--study-rpx-24)');
   for (const selector of ['.primary', '.secondary', '.login-button', '.member-row button']) {
     assertCentered(declarations('pages/mine/index.wxss', selector), `mine ${selector}`);
   }
@@ -41,17 +41,17 @@ test('模式按钮在父级内边距和边框以内伸展，文字保持居中',
   assertCentered(mode, 'mode switch');
   assert.equal(mode.height, '100%');
   assert.equal(declarations('components/mode-switch/index.wxss', '.theme-blue .mode').height, '100%');
-  assert.equal(declarations('components/mode-switch/index.wxss', '.modes').height, '88rpx');
-  assert.equal(declarations('components/mode-switch/index.wxss', '.theme-blue').height, '60rpx');
+  assert.equal(declarations('components/mode-switch/index.wxss', '.modes').height, 'var(--study-rpx-88)');
+  assert.equal(declarations('components/mode-switch/index.wxss', '.theme-blue').height, 'var(--study-rpx-60)');
 });
 
 test('继续、扫码、分页、查看答案及关闭弹窗采用相同居中规则', () => {
   const controls = {
     'pages/home/index.wxss': ['.continue-action', '.group-action', '.retry-button', '.group-modal-close'],
     'pages/classical/index.wxss': ['.state-retry', '.filter', '.continue-action', '.modal-close'],
-    'pages/literature/index.wxss': ['.period', '.mode', '.answer-button', '.page-button'],
-    'pages/random/index.wxss': ['.type-filter', '.state-retry', '.page-button'],
-    'pages/practice/index.wxss': ['.state-retry', '.page-button'],
+    'pages/literature/index.wxss': ['.period', '.mode', '.answer-button', '.clear-answer-button', '.page-button'],
+    'pages/random/index.wxss': ['.type-filter', '.state-retry', '.random-mode-controls .clear-answer-button', '.page-button'],
+    'pages/practice/index.wxss': ['.state-retry', '.practice-mode-controls .clear-answer-button', '.page-button'],
     'pages/favorites/index.wxss': ['.favorites-tab', '.favorites-retry', '.answer-button', '.remove-button'],
     'pages/mine/index.wxss': ['.close', '.type-pill'],
     'components/question-card/index.wxss': ['.answer-toggle', '.master']

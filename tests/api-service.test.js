@@ -89,6 +89,15 @@ test('content requests can opt into the Bearer contract for activated learners',
   assert.equal(calls[0].header.Authorization, 'Bearer activated-token');
 });
 
+test('ordinary activation redemption forwards an optional current agent scene', async () => {
+  session.saveSession({ token: 'activation-learner', expiresAt: '' });
+  const calls = installWx((options) => respond(options, 200, { redemptionId: 'redemption-1' }));
+  await api.activation.redeem('QM-CODE', { scene: 'a=AGENT001' });
+  await api.activation.redeem('QM-CODE-NO-SCENE');
+  assert.deepEqual(calls[0].data, { code: 'QM-CODE', scene: 'a=AGENT001' });
+  assert.deepEqual(calls[1].data, { code: 'QM-CODE-NO-SCENE' });
+});
+
 test('article catalogs carry the learner session for aggregated progress while guests stay public', async () => {
   const calls = installWx((options) => respond(options, 200, { results: [] }));
   await api.content.articles({ page: 1 });
@@ -127,9 +136,61 @@ test('trial and release builds use the production API when no extension override
   global.wx = {
     getAccountInfoSync() { return { miniProgram: { envVersion: 'trial' } }; }
   };
-  assert.equal(api.getApiBaseUrl(), 'https://zsbzy.com');
+  assert.equal(api.getApiBaseUrl(), 'https://www.zsbzy.com');
   global.wx.getAccountInfoSync = () => ({ miniProgram: { envVersion: 'release' } });
-  assert.equal(api.getApiBaseUrl(), 'https://zsbzy.com');
+  assert.equal(api.getApiBaseUrl(), 'https://www.zsbzy.com');
+});
+
+test('resume query omits null filters instead of sending the string null', async () => {
+  session.saveSession({ token: 'resume-token', expiresAt: '' });
+  const calls = installWx((options) => respond(options, 200, { valid: false, resume: null }));
+
+  await api.learning.resume({
+    board: 'random',
+    source: 'classical',
+    categoryId: null,
+    articleId: null,
+    type: null
+  });
+
+  assert.deepEqual(calls[0].data, { board: 'random', source: 'classical' });
+  assert.equal(calls[0].url, 'http://127.0.0.1:8000/api/student/v1/me/resume/');
+});
+
+test('scoped resume retries with the legacy empty query when the server rejects unknown filters', async () => {
+  session.saveSession({ token: 'resume-token', expiresAt: '' });
+  const calls = installWx((options) => {
+    if (calls.length === 1) {
+      respond(options, 400, { error: { code: 'VALIDATION_ERROR', message: '请求数据无效。' } });
+      return;
+    }
+    respond(options, 200, { valid: false, resume: null });
+  });
+
+  const result = await api.learning.resume({
+    board: 'sequence',
+    source: 'classical',
+    categoryId: null,
+    articleId: 'quanxue',
+    type: 'translation'
+  });
+
+  assert.deepEqual(result, { valid: false, resume: null });
+  assert.equal(calls.length, 2);
+  assert.deepEqual(calls[0].data, { board: 'sequence', source: 'classical', articleId: 'quanxue', type: 'translation' });
+  assert.deepEqual(calls[1].data, {});
+  assert.equal(calls[0].header.Authorization, 'Bearer resume-token');
+  assert.equal(calls[1].header.Authorization, 'Bearer resume-token');
+});
+
+test('scoped resume does not retry non-validation failures', async () => {
+  session.saveSession({ token: 'resume-token', expiresAt: '' });
+  const calls = installWx((options) => respond(options, 503, {
+    error: { code: 'SERVICE_UNAVAILABLE', message: 'temporarily unavailable' }
+  }));
+
+  await assert.rejects(api.learning.resume({ board: 'sequence', source: 'literature' }), (error) => error.status === 503);
+  assert.equal(calls.length, 1);
 });
 
 test('development builds use the public API when no extension override exists', () => {
@@ -137,7 +198,7 @@ test('development builds use the public API when no extension override exists', 
   global.wx = {
     getAccountInfoSync() { return { miniProgram: { envVersion: 'develop' } }; }
   };
-  assert.equal(api.getApiBaseUrl(), 'https://zsbzy.com');
+  assert.equal(api.getApiBaseUrl(), 'https://www.zsbzy.com');
 });
 
 test('explicit API configuration overrides the environment default', () => {
@@ -155,7 +216,7 @@ test('production environment fallback still applies when extension config is una
     getExtConfigSync() { throw new Error('extension config unavailable'); },
     getAccountInfoSync() { return { miniProgram: { envVersion: 'release' } }; }
   };
-  assert.equal(api.getApiBaseUrl(), 'https://zsbzy.com');
+  assert.equal(api.getApiBaseUrl(), 'https://www.zsbzy.com');
 });
 
 test('private writes preserve baseVersion and attach Bearer plus an idempotency key', async () => {

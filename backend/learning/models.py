@@ -19,6 +19,7 @@ class QuestionState(models.Model):
         verbose_name = "学习状态"
         verbose_name_plural = verbose_name
         constraints = [models.UniqueConstraint(fields=("user", "question"), name="learning_unique_question_state")]
+        indexes = [models.Index(fields=("user", "mastered", "question"), name="learn_state_user_mastered_idx")]
 
 
 class LearningActivity(models.Model):
@@ -34,6 +35,7 @@ class LearningActivity(models.Model):
         verbose_name = "学习活动"
         verbose_name_plural = verbose_name
         constraints = [models.UniqueConstraint(fields=("user", "question", "study_date"), name="learning_unique_daily_activity")]
+        indexes = [models.Index(fields=("user", "study_date"), name="learn_activity_user_date_idx")]
 
 
 class LearningPreference(models.Model):

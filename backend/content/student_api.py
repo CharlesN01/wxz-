@@ -1,5 +1,7 @@
 """Read-only student content; protected answers never depend on client masking."""
 
+import copy
+
 from django.db.models import Count, Exists, F, IntegerField, OuterRef, Q, Subquery, Value, Window
 from django.db.models.functions import Coalesce, Least, RowNumber
 from django.http import Http404
@@ -206,27 +208,33 @@ class StudentQuestionListView(StudentContentView):
         model = Category if source == "literature" else Article
         get_object_or_404(model, pk=scope_id, is_active=True)
         config = LearningConfiguration.current()
-        anonymous = not (request.user and request.user.is_authenticated)
-        cache_key = None
-        if anonymous:
-            cache_key = "question-list:v%s:%s:%s:%s:%s:%s" % (
-                content_cache.version(), source, scope_id, query.get("type", ""),
-                query.get("page", 1), config.page_size,
-            )
-            cached, should_compute = content_cache.get_or_claim_fill(cache_key)
-            if not should_compute:
-                return Response(cached)
-        queryset = scope_questions(source, scope_id)
-        if "type" in query:
-            queryset = queryset.filter(published_revision__type=query["type"])
+        authenticated = bool(request.user and request.user.is_authenticated)
+        activated = has_full_access(request.user) if authenticated else False
+        access_scope = "full" if activated else "free"
+        cache_key = "question-list:v2:%s:%s:%s:%s:%s:%s:%s:%s:%s" % (
+            content_cache.version(), access_scope, source, scope_id, query.get("type", ""),
+            query.get("page", 1), config.page_size, request.scheme, request.get_host(),
+        )
+        cached, should_compute = content_cache.get_or_claim_fill(cache_key)
+        envelope = cached if isinstance(cached, dict) and "data" in cached else None
+        if not should_compute and envelope is not None:
+            data = copy.deepcopy(envelope["data"])
+            if authenticated:
+                readable = self._readable_query(
+                    source, scope_id, query.get("type"),
+                    data.get("access", {}).get("activated", False), config.page_size,
+                )
+                self._add_personal_progress(data, request.user, readable)
+            return Response(data)
+
+        queryset = self._scope_query(source, scope_id, query.get("type"))
         total = queryset.count()
         free_ids = list(free_questions(queryset, page_size=config.page_size).values_list("pk", flat=True))
         free_count = len(free_ids)
-        activated = has_full_access(request.user)
         readable = queryset if activated else queryset.filter(pk__in=free_ids)
         response = self.paginated(
             request, readable, config.page_size,
-            lambda page: self.serialize_questions(request.user, page),
+            lambda page: self.serialize_questions(None, page),
         )
         response.data["access"] = {
             "activated": activated,
@@ -236,15 +244,40 @@ class StudentQuestionListView(StudentContentView):
             "restrictedCount": max(0, total - response.data["count"]),
         }
         response.data["progress"] = None
-        if request.user and request.user.is_authenticated:
-            from learning.models import QuestionState
-
-            response.data["progress"] = {"masteredCount": QuestionState.objects.filter(
-                user=request.user, mastered=True, question_id__in=Subquery(readable.values("pk")),
-            ).count()}
-        if cache_key:
-            content_cache.set(cache_key, response.data)
+        content_cache.set(cache_key, {"data": response.data})
+        if authenticated:
+            data = copy.deepcopy(response.data)
+            self._add_personal_progress(data, request.user, readable)
+            return Response(data)
         return response
+
+    @staticmethod
+    def _scope_query(source, scope_id, question_type):
+        queryset = scope_questions(source, scope_id)
+        if question_type:
+            queryset = queryset.filter(published_revision__type=question_type)
+        return queryset
+
+    @staticmethod
+    def _readable_query(source, scope_id, question_type, activated, page_size):
+        queryset = StudentQuestionListView._scope_query(source, scope_id, question_type)
+        if activated:
+            return queryset
+        free_ids = free_questions(queryset, page_size=page_size).values_list("pk", flat=True)
+        return queryset.filter(pk__in=Subquery(free_ids))
+
+    @staticmethod
+    def _add_personal_progress(data, user, readable):
+        from learning.models import QuestionState
+        from learning.services import batch_question_states
+
+        results = data.get("results", [])
+        states = batch_question_states(user, (row["id"] for row in results))
+        for row in results:
+            row["state"] = states.get(str(row["id"])) if states is not None else None
+        data["progress"] = {"masteredCount": QuestionState.objects.filter(
+            user=user, mastered=True, question_id__in=Subquery(readable.values("pk")),
+        ).count()}
 
     @staticmethod
     def serialize_questions(user, page):
