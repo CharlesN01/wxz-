@@ -15,6 +15,13 @@ function normalizeBaseUrl(value) {
   return url;
 }
 
+function isLoopbackUrl(value) {
+  const match = /^https?:\/\/([^/:?#]+)/i.exec(String(value || '').trim());
+  if (!match) return false;
+  const host = match[1].toLowerCase();
+  return host === 'localhost' || host === '::1' || /^127(?:\.\d{1,3}){3}$/.test(host);
+}
+
 function setApiBaseUrl(value) {
   configuredBaseUrl = normalizeBaseUrl(value);
   return configuredBaseUrl;
@@ -24,7 +31,9 @@ function getApiBaseUrl() {
   try {
     if (typeof wx !== 'undefined' && typeof wx.getExtConfigSync === 'function') {
       const extConfig = wx.getExtConfigSync() || {};
-      if (extConfig.apiBaseUrl) return normalizeBaseUrl(extConfig.apiBaseUrl);
+      if (extConfig.apiBaseUrl && !isLoopbackUrl(extConfig.apiBaseUrl)) {
+        return normalizeBaseUrl(extConfig.apiBaseUrl);
+      }
     }
   } catch (_) { /* Ignore unavailable or malformed optional extension config. */ }
   if (configuredBaseUrl) return configuredBaseUrl;

@@ -131,6 +131,18 @@ test('app extension configuration overrides the configured API origin', async ()
   assert.equal(api.getApiBaseUrl(), 'https://student-api.example/backend');
 });
 
+test('stale loopback extension config falls back to the public API host', async () => {
+  apiConfig.resetApiBaseUrl();
+  const calls = installWx((options) => respond(options, 200, { pageSize: 20 }));
+  global.wx.getExtConfigSync = () => ({ apiBaseUrl: 'http://127.0.0.1:8765' });
+
+  await api.config.get();
+
+  assert.equal(api.getApiBaseUrl(), 'https://www.zsbzy.com');
+  assert.equal(calls[0].url, 'https://www.zsbzy.com/api/student/v1/config/');
+  delete global.wx.getExtConfigSync;
+});
+
 test('trial and release builds use the production API when no extension override exists', () => {
   apiConfig.resetApiBaseUrl();
   global.wx = {
