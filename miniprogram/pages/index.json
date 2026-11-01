@@ -1,0 +1,8 @@
+{
+  "navigationStyle": "custom",
+  "enablePullDownRefresh": true,
+  "usingComponents": {
+    "study-navbar": "/components/study-navbar/index",
+    "empty-state": "/components/empty-state/index"
+  }
+}

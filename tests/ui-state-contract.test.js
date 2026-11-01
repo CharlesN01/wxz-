@@ -41,6 +41,16 @@ test('10 个原生路由承载 16 个原型状态所需页面均已注册', () =
   ]);
 });
 
+test('朋友圈分享通过 onShareTimeline 启用，不向 page.json 写无效配置项', () => {
+  const config = JSON.parse(fs.readFileSync(path.join(root, 'miniprogram/app.json'), 'utf8'));
+  for (const route of config.pages) {
+    const pageConfig = JSON.parse(fs.readFileSync(path.join(root, 'miniprogram', route + '.json'), 'utf8'));
+    const pageScript = fs.readFileSync(path.join(root, 'miniprogram', route + '.js'), 'utf8');
+    assert.equal(Object.hasOwn(pageConfig, 'enableShareTimeline'), false, route);
+    assert.match(pageScript, /onShareTimeline\(\)/, route);
+  }
+});
+
 test('订单中心登记为无参数主路径并从我的订单入口直达', () => {
   const config = JSON.parse(fs.readFileSync(path.join(root, 'miniprogram/app.json'), 'utf8'));
   assert.ok(config.pages.includes('pages/orders/index'));
